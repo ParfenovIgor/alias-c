@@ -23,6 +23,7 @@ file_desc file_open(const char *filename, const char *par);
 void file_print_string(file_desc file, const char *str);
 void file_close(file_desc file);
 
+void *_malloc(int sz);
 void string_free(char *str);
 
 #endif // COMMON_H_INCLUDED

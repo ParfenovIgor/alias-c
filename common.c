@@ -97,6 +97,10 @@ void file_close(file_desc file) {
     //fclose(file);
 }
 
+void *_malloc(int sz) {
+    return malloc(sz);
+}
+
 void string_free(char *str) {
     free(str);
 }

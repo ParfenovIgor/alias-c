@@ -1,6 +1,32 @@
 #ifndef AST_H_INCLUDED
 #define AST_H_INCLUDED
 
+enum NodeType {
+    NodeBlock,
+    NodeAsm,
+    NodeIf,
+    NodeWhile,
+    NodeFunctionDefinition,
+    NodePrototype,
+    NodeDefinition,
+    NodeAssignment,
+    NodeMovement,
+    NodeMovementString,
+    NodeAssumption,
+    NodeIdentifier,
+    NodeInteger,
+    NodeAlloc,
+    NodeFree,
+    NodeFunctionCall,
+    NodeDereference,
+    NodeAddition,
+    NodeSubtraction,
+    NodeMultiplication,
+    NodeDivision,
+    NodeLess,
+    NodeEqual,
+};
+
 struct Node;
 struct Block;
 struct Asm;
@@ -22,6 +48,7 @@ struct Dereference;
 struct Addition;
 struct Subtraction;
 struct Multiplication;
+struct Division;
 struct Less;
 struct Equal;
 
@@ -81,6 +108,7 @@ struct Node {
 };
 
 struct Block {
+    int line_begin, position_begin, line_end, position_end;
     //std::vector <std::shared_ptr <Statement>> statement_list;
     //void Validate(VLContext &context);
     //void Compile(std::ostream &out, CPContext &context);
