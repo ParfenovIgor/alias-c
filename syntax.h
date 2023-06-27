@@ -9,6 +9,6 @@ struct Node *Syntax_ProcessBlock(struct TokenStream*);
 struct Node *Syntax_ProcessExpression(struct TokenStream*);
 struct Node *Syntax_ProcessPrimary(struct TokenStream*);
 struct Node *Syntax_ProcessStatement(struct TokenStream*);
-struct Node *Syntax_Process(struct Token *token_stream, int token_stream_size) {return 0;}
+struct Node *Syntax_Process(struct TokenStream*) {return 0;}
 
 #endif // SYNTAX_H_INCLUDED

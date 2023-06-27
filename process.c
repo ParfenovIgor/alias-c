@@ -7,40 +7,27 @@
 #include "settings.h"
 #include "process.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 struct Node *Parse(const char *filename) {
-    /*std::ifstream fin(filename);
-    if (!fin) {
-        std::cerr << "Could not open file " << filename << "\n";
-        exit(1);
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        print_string("Could not open file ");
+        print_string(filename);
+        print_string("\n");
+        program_exit(1);
     }
 
-    std::stringstream buffer;
-    buffer << fin.rdbuf();
-    std::vector <Token> token_stream;
-    std::shared_ptr <AST::Node> node;
-    try {
-        token_stream = Lexer::Process(buffer.str(), filename);
-    }
-    catch (AliasException &ex) {
-        std::cout << "Error" << std::endl;
-        std::cout << ex.filename << std::endl;
-        std::cout << ex.line_begin + 1 << ':' << ex.position_begin + 1 << '-' << ex.line_end + 1 << ':' << ex.position_end + 1 << std::endl;
-        std::cout << "Lexer Error: " << ex.value << std::endl;
-        exit(1);
-    }*/
-
-    struct Node *node = Syntax_Process(0, 0);
-
-    /*try {
-        node = Syntax::Process(token_stream);
-    }
-    catch (AliasException &ex) {
-        std::cout << "Error" << std::endl;
-        std::cout << ex.filename << std::endl;
-        std::cout << ex.line_begin + 1 << ':' << ex.position_begin + 1 << '-' << ex.line_end + 1 << ':' << ex.position_end + 1 << std::endl;
-        std::cout << "Syntax Error: " << ex.value << std::endl;
-        exit(1);
-    }*/
+    fseek(file, 0, SEEK_END);
+    int length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *buffer = (char*)malloc(length + 1);
+    fread(buffer, 1, length, file);
+    buffer[length] = '\0';
+    fclose(file);
+    struct TokenStream token_stream = Lexer_Process(buffer, filename);
+    struct Node *node = Syntax_Process(&token_stream);
 
     return node;
 }

@@ -45,33 +45,6 @@ enum TokenType {
 };
 
 struct Token {
-    /*Token(TokenType _type, int _line_begin, int _position_begin, int _line_end, int _position_end, std::string _filename) {
-        type = _type;
-        line_begin = _line_begin;
-        position_begin = _position_begin;
-        line_end = _line_end;
-        position_end = _position_end;
-        filename = _filename;
-    }
-    Token(TokenType _type, int _value_int, int _line_begin, int _position_begin, int _line_end, int _position_end, std::string _filename) {
-        type = _type;
-        value_int = _value_int;
-        line_begin = _line_begin;
-        position_begin = _position_begin;
-        line_end = _line_end;
-        position_end = _position_end;
-        filename = _filename;
-    }
-    Token(TokenType _type, std::string _value_string, int _line_begin, int _position_begin, int _line_end, int _position_end, std::string _filename) {
-        type = _type;
-        value_string = _value_string;
-        line_begin = _line_begin;
-        position_begin = _position_begin;
-        line_end = _line_end;
-        position_end = _position_end;
-        filename = _filename;
-    }*/
-
     TokenType type;
     int value_int;
     const char *value_string;
@@ -89,5 +62,7 @@ struct TokenStream {
 struct Token TokenStream_GetToken(struct TokenStream *this);
 
 void TokenStream_NextToken(struct TokenStream *this);
+
+struct Token Token_Build(TokenType _type, int _line_begin, int _position_begin, int _line_end, int _position_end, const char *_filename);
 
 #endif // TOKEN_H_INCLUDED

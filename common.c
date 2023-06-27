@@ -10,6 +10,27 @@ void print_int(int n) {
     printf("%d", n);
 }
 
+char *strcpy(char *a, char *b) {
+    for (int i = 0; ; i++) {
+        a[i] = b[i];
+        if (b[i] == '\0') {
+            break;
+        }
+    }
+    return a;
+}
+
+char *_strndup(const char *a, int n) {
+    int sz = strlen(a);
+    if (n < sz) sz = n;
+    char *b = (char*)malloc(sz + 1);
+    for (int i = 0; i < sz; i++) {
+        b[i] = a[i];
+    }
+    b[sz] = '\0';
+    return b;
+}
+
 int strcmp(const char *a, const char *b) {
     for (int i = 0; ; i++) {
         if (a[i] < b[i]) {

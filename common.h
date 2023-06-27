@@ -8,6 +8,8 @@ typedef int bool;
 void print_string(const char *str);
 void print_int(int n);
 
+char *strcpy(char *a, char *b);
+char *_strndup(const char *a, int n);
 int strcmp(const char *a, const char *b);
 long unsigned int strlen(const char *a);
 char *concat(char *a, char *b);
