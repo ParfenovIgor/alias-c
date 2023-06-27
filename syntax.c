@@ -1,12 +1,13 @@
+#include "common.h"
 #include "syntax.h"
 #include "exception.h"
 #include "process.h"
 
-std::shared_ptr <AST::Block> Syntax_ProcessProgram(TokenStream *ts) {
-    std::shared_ptr <AST::Block> block = std::make_shared <AST::Block> ();
-    block->line_begin = ts.GetToken().line_begin;
-    block->position_begin = ts.GetToken().position_begin;
-    while(ts->GetToken().type != TokenType::Eof && ts.GetToken().type != TokenType::BraceClose) {
+struct Node *Syntax_ProcessProgram(struct TokenStream *ts) {
+    struct Block *block = (struct Block*)_malloc(sizeof(struct Block));
+    block->line_begin = TokenStream_GetToken(ts).line_begin;
+    block->position_begin = TokenStream_GetToken(ts).position_begin;
+    /*while(ts->GetToken().type != TokenType::Eof && ts.GetToken().type != TokenType::BraceClose) {
         if (ts.GetToken().type == TokenType::Include) {
             std::string filename = ts.GetToken().value_string;
             std::ifstream fin(filename);
@@ -29,11 +30,11 @@ std::shared_ptr <AST::Block> Syntax_ProcessProgram(TokenStream *ts) {
     block->line_end = ts.GetToken().line_end;
     block->position_end = ts.GetToken().position_end;
     block->filename = ts.GetToken().filename;
-    return block;
+    return block;*/
 }
 
-std::shared_ptr <AST::Block> ProcessBlock(TokenStream &ts) {
-    std::shared_ptr <AST::Block> block = std::make_shared <AST::Block> ();
+struct Node *Syntax_ProcessBlock(struct TokenStream *ts) {
+    /*std::shared_ptr <AST::Block> block = std::make_shared <AST::Block> ();
     block->line_begin = ts.GetToken().line_begin;
     block->position_begin = ts.GetToken().position_begin;
     ts.NextToken();
@@ -63,11 +64,11 @@ std::shared_ptr <AST::Block> ProcessBlock(TokenStream &ts) {
     block->line_end = ts.GetToken().line_end;
     block->position_end = ts.GetToken().position_end;
     block->filename = ts.GetToken().filename;
-    return block;
+    return block;*/
 }
 
-std::shared_ptr <AST::Expression> ProcessExpression(TokenStream &ts) {
-    enum class Operation {
+struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
+    /*enum class Operation {
         Unary,
         Binary,
         Parenthesis
@@ -232,11 +233,11 @@ std::shared_ptr <AST::Expression> ProcessExpression(TokenStream &ts) {
         throw AliasException("Incorrect expression", ts.GetToken());
     }
 
-    return primaries[0];
+    return primaries[0];*/
 }
 
-std::shared_ptr <AST::Expression> ProcessPrimary(TokenStream &ts) {
-    if (ts.GetToken().type == TokenType::Dereference) {
+struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
+    /*if (ts.GetToken().type == TokenType::Dereference) {
         std::shared_ptr <AST::Dereference> _dereference = std::make_shared <AST::Dereference> ();
         _dereference->line_begin = ts.GetToken().line_begin;
         _dereference->position_begin = ts.GetToken().position_begin;
@@ -289,11 +290,11 @@ std::shared_ptr <AST::Expression> ProcessPrimary(TokenStream &ts) {
         ts.NextToken();
         return _alloc;
     }
-    throw AliasException("Identifier expected in primary expression", ts.GetToken());
+    throw AliasException("Identifier expected in primary expression", ts.GetToken());*/
 }
 
-std::shared_ptr <AST::Statement> Syntax_ProcessStatement(TokenStream &ts) {
-    if (ts.GetToken().type == TokenType::Semicolon) {
+struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
+    /*if (ts.GetToken().type == TokenType::Semicolon) {
         ts.NextToken();
         return nullptr;
     }
@@ -760,10 +761,9 @@ std::shared_ptr <AST::Statement> Syntax_ProcessStatement(TokenStream &ts) {
             }
         }
     }
-    throw AliasException("Statement expected", ts.GetToken());
+    throw AliasException("Statement expected", ts.GetToken());*/
 }
 
-std::shared_ptr <AST::Node> Process(const std::vector <Token> tokens) {
-    TokenStream token_stream(tokens);
+struct Node *Syntax_Process(struct TokenStream *token_stream) {
     return Syntax_ProcessProgram(token_stream);
 }
