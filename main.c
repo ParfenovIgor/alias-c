@@ -22,19 +22,19 @@ int main(int argc, char *argv[]) {
         for (int i = 1; i < argc; i++) {
             const char *arg = argv[i];
             if (strcmp(arg, "-s") == 0) {
-                //Settings::SetStates(true);
+                Settings_SetStates(true);
             }
             else if(strcmp(arg, "-c") == 0) {
-                //Settings::SetCompile(true);
+                Settings_SetCompile(true);
             }
             else if(strcmp(arg, "-a") == 0) {
-                //Settings::SetAssemble(true);
+                Settings_SetAssemble(true);
             }
             else if (strcmp(arg, "-l") == 0) {
-                //Settings::SetLink(true);
+                Settings_SetLink(true);
             }
             else if (strcmp(arg, "-m") == 0) {
-                //Settings::SetTopMain(true);
+                Settings_SetTopMain(true);
             }
             else if (strcmp(arg, "-o") == 0) {
                 if (i + 1 == argc) {
@@ -42,18 +42,18 @@ int main(int argc, char *argv[]) {
                     return 1;
                 }
                 const char *str = argv[i + 1];
-                //Settings::SetOutputFilename(str);
+                Settings_SetOutputFilename(str);
                 i++;
             }
             else {
-                //Settings::SetFilename(arg);
+                Settings_SetFilename(arg);
             }
         }
 
-        //if (Settings::GetFilename().empty()) {
-        //    help();
-        //    return 0;
-        //}
+        if (!Settings_GetFilename()) {
+            help();
+            return 0;
+        }
 
         return Process();
     }
