@@ -53,7 +53,7 @@ long unsigned int strlen(const char *a) {
     }
 }
 
-char *concat(char *a, char *b) {
+char *concat(const char *a, const char *b) {
     int s_a = strlen(a);
     int s_b = strlen(b);
     char *c = (char*)malloc(s_a + s_b + 1);
@@ -101,6 +101,6 @@ void *_malloc(int sz) {
     return malloc(sz);
 }
 
-void string_free(char *str) {
-    free(str);
+void _free(void *ptr) {
+    free(ptr);
 }

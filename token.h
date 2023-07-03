@@ -22,7 +22,7 @@ enum TokenType {
     TokenElse,
     TokenWhile,
     TokenFunc,
-    TokenTokenProto,
+    TokenProto,
     TokenDef,
     TokenConst,
     TokenAssign,
