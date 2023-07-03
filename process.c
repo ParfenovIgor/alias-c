@@ -8,7 +8,6 @@
 #include "process.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 
 struct Node *Parse(const char *filename) {
     FILE *file = fopen(filename, "r");
@@ -22,7 +21,7 @@ struct Node *Parse(const char *filename) {
     fseek(file, 0, SEEK_END);
     int length = ftell(file);
     fseek(file, 0, SEEK_SET);
-    char *buffer = (char*)malloc(length + 1);
+    char *buffer = (char*)_malloc(length + 1);
     fread(buffer, 1, length, file);
     buffer[length] = '\0';
     fclose(file);
@@ -52,7 +51,7 @@ int Process() {
 
         char *str = concat(filename, ".asm");
         file_desc file = file_open(str, "w");
-        string_free(str);
+        _free(str);
         /*AST::Compile(node, file);
         file.close();
         if (Settings::GetAssemble() || Settings::GetLink()) {

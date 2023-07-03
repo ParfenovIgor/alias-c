@@ -98,6 +98,8 @@ struct CPContext {
 };
 
 struct Node {
+    int line_begin, position_begin, line_end, position_end;
+    const char *filename;
     void *node_ptr;
     int node_type;
     //virtual ~Node(){};
@@ -108,10 +110,7 @@ struct Node {
 };
 
 struct Block {
-    int line_begin, position_begin, line_end, position_end;
-    //std::vector <std::shared_ptr <Statement>> statement_list;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node **statement_list;
 };
 
 struct Asm {
@@ -187,21 +186,15 @@ struct Assumption {
 };
 
 struct Identifier {
-    //std::string identifier;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    const char *identifier;
 };
 
 struct Integer {
-    //int value;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    int value;
 };
 
 struct Alloc {
-    //std::shared_ptr <Expression> expression;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *expression;
 };
 
 struct Free {
@@ -219,9 +212,7 @@ struct FunctionCall {
 };
 
 struct Dereference {
-    //std::shared_ptr <Expression> arg;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *arg;
 };
 
 struct Addition {

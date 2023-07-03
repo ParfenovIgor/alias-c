@@ -12,7 +12,7 @@ char *strcpy(char *a, char *b);
 char *_strndup(const char *a, int n);
 int strcmp(const char *a, const char *b);
 long unsigned int strlen(const char *a);
-char *concat(char *a, char *b);
+char *concat(const char *a, const char *b);
 char *substr(char *a, int n);
 
 void program_exit(int x);
@@ -24,6 +24,6 @@ void file_print_string(file_desc file, const char *str);
 void file_close(file_desc file);
 
 void *_malloc(int sz);
-void string_free(char *str);
+void _free(void *ptr);
 
 #endif // COMMON_H_INCLUDED
