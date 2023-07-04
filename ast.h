@@ -52,9 +52,10 @@ struct Division;
 struct Less;
 struct Equal;
 
-typedef int Type;
-#define Type_Int 0
-#define Type_Ptr 1
+enum Type {
+    TypeInt,
+    TypePtr,
+};
 
 struct FunctionSignature {
     //std::vector < std::string > identifiers;
@@ -101,7 +102,7 @@ struct Node {
     int line_begin, position_begin, line_end, position_end;
     const char *filename;
     void *node_ptr;
-    int node_type;
+    enum NodeType node_type;
     //virtual ~Node(){};
     //virtual void Validate(VLContext &context) = 0;
     //virtual void Compile(std::ostream &out, CPContext &context) = 0;
@@ -118,17 +119,14 @@ struct Asm {
 };
 
 struct If {
-    //std::vector < std::pair <std::shared_ptr <Expression>, std::shared_ptr<Block>>> branch_list;
-    //std::shared_ptr <Block> else_body;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node **condition_list;
+    struct Node **block_list;
+    struct Node *else_block;
 };
 
 struct While {
-    //std::shared_ptr <Expression> expression;
-    //std::shared_ptr <Block> block;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *condition;
+    struct Node *block;
 };
 
 struct FunctionDefinition {
@@ -150,6 +148,8 @@ struct Prototype {
 };
 
 struct Definition {
+    const char *identifier;
+    enum Type type;
     //std::string identifier;
     //Type type;
     //void Validate(VLContext &context);
@@ -157,32 +157,24 @@ struct Definition {
 };
 
 struct Assignment {
-    //std::string identifier;
-    //std::shared_ptr <Expression> value;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    const char *identifier;
+    struct Node *value;
 };
 
 struct Movement {
-    //std::string identifier;
-    //std::shared_ptr <Expression> value;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    const char *identifier;
+    struct Node *value;
 };
 
 struct MovementString {
-    //std::string identifier;
-    //std::string value;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    const char *identifier;
+    const char *value;
 };
 
 struct Assumption {
-    //std::string identifier;
-    //std::shared_ptr <Expression> left, right;
-    //std::shared_ptr <Statement> statement;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    const char *identifier;
+    struct Node *left, *right;
+    struct Node *statement;
 };
 
 struct Identifier {
@@ -198,17 +190,14 @@ struct Alloc {
 };
 
 struct Free {
-    //std::shared_ptr <Expression> arg;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *expression;
 };
 
 struct FunctionCall {
-    //std::string identifier;
-    //std::vector <std::pair <std::string, std::shared_ptr <Expression>>> metavariables;
-    //std::vector <std::string> arguments;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    const char *identifier;
+    const char **metavariable_name;
+    struct Node **metavariable_value;
+    const char **arguments;
 };
 
 struct Dereference {
@@ -216,33 +205,27 @@ struct Dereference {
 };
 
 struct Addition {
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *left, *right;
 };
 
 struct Subtraction {
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *left, *right;
 };
 
 struct Multiplication {
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *left, *right;
 };
 
 struct Division {
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *left, *right;
 };
 
 struct Less {
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *left, *right;
 };
 
 struct Equal {
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    struct Node *left, *right;
 };
 
 #endif // AST_H_INCLUDED
