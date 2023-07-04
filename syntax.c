@@ -20,6 +20,55 @@ struct Node **push_back(struct Node **a, struct Node *node) {
     return a_new;
 }
 
+struct Node **pop_back(struct Node **a) {
+    struct Node **b = a;
+    while (*(b + 1) != NULL) {
+        b++;
+    }
+    *b = NULL;
+    return a;
+}
+
+int get_size(struct Node **a) {
+    int sz = 0;
+    for (struct Node **b = a; *b != NULL; b++) {
+        sz++;
+    }
+    return sz;
+}
+
+const char **push_back_string(const char **a, const char *node) {
+    int sz = 0;
+    for (const char **b = a; *b != NULL; b++) {
+        sz++;
+    }
+    const char **a_new = (const char**)_malloc((sz + 2) * sizeof(const char*));
+    for (int i = 0; i < sz; i++) {
+        a_new[i] = a[i];
+    }
+    a_new[sz] = node;
+    a_new[sz + 1] = NULL;
+    _free(a);
+    return a_new;
+}
+
+struct Token *get_back_token(struct Token **a) {
+    struct Token **b = a;
+    while (*(b + 1) != NULL) {
+        b++;
+    }
+    return *b;
+}
+
+struct Token **pop_back_token(struct Token **a) {
+    struct Token **b = a;
+    while (*(b + 1) != NULL) {
+        b++;
+    }
+    *b = NULL;
+    return a;
+}
+
 struct Node *Syntax_ProcessProgram(struct TokenStream *ts) {
     struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
     struct Block *block = (struct Block*)_malloc(sizeof(struct Block));
@@ -29,6 +78,7 @@ struct Node *Syntax_ProcessProgram(struct TokenStream *ts) {
     node->node_type = NodeBlock;
     node->line_begin = TokenStream_GetToken(ts).line_begin;
     node->position_begin = TokenStream_GetToken(ts).position_begin;
+    node->filename = TokenStream_GetToken(ts).filename;
     while (TokenStream_GetToken(ts).type != TokenEof && TokenStream_GetToken(ts).type != TokenBraceClose) {
         if (TokenStream_GetToken(ts).type == TokenInclude) {
             const char *filename = TokenStream_GetToken(ts).filename;
@@ -55,7 +105,6 @@ struct Node *Syntax_ProcessProgram(struct TokenStream *ts) {
     }
     node->line_end = TokenStream_GetToken(ts).line_end;
     node->position_end = TokenStream_GetToken(ts).position_end;
-    node->filename = TokenStream_GetToken(ts).filename;
     return node;
 }
 
@@ -68,6 +117,7 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts) {
     node->node_type = NodeBlock;
     node->line_begin = TokenStream_GetToken(ts).line_begin;
     node->position_begin = TokenStream_GetToken(ts).position_begin;
+    node->filename = TokenStream_GetToken(ts).filename;
     TokenStream_NextToken(ts);
     while (TokenStream_GetToken(ts).type != TokenEof && TokenStream_GetToken(ts).type != TokenBraceClose) {
         if (TokenStream_GetToken(ts).type == TokenInclude) {
@@ -98,79 +148,108 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts) {
     }
     node->line_end = TokenStream_GetToken(ts).line_end;
     node->position_end = TokenStream_GetToken(ts).position_end;
-    node->filename = TokenStream_GetToken(ts).filename;
     return node;
 }
 
+bool next_is_operation(struct TokenStream *ts) {
+    return (
+        TokenStream_GetToken(ts).type == TokenPlus  ||
+        TokenStream_GetToken(ts).type == TokenMinus ||
+        TokenStream_GetToken(ts).type == TokenMult  ||
+        TokenStream_GetToken(ts).type == TokenDiv   ||
+        TokenStream_GetToken(ts).type == TokenLess  ||
+        TokenStream_GetToken(ts).type == TokenEqual);
+}
+
+int operation_priority(struct Token *operation) {
+    if (operation->type == TokenMult ||
+        operation->type == TokenDiv) {
+        return 1;
+    }
+    if (operation->type == TokenPlus ||
+        operation->type == TokenMinus) {
+        return 2;
+    }
+    if (operation->type == TokenLess ||
+        operation->type == TokenEqual) {
+        return 3;
+    }
+    return 4;
+}
+
+struct Node *process_operation(struct Node ***primaries, struct Token ***operations) {
+    struct Node *root = (struct Node*)_malloc(sizeof(struct Node));
+    root->node_ptr = NULL;
+    struct Token *token = get_back_token(*operations);
+    int sz = get_size(*primaries);
+    struct Node *left = *primaries[sz - 2];
+    struct Node *right = *primaries[sz - 1];
+    root->line_begin = left->line_begin;
+    root->position_begin = left->position_begin;
+    root->line_end = right->line_end;
+    root->position_end = right->position_end;
+    root->filename = left->filename;
+    
+    if (token->type == TokenPlus) {
+        struct Addition *addition = (struct Addition*)_malloc(sizeof(struct Addition));
+        addition->left = left;
+        addition->right = right;
+        root->node_ptr = addition;
+        root->node_type = NodeAddition;
+    }
+    if (token->type == TokenMinus) {
+        struct Subtraction *subtraction = (struct Subtraction*)_malloc(sizeof(struct Subtraction));
+        subtraction->left = left;
+        subtraction->right = right;
+        root->node_ptr = subtraction;
+        root->node_type = NodeSubtraction;
+    }
+    if (token->type == TokenMult) {
+        struct Multiplication *multiplication = (struct Multiplication*)_malloc(sizeof(struct Multiplication));
+        multiplication->left = left;
+        multiplication->right = right;
+        root->node_ptr = multiplication;
+        root->node_type = NodeMultiplication;
+    }
+    if (token->type == TokenDiv) {
+        struct Division *division = (struct Division*)_malloc(sizeof(struct Division));
+        division->left = left;
+        division->right = right;
+        root->node_ptr = division;
+        root->node_type = NodeDivision;
+    }
+    if (token->type == TokenLess) {
+        struct Less *less = (struct Less*)_malloc(sizeof(struct Less));
+        less->left = left;
+        less->right = right;
+        root->node_ptr = less;
+        root->node_type = NodeLess;
+    }
+    if (token->type == TokenEqual) {
+        struct Equal *equal = (struct Equal*)_malloc(sizeof(struct Equal));
+        equal->left = left;
+        equal->right = right;
+        root->node_ptr = equal;
+        root->node_type = NodeEqual;
+    }
+
+    if (root->node_ptr == NULL) {
+        SyntaxError("Binary operator expected in expression", *token);
+    }
+
+    *primaries = pop_back(*primaries);
+    *primaries = pop_back(*primaries);
+    *primaries = push_back(*primaries, root);
+    *operations = pop_back_token(*operations);
+    return root;
+}
+
 struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
-    /*enum class Operation {
-        Unary,
-        Binary,
-        Parenthesis
-    };
-    std::vector < std::shared_ptr <AST::Expression> > primaries;
-    std::vector < std::pair <Token, Operation> > operations;
-
-    std::function <bool()> next_is_operation = [&]() {
-        if (ts.GetToken().type == TokenType::Plus ||
-            ts.GetToken().type == TokenType::Minus ||
-            ts.GetToken().type == TokenType::Mult ||
-            ts.GetToken().type == TokenType::Div ||
-            ts.GetToken().type == TokenType::Less ||
-            ts.GetToken().type == TokenType::Equal)
-            return true;
-        else
-            return false;
-    };
-
-    std::function <int(std::pair <Token, Operation>)> operation_priority = [&](std::pair <Token, Operation> operation) {
-        Token token = operation.first;
-        if (token.type == TokenType::Mult ||
-            token.type == TokenType::Div)
-            return 1;
-        if (token.type == TokenType::Plus ||
-            token.type == TokenType::Minus)
-            return 2;
-        if (token.type == TokenType::Less ||
-            token.type == TokenType::Equal)
-            return 3;
-        return 4;
-    };
-
-    std::function <void()> process_operation = [&]() {
-        if (operations.back().second == Operation::Binary) {
-            std::shared_ptr <AST::BinaryOperation> root;
-            if (operations.back().first.type == TokenType::Plus)
-                root = std::make_shared <AST::Addition> ();
-            if (operations.back().first.type == TokenType::Minus)
-                root = std::make_shared <AST::Subtraction> ();
-            if (operations.back().first.type == TokenType::Mult)
-                root = std::make_shared <AST::Multiplication> ();
-            if (operations.back().first.type == TokenType::Div)
-                root = std::make_shared <AST::Division> ();
-            if (operations.back().first.type == TokenType::Less)
-                root = std::make_shared <AST::Less> ();
-            if (operations.back().first.type == TokenType::Equal)
-                root = std::make_shared <AST::Equal> ();
-            if (!root) {
-                throw AliasException("Binary operator expected in expression", ts.GetToken());
-            }
-            root->left = primaries[primaries.size() - 2];
-            root->right = primaries[primaries.size() - 1];
-            root->line_begin = root->left->line_begin;
-            root->position_begin = root->left->position_begin;
-            root->line_end= root->right->line_end;
-            root->position_end= root->right->position_end;
-            root->filename = root->left->filename;
-
-            primaries.pop_back();
-            primaries.pop_back();
-            primaries.push_back(root);
-            operations.pop_back();
-        }
-    };
-
-    int ParenthesisLevel = 0;
+    struct Node **primaries = (struct Node**)_malloc(sizeof(struct Node*));
+    primaries[0] = NULL;
+    struct Token **operations = (struct Token**)_malloc(sizeof(struct Token*));
+    operations[0] = NULL;
+    /*int ParenthesisLevel = 0;
     enum class State {
         Identifier,
         UnaryOperation,
@@ -275,6 +354,7 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
     struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
     node->line_begin = TokenStream_GetToken(ts).line_begin;
     node->position_begin = TokenStream_GetToken(ts).position_begin;
+    node->filename = TokenStream_GetToken(ts).filename;
     if (TokenStream_GetToken(ts).type == TokenDereference) {
         struct Dereference *_dereference = (struct Dereference*)_malloc(sizeof(struct Dereference));
         node->node_ptr = _dereference;
@@ -284,7 +364,6 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         _dereference->arg = _expression;
         node->line_end = _expression->line_end;
         node->position_end = _expression->position_end;
-        node->filename = _expression->filename;
         return node;
     }
     if (TokenStream_GetToken(ts).type == TokenIdentifier) {
@@ -294,7 +373,6 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         _identifier->identifier = TokenStream_GetToken(ts).value_string;
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
-        node->filename = TokenStream_GetToken(ts).filename;
         TokenStream_NextToken(ts);
         return node;
     }
@@ -305,7 +383,6 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         _integer->value = TokenStream_GetToken(ts).value_int;
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
-        node->filename = TokenStream_GetToken(ts).filename;
         TokenStream_NextToken(ts);
         return node;
     }
@@ -324,7 +401,6 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         }
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
-        node->filename = TokenStream_GetToken(ts).filename;
         TokenStream_NextToken(ts);
         return node;
     }
@@ -332,92 +408,107 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
 }
 
 struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
-    /*if (ts.GetToken().type == TokenType::Semicolon) {
-        ts.NextToken();
-        return nullptr;
+    if (TokenStream_GetToken(ts).type == TokenSemicolon) {
+        TokenStream_NextToken(ts);
+        return NULL;
     }
-    if (ts.GetToken().type == TokenType::BraceOpen) {
-        std::shared_ptr <AST::Block> block = ProcessBlock(ts);
-        ts.NextToken();
-        return block;
+    if (TokenStream_GetToken(ts).type == TokenBraceOpen) {
+        struct Node *node = Syntax_ProcessBlock(ts);
+        TokenStream_NextToken(ts);
+        return node;
     }
-    if (ts.GetToken().type == TokenType::Asm) {
-        std::shared_ptr <AST::Asm> _asm = std::make_shared <AST::Asm> ();
-        _asm->line_begin = ts.GetToken().line_begin;
-        _asm->position_begin = ts.GetToken().position_begin;
-        _asm->line_end = ts.GetToken().line_end;
-        _asm->position_end = ts.GetToken().position_end;
-        _asm->code = ts.GetToken().value_string;
-        _asm->filename = ts.GetToken().filename;
-        ts.NextToken();
-        return _asm;
+    if (TokenStream_GetToken(ts).type == TokenAsm) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct Asm *_asm = (struct Asm*)_malloc(sizeof(struct Asm));
+        node->node_ptr = _asm;
+        node->node_type = NodeAsm;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = TokenStream_GetToken(ts).filename;
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        _asm->code = TokenStream_GetToken(ts).value_string;
+        TokenStream_NextToken(ts);
+        return node;
     }
-    if (ts.GetToken().type == TokenType::If) {
-        std::shared_ptr <AST::If> _if = std::make_shared <AST::If> ();
-        _if->line_begin = ts.GetToken().line_begin;
-        _if->position_begin = ts.GetToken().position_begin;
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::ParenthesisOpen) {
-            throw AliasException("( expected in if condition", ts.GetToken());
+    if (TokenStream_GetToken(ts).type == TokenIf) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct If *_if = (struct If*)_malloc(sizeof(struct If));
+        _if->condition_list = (struct Node**)_malloc(sizeof(struct Node*));
+        _if->condition_list[0] = NULL;
+        _if->block_list = (struct Node**)_malloc(sizeof(struct Node*));
+        _if->block_list[0] = NULL;
+        _if->else_block = NULL;
+        node->node_ptr = _if;
+        node->node_type = NodeIf;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = TokenStream_GetToken(ts).filename;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
+            SyntaxError("( expected in if condition", TokenStream_GetToken(ts));
         }
-        ts.NextToken();
-        std::shared_ptr <AST::Expression> _expression = ProcessExpression(ts);
-        if (ts.GetToken().type != TokenType::ParenthesisClose) {
-            throw AliasException(") expected in if condition", ts.GetToken());
+        TokenStream_NextToken(ts);
+        struct Node *_expression = Syntax_ProcessExpression(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
+            SyntaxError(") expected in if condition", TokenStream_GetToken(ts));
         }
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::BraceOpen) {
-            throw AliasException("{ expected in if block", ts.GetToken());
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
+            SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
         }
-        std::shared_ptr <AST::Block> _block = ProcessBlock(ts);
-        _if->branch_list.push_back({_expression, _block});
-        _if->line_end = ts.GetToken().line_end;
-        _if->position_end = ts.GetToken().position_end;
-        ts.NextToken();
+        struct Node *_block = Syntax_ProcessBlock(ts);
+        _if->condition_list = push_back(_if->condition_list, _expression);
+        _if->block_list = push_back(_if->block_list, _block);
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
 
-        if (ts.GetToken().type == TokenType::Else) {
-            ts.NextToken();
-            if (ts.GetToken().type != TokenType::BraceOpen) {
-                throw AliasException("{ expected in if block", ts.GetToken());
+        if (TokenStream_GetToken(ts).type == TokenElse) {
+            TokenStream_NextToken(ts);
+            if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
+                SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
             }
-            std::shared_ptr <AST::Block> _block = ProcessBlock(ts);
-            _if->else_body = _block;
-            _if->line_end = ts.GetToken().line_end;
-            _if->position_end = ts.GetToken().position_end;
-            ts.NextToken();
+            struct Node *_block = Syntax_ProcessBlock(ts);
+            _if->else_block = _block;
+            node->line_end = TokenStream_GetToken(ts).line_end;
+            node->position_end = TokenStream_GetToken(ts).position_end;
+            TokenStream_NextToken(ts);
         }
 
-        _if->filename = ts.GetToken().filename;
-        return _if;
+        return node;
     }
-    if (ts.GetToken().type == TokenType::While) {
-        std::shared_ptr <AST::While> _while = std::make_shared <AST::While> ();
-        _while->line_begin = ts.GetToken().line_begin;
-        _while->position_begin = ts.GetToken().position_begin;
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::ParenthesisOpen) {
-            throw AliasException("( expected in while condition", ts.GetToken());
+    if (TokenStream_GetToken(ts).type == TokenWhile) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct While *_while = (struct While*)_malloc(sizeof(struct While));
+        node->node_ptr = _while;
+        node->node_type = NodeWhile;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = TokenStream_GetToken(ts).filename;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
+            SyntaxError("( expected in while condition", TokenStream_GetToken(ts));
         }
-        ts.NextToken();
-        std::shared_ptr <AST::Expression> _expression = ProcessExpression(ts);
-        if (ts.GetToken().type != TokenType::ParenthesisClose) {
-            throw AliasException(") expected in while condition", ts.GetToken());
+        TokenStream_NextToken(ts);
+        struct Node *_expression = Syntax_ProcessExpression(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
+            SyntaxError(") expected in while condition", TokenStream_GetToken(ts));
         }
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::BraceOpen) {
-            throw AliasException("{ expected in while block", ts.GetToken());
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
+            SyntaxError("{ expected in while block", TokenStream_GetToken(ts));
         }
-        std::shared_ptr <AST::Block> _block = ProcessBlock(ts);
-        _while->expression = _expression;
+        struct Node *_block = Syntax_ProcessBlock(ts);
+        _while->condition = _expression;
         _while->block = _block;
-        _while->line_end = ts.GetToken().line_end;
-        _while->position_end = ts.GetToken().position_end;
-        _while->filename = ts.GetToken().filename;
-        ts.NextToken();
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
 
-        return _while;
+        return node;
     }
-    if (ts.GetToken().type == TokenType::Func) {
+    /*if (ts.GetToken().type == TokenType::Func) {
         std::shared_ptr <AST::FunctionDefinition> function_definition = std::make_shared <AST::FunctionDefinition> ();
         function_definition->line_begin = ts.GetToken().line_begin;
         function_definition->position_begin = ts.GetToken().position_begin;
@@ -607,199 +698,208 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         ts.NextToken();
 
         return prototype;
-    }
-    if (ts.GetToken().type == TokenType::Def) {
-        std::shared_ptr <AST::Definition> definition = std::make_shared <AST::Definition> ();
-        definition->line_begin = ts.GetToken().line_begin;
-        definition->position_begin = ts.GetToken().position_begin;
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::Identifier) {
-            throw AliasException("Identifier expected in definition statement", ts.GetToken());
+    }*/
+    if (TokenStream_GetToken(ts).type == TokenDef) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct Definition *definition = (struct Definition*)_malloc(sizeof(struct Definition));
+        node->node_ptr = definition;
+        node->node_type = NodeWhile;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = TokenStream_GetToken(ts).filename;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+            SyntaxError("Identifier expected in definition statement", TokenStream_GetToken(ts));
         }
-        definition->identifier = ts.GetToken().value_string;
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::Int && ts.GetToken().type != TokenType::Ptr) {
-            throw AliasException("Type expected in definition statement", ts.GetToken());
+        definition->identifier = TokenStream_GetToken(ts).value_string;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenInt && TokenStream_GetToken(ts).type != TokenPtr) {
+            SyntaxError("Type expected in definition statement", TokenStream_GetToken(ts));
         }
-        if (ts.GetToken().type == TokenType::Int) {
-            definition->type = AST::Type::Int;
+        if (TokenStream_GetToken(ts).type == TokenInt) {
+            definition->type = TypeInt;
         }
         else {
-            definition->type = AST::Type::Ptr;
+            definition->type = TypePtr;
         }
-        definition->line_end = ts.GetToken().line_end;
-        definition->position_end = ts.GetToken().position_end;
-        definition->filename = ts.GetToken().filename;
-        ts.NextToken();
-        return definition;
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
     }
-    if (ts.GetToken().type == TokenType::Assume) {
-        std::shared_ptr <AST::Assumption> _assumption = std::make_shared <AST::Assumption> ();
-        _assumption->line_begin = ts.GetToken().line_begin;
-        _assumption->position_begin = ts.GetToken().position_begin;
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::ParenthesisOpen) {
-            throw AliasException("( expected in assume condition", ts.GetToken());
+    if (TokenStream_GetToken(ts).type == TokenAssume) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct Assumption *assumption = (struct Assumption*)_malloc(sizeof(struct Assumption));
+        node->node_ptr = assumption;
+        node->node_type = NodeAssumption;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = TokenStream_GetToken(ts).filename;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
+            SyntaxError("( expected in assume condition", TokenStream_GetToken(ts));
         }
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::Identifier) {
-            throw AliasException("Identifier expected in assume condition", ts.GetToken());
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+            SyntaxError("Identifier expected in assume condition", TokenStream_GetToken(ts));
         }
-        _assumption->identifier = ts.GetToken().value_string;
-        ts.NextToken();
-        _assumption->left = ProcessExpression(ts);
-        if (ts.GetToken().type != TokenType::Colon) {
-            throw AliasException(": expected in assume condition", ts.GetToken());
+        assumption->identifier = TokenStream_GetToken(ts).value_string;
+        TokenStream_NextToken(ts);
+        assumption->left = Syntax_ProcessExpression(ts);
+        if (TokenStream_GetToken(ts).type != TokenColon) {
+            SyntaxError(": expected in assume condition", TokenStream_GetToken(ts));
         }
-        ts.NextToken();
-        _assumption->right = ProcessExpression(ts);
-        if (ts.GetToken().type != TokenType::ParenthesisClose) {
-            throw AliasException(") expected in assume condition", ts.GetToken());
+        TokenStream_NextToken(ts);
+        assumption->right = Syntax_ProcessExpression(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
+            SyntaxError(") expected in assume condition", TokenStream_GetToken(ts));
         }
-        ts.NextToken();
-        std::shared_ptr <AST::Statement> _statement = Syntax_ProcessStatement(ts);
-        _assumption->statement = _statement;
-        _assumption->line_end = _statement->line_end;
-        _assumption->position_end = _statement->position_end;
-        _assumption->filename = _statement->filename;
-        return _assumption;
+        TokenStream_NextToken(ts);
+        struct Node *_statement = Syntax_ProcessStatement(ts);
+        assumption->statement = _statement;
+        node->line_end = _statement->line_end;
+        node->position_end =_statement->position_end;
+        return node;
     }
-    if (ts.GetToken().type == TokenType::Free) {
-        std::shared_ptr <AST::Free> _free = std::make_shared <AST::Free> ();
-        _free->line_begin = ts.GetToken().line_begin;
-        _free->position_begin = ts.GetToken().position_begin;
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::ParenthesisOpen) {
-            throw AliasException("( expected in free statement", ts.GetToken());
+    if (TokenStream_GetToken(ts).type == TokenFree) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct Free *_free = (struct Free*)_malloc(sizeof(struct Free));
+        node->node_ptr = _free;
+        node->node_type = NodeFree;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = TokenStream_GetToken(ts).filename;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
+            SyntaxError("( expected in free statement", TokenStream_GetToken(ts));
         }
-        ts.NextToken();
-        std::shared_ptr <AST::Expression> _expression = ProcessExpression(ts);
-        _free->arg = _expression;
-        if (ts.GetToken().type != TokenType::ParenthesisClose) {
-            throw AliasException(") expected in free expression", ts.GetToken());
+        TokenStream_NextToken(ts);
+        _free->expression = Syntax_ProcessExpression(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
+            SyntaxError(") expected in free expression", TokenStream_GetToken(ts));
         }
-        _free->line_end = ts.GetToken().line_end;
-        _free->position_end = ts.GetToken().position_end;
-        _free->filename = ts.GetToken().filename;
-        ts.NextToken();
-        return _free;
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
     }
-    if (ts.GetToken().type == TokenType::Call) {
-        std::shared_ptr <AST::FunctionCall> function_call = std::make_shared <AST::FunctionCall> ();
-        function_call->line_begin = ts.GetToken().line_begin;
-        function_call->position_begin = ts.GetToken().position_begin;
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::Identifier) {
-            throw AliasException("Identifier expected in function call", ts.GetToken());
+    if (TokenStream_GetToken(ts).type == TokenCall) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct FunctionCall *function_call = (struct FunctionCall*)_malloc(sizeof(struct FunctionCall));
+        node->node_ptr = function_call;
+        node->node_type = NodeFunctionCall;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = TokenStream_GetToken(ts).filename;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+            SyntaxError("Identifier expected in function call", TokenStream_GetToken(ts));
         }
-        function_call->identifier = ts.GetToken().value_string;
-        ts.NextToken();
-        if (ts.GetToken().type == TokenType::BracketOpen) {
-            ts.NextToken();
+        function_call->identifier = TokenStream_GetToken(ts).value_string;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type == TokenBracketOpen) {
+            TokenStream_NextToken(ts);
             while (true) {
-                if (ts.GetToken().type == TokenType::BracketClose) {
-                    ts.NextToken();
+                if (TokenStream_GetToken(ts).type == TokenBracketClose) {
+                    TokenStream_NextToken(ts);
                     break;
                 }
-                if (ts.GetToken().type != TokenType::Identifier) {
-                    throw AliasException("Idenfier expected in metavariable list", ts.GetToken());
+                if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+                    SyntaxError("Identifier expected in metavariable list", TokenStream_GetToken(ts));
                 }
-                std::string _identifier = ts.GetToken().value_string;
-                ts.NextToken();
-                if (ts.GetToken().type != TokenType::Equal) {
-                    throw AliasException("= expected in metavariable list", ts.GetToken());
+                function_call->metavariable_name = push_back_string(function_call->metavariable_name, TokenStream_GetToken(ts).value_string);
+                TokenStream_NextToken(ts);
+                if (TokenStream_GetToken(ts).type != TokenEqual) {
+                    SyntaxError("= expected in metavariable list", TokenStream_GetToken(ts));
                 }
-                ts.NextToken();
-                function_call->metavariables.push_back({_identifier, ProcessExpression(ts)});
-                if (ts.GetToken().type == TokenType::BracketClose) {
-                    ts.NextToken();
+                TokenStream_NextToken(ts);
+                function_call->metavariable_value = push_back(function_call->metavariable_value, Syntax_ProcessExpression(ts));
+                if (TokenStream_GetToken(ts).type == TokenBracketClose) {
+                    TokenStream_NextToken(ts);
                     break;
                 }
-                if (ts.GetToken().type != TokenType::Comma) {
-                    throw AliasException(", expected in metavariables list", ts.GetToken());
+                if (TokenStream_GetToken(ts).type != TokenComma) {
+                    SyntaxError(", expected in metavariables list", TokenStream_GetToken(ts));
                 }
-                ts.NextToken();
+                TokenStream_NextToken(ts);
             }
         }
-        if (ts.GetToken().type != TokenType::ParenthesisOpen) {
-            throw AliasException("( expected in function call", ts.GetToken());
+        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
+            SyntaxError("( expected in function call", TokenStream_GetToken(ts));
         }
-        ts.NextToken();
+        TokenStream_NextToken(ts);
         while (true) {
-            if (ts.GetToken().type == TokenType::ParenthesisClose) {
+            if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
                 break;
             }
-            if (ts.GetToken().type == TokenType::Identifier) {
-                function_call->arguments.push_back(ts.GetToken().value_string);
+            if (TokenStream_GetToken(ts).type == TokenIdentifier) {
+                function_call->arguments = push_back_string(function_call->arguments, TokenStream_GetToken(ts).value_string);
             }
             else {
-                throw AliasException("Identifier expected in function call", ts.GetToken());
+                SyntaxError("Identifier expected in function call", TokenStream_GetToken(ts));
             }
-            ts.NextToken();
-            if (ts.GetToken().type == TokenType::ParenthesisClose) {
+            TokenStream_NextToken(ts);
+            if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
                 break;
             }
-            if (ts.GetToken().type != TokenType::Comma) {
-                throw AliasException(", expectred in function call", ts.GetToken());
+            if (TokenStream_GetToken(ts).type != TokenComma) {
+                SyntaxError(", expectred in function call", TokenStream_GetToken(ts));
             }
-            ts.NextToken();
+            TokenStream_NextToken(ts);
         }
-        function_call->line_end = ts.GetToken().line_end;
-        function_call->position_end = ts.GetToken().position_end;
-        function_call->filename = ts.GetToken().filename;
-        ts.NextToken();
-        return function_call;
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
     }
-    if (ts.GetToken().type == TokenType::Identifier) {
-        int line_begin = ts.GetToken().line_begin;
-        int position_begin = ts.GetToken().position_begin;
-        std::string identifier = ts.GetToken().value_string;
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::Assign && ts.GetToken().type != TokenType::Move) {
-            throw AliasException(":= or <- expected in assignment or movement statement", ts.GetToken());
+    if (TokenStream_GetToken(ts).type == TokenIdentifier) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = TokenStream_GetToken(ts).filename;
+        const char *identifier = TokenStream_GetToken(ts).value_string;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenAssign && TokenStream_GetToken(ts).type != TokenMove) {
+            SyntaxError(":= or <- expected in assignment or movement statement", TokenStream_GetToken(ts));
         }
 
-        if (ts.GetToken().type == TokenType::Assign) {
-            std::shared_ptr <AST::Assignment> assignment = std::make_shared <AST::Assignment> ();
-            assignment->line_begin = line_begin;
-            assignment->position_begin = position_begin;
+        if (TokenStream_GetToken(ts).type == TokenAssign) {
+            struct Assignment *assignment = (struct Assignment*)_malloc(sizeof(struct Assignment));
+            node->node_ptr = assignment;
+            node->node_type = NodeAssignment;
             assignment->identifier = identifier;
-            ts.NextToken();
-            assignment->value = ProcessExpression(ts);
-            assignment->line_end = assignment->value->line_end;
-            assignment->position_end = assignment->value->position_end;
-            assignment->filename = assignment->value->filename;
-            return assignment;
+            TokenStream_NextToken(ts);
+            assignment->value = Syntax_ProcessExpression(ts);
+            node->line_end = assignment->value->line_end;
+            node->position_end = assignment->value->position_end;
+            return node;
         }
-
-        if (ts.GetToken().type == TokenType::Move) {
-            ts.NextToken();
-            if (ts.GetToken().type == TokenType::String) {
-                std::shared_ptr <AST::MovementString> movement_string = std::make_shared <AST::MovementString> ();
-                movement_string->line_begin = line_begin;
-                movement_string->position_begin = position_begin;
+        else if (TokenStream_GetToken(ts).type == TokenMove) {
+            TokenStream_NextToken(ts);
+            if (TokenStream_GetToken(ts).type == TokenString) {
+                struct MovementString *movement_string = (struct MovementString*)_malloc(sizeof(struct MovementString));
+                node->node_ptr = movement_string;
+                node->node_type = NodeMovementString;
+                node->line_end = TokenStream_GetToken(ts).line_end;
+                node->position_end = TokenStream_GetToken(ts).position_end;
                 movement_string->identifier = identifier;
-                movement_string->line_end = ts.GetToken().line_end;
-                movement_string->position_end = ts.GetToken().position_end;
-                movement_string->filename = ts.GetToken().filename;
-                movement_string->value = ts.GetToken().value_string;
-                ts.NextToken();
-                return movement_string;
+                movement_string->value = TokenStream_GetToken(ts).value_string;
+                TokenStream_NextToken(ts);
+                return node;
             }
             else {
-                std::shared_ptr <AST::Movement> movement = std::make_shared <AST::Movement> ();
-                movement->line_begin = line_begin;
-                movement->position_begin = position_begin;
+                struct Movement *movement = (struct Movement*)_malloc(sizeof(struct Movement));
+                node->node_ptr = movement;
+                node->node_type = NodeMovement;
                 movement->identifier = identifier;
-                movement->value = ProcessExpression(ts);
-                movement->line_end = movement->value->line_end;
-                movement->position_end = movement->value->position_end;
-                movement->filename = movement->value->filename;
-                return movement;
+                movement->value = Syntax_ProcessExpression(ts);
+                node->line_end = movement->value->line_end;
+                node->position_end = movement->value->position_end;
+                return node;
             }
         }
     }
-    throw AliasException("Statement expected", ts.GetToken());*/
+    SyntaxError("Statement expected", TokenStream_GetToken(ts));
 }
 
 struct Node *Syntax_Process(struct TokenStream *token_stream) {
