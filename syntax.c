@@ -52,6 +52,21 @@ const char **push_back_string(const char **a, const char *node) {
     return a_new;
 }
 
+struct Token **push_back_token(struct Token **a, struct Token *token) {
+    int sz = 0;
+    for (struct Token **b = a; *b != NULL; b++) {
+        sz++;
+    }
+    struct Token **a_new = (struct Token**)_malloc((sz + 2) * sizeof(struct Token*));
+    for (int i = 0; i < sz; i++) {
+        a_new[i] = a[i];
+    }
+    a_new[sz] = token;
+    a_new[sz + 1] = NULL;
+    _free(a);
+    return a_new;
+}
+
 struct Token *get_back_token(struct Token **a) {
     struct Token **b = a;
     while (*(b + 1) != NULL) {
@@ -249,105 +264,114 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
     primaries[0] = NULL;
     struct Token **operations = (struct Token**)_malloc(sizeof(struct Token*));
     operations[0] = NULL;
-    /*int ParenthesisLevel = 0;
-    enum class State {
-        Identifier,
-        UnaryOperation,
-        BinaryOperation,
-        ParenthesisOpen,
-        ParenthesisClose
+    int ParenthesisLevel = 0;
+    
+    enum State {
+        State_Identifier,
+        State_UnaryOperation,
+        State_BinaryOperation,
+        State_ParenthesisOpen,
+        State_ParenthesisClose,
     };
-    State CurrentState;
-    if (ts.GetToken().type == TokenType::ParenthesisOpen) {
-        operations.push_back({ts.GetToken(), Operation::Parenthesis});
-        ts.NextToken();
+    enum State CurrentState;
+    if (TokenStream_GetToken(ts).type == TokenParenthesisOpen) {
+        struct Token token = TokenStream_GetToken(ts);
+        operations = push_back_token(operations, &token);
+        TokenStream_NextToken(ts);
         ParenthesisLevel++;
-        CurrentState = State::ParenthesisOpen;
+        CurrentState = State_ParenthesisOpen;
     }
-    else if (next_is_operation()) {
-        operations.push_back({ts.GetToken(), Operation::Unary});
-        ts.NextToken();
-        CurrentState = State::UnaryOperation;
+    else if (next_is_operation(ts)) {
+        struct Token token = TokenStream_GetToken(ts);
+        operations = push_back_token(operations, &token);
+        TokenStream_NextToken(ts);
+        CurrentState = State_UnaryOperation;
     }
     else {
-        primaries.push_back(ProcessPrimary(ts));
-        CurrentState = State::Identifier;
+        primaries = push_back(primaries, Syntax_ProcessPrimary(ts));
+        CurrentState = State_Identifier;
     }
 
-    while (CurrentState == State::UnaryOperation ||
-            CurrentState == State::BinaryOperation ||
-            CurrentState == State::ParenthesisOpen ||
-            next_is_operation() ||
-            ParenthesisLevel) {
-        if (ts.GetToken().type == TokenType::ParenthesisOpen) {
-            if (CurrentState != State::BinaryOperation &&
-                CurrentState != State::ParenthesisOpen) {
-                throw AliasException("Unexpected ( in expression", ts.GetToken());
+    while (CurrentState == State_UnaryOperation ||
+           CurrentState == State_BinaryOperation ||
+           CurrentState == State_ParenthesisOpen ||
+           next_is_operation(ts) ||
+           ParenthesisLevel != 0) {
+        if (TokenStream_GetToken(ts).type == TokenParenthesisOpen) {
+            if (CurrentState != State_UnaryOperation &&
+                CurrentState != State_BinaryOperation &&
+                CurrentState != State_ParenthesisOpen) {
+                SyntaxError("Unexpected ( in expression", TokenStream_GetToken(ts));
             }
-            operations.push_back({ts.GetToken(), Operation::Parenthesis});
-            ts.NextToken();
+            struct Token token = TokenStream_GetToken(ts);
+            operations = push_back_token(operations, &token);
+            TokenStream_NextToken(ts);
             ParenthesisLevel++;
-            CurrentState = State::ParenthesisOpen;
+            CurrentState = State_ParenthesisOpen;
         }
-        else if (ts.GetToken().type == TokenType::ParenthesisClose) {
-            if (CurrentState != State::Identifier &&
-                CurrentState != State::ParenthesisClose) {
-                throw AliasException("Unexpected ) in expression", ts.GetToken());
+        else if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
+            if (CurrentState != State_Identifier &&
+                CurrentState != State_ParenthesisOpen) {
+                SyntaxError("Unexpected ) in expression", TokenStream_GetToken(ts));
             }
-            while (!operations.empty() && operations.back().first.type != TokenType::ParenthesisOpen) {
-                process_operation();
+            while (*operations != NULL && get_back_token(operations)->type != TokenParenthesisOpen) {
+                process_operation(&primaries, &operations);
             }
-            if (operations.empty() || operations.back().first.type != TokenType::ParenthesisOpen) {
-                throw AliasException(") exprected in expression", ts.GetToken());
+            if (*operations == NULL || get_back_token(operations)->type != TokenParenthesisOpen) {
+                SyntaxError("Unexpected ) in expression", TokenStream_GetToken(ts));
             }
-            operations.pop_back();
-            ts.NextToken();
+            operations = pop_back_token(operations);
+            TokenStream_NextToken(ts);
             ParenthesisLevel--;
-            CurrentState = State::ParenthesisClose;
+            CurrentState = State_ParenthesisClose;
         }
-        else if (next_is_operation()) {
-            if (CurrentState == State::UnaryOperation ||
-                CurrentState == State::BinaryOperation ||
-                CurrentState == State::ParenthesisOpen) {
-                while(!operations.empty() &&
-                        operation_priority(operations.back()) <= operation_priority({ts.GetToken(), Operation::Unary})) {
-                    process_operation();
+        else if (next_is_operation(ts)) {
+            if (CurrentState == State_UnaryOperation ||
+                CurrentState == State_BinaryOperation ||
+                CurrentState == State_ParenthesisOpen) {
+                struct Token token = TokenStream_GetToken(ts);
+                while (*operations != NULL &&
+                    operation_priority(get_back_token(operations)) <= operation_priority(&token)) {
+                    process_operation(&primaries, &operations);
                 }
-                operations.push_back({ts.GetToken(), Operation::Unary});
-                ts.NextToken();
-                CurrentState = State::UnaryOperation;
+                operations = push_back_token(operations, &token);
+                TokenStream_NextToken(ts);
+                CurrentState = State_UnaryOperation;
             }
-            else if (CurrentState == State::Identifier ||
-                        CurrentState == State::ParenthesisClose) {
-                while(!operations.empty() &&
-                        operation_priority(operations.back()) <= operation_priority({ts.GetToken(), Operation::Binary})) {
-                    process_operation();
+            else {
+                struct Token token = TokenStream_GetToken(ts);
+                while (*operations != NULL &&
+                    operation_priority(get_back_token(operations)) <= operation_priority(&token)) {
+                    process_operation(&primaries, &operations);
                 }
-                CurrentState = State::BinaryOperation;
-                operations.push_back({ts.GetToken(), Operation::Binary});
-                ts.NextToken();
+                operations = push_back_token(operations, &token);
+                TokenStream_NextToken(ts);
+                CurrentState = State_BinaryOperation;
             }
         }
         else {
-            if (CurrentState != State::UnaryOperation &&
-                CurrentState != State::BinaryOperation &&
-                CurrentState != State::ParenthesisOpen) {
-                throw AliasException("Unexpected identifier in expression", ts.GetToken());
+            if (CurrentState != State_UnaryOperation &&
+                CurrentState != State_BinaryOperation &&
+                CurrentState != State_ParenthesisOpen) {
+                SyntaxError("Unexpected identifier in expression", TokenStream_GetToken(ts));
             }
-            primaries.push_back(ProcessPrimary(ts));
-            CurrentState = State::Identifier;
+            primaries = push_back(primaries, Syntax_ProcessPrimary(ts));
+            CurrentState = State_Identifier;
         }
     }
 
-    while(!operations.empty()) {
-        process_operation();
+    while (*operations != NULL) {
+        process_operation(&primaries, &operations);
     }
 
-    if (primaries.size() != 1) {
-        throw AliasException("Incorrect expression", ts.GetToken());
+    if (get_size(primaries) != 1) {
+        SyntaxError("Incorrect expression", TokenStream_GetToken(ts));
     }
 
-    return primaries[0];*/
+    struct Node *res = primaries[0];
+    _free(primaries);
+    _free(operations);
+    return res;
 }
 
 struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
