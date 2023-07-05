@@ -89,13 +89,14 @@ struct VLContext {
 };
 
 struct CPContext {
-    //std::vector <std::string> variable_stack;
-    //std::vector <Type> variable_stack_type;
-    //std::vector <std::string> variable_arguments;
-    //std::vector <Type> variable_arguments_type;
-    //std::vector < std::pair < std::string, int> > function_stack;
-    //int function_index = 0;
-    //int branch_index = 0;
+    const char **variable_stack;
+    enum Type *variable_stack_type;
+    const char **variable_arguments;
+    enum Type *variable_arguments_type;
+    const char **function_stack;
+    const int *function_stack_index;
+    int function_index;
+    int branch_index;
 };
 
 struct Node {
@@ -103,11 +104,6 @@ struct Node {
     const char *filename;
     void *node_ptr;
     enum NodeType node_type;
-    //virtual ~Node(){};
-    //virtual void Validate(VLContext &context) = 0;
-    //virtual void Compile(std::ostream &out, CPContext &context) = 0;
-    //int line_begin, position_begin, line_end, position_end;
-    //std::string filename;
 };
 
 struct Block {
@@ -150,10 +146,6 @@ struct Prototype {
 struct Definition {
     const char *identifier;
     enum Type type;
-    //std::string identifier;
-    //Type type;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
 };
 
 struct Assignment {

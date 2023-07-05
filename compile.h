@@ -2,7 +2,8 @@
 #define COMPILE_H_INCLUDED
 
 #include "ast.h"
+#include <stdio.h>
 
-void Compile(struct Node*, int /*file descriptor*/);
+void Compile(struct Node*, FILE *out);
 
 #endif // COMPILE_H_INCLUDED

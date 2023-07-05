@@ -50,10 +50,10 @@ int Process() {
         }
 
         char *str = concat(filename, ".asm");
-        file_desc file = file_open(str, "w");
+        FILE *file = fopen(str, "w");
         _free(str);
-        /*AST::Compile(node, file);
-        file.close();
+        Compile(node, file);
+        /*file.close();
         if (Settings::GetAssemble() || Settings::GetLink()) {
             cmd = "nasm -f elf32 " + filename + ".asm -o " + filename + ".o";
             system(cmd.c_str());
