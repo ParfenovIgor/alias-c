@@ -1,11 +1,9 @@
-#include <iostream>
+#include <stdio.h>
 #include "ast.h"
 #include "compile.h"
 #include "settings.h"
 
-namespace AST {
-
-int findInLocal(std::string &identifier, CPContext &context) {
+/*int findInLocal(std::string &identifier, CPContext &context) {
     for (int i = (int)context.variable_stack.size() - 1; i >= 0; i--) {
         if (context.variable_stack[i] == identifier) {
             return i;
@@ -61,15 +59,15 @@ int findPhase(std::string &identifier, CPContext &context) {
         }
         return (idx + 2) * 4;
     }
-}
+}*/
 
-void Compile(std::shared_ptr <Node> node, std::ostream &out) {
-    out << "; " << node->filename << " " << node->line_begin + 1 << ":" << node->position_begin + 1 << " -> program\n";
-    out << "global main\n";
-    out << "extern malloc\n";
-    out << "extern free\n";
-    out << "section .text\n";
-    if (Settings::GetTopMain()) {
+void Compile(struct Node *node, FILE *out) {
+    fprintf(out, "; %s %d:%d -> program\n", node->filename, node->line_begin + 1, node->position_begin + 1);
+    fprintf(out, "global main\n");
+    fprintf(out, "extern malloc\n");
+    fprintf(out, "extern free\n");
+    fprintf(out, "section .text\n");
+    /*if (Settings::GetTopMain()) {
         out << "main:\n";
     }
     out << "push ebp\n";
@@ -77,10 +75,10 @@ void Compile(std::shared_ptr <Node> node, std::ostream &out) {
     CPContext context;
     node->Compile(out, context);
     out << "leave\n";
-    out << "ret\n";
+    out << "ret\n";*/
 }
 
-void Block::Compile(std::ostream &out, CPContext &context) {
+/*void Block::Compile(std::ostream &out, CPContext &context) {
     out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> block\n";
     size_t old_variable_stack_size = context.variable_stack.size();
     size_t old_function_stack_size = context.function_stack.size();
@@ -487,6 +485,4 @@ void Equal::Compile(std::ostream &out, CPContext &context) {
     out << "_set1_" << idx << ":\n";
     out << "mov [esp - 4], dword 1\n";
     out << "_setend" << idx << ":\n";
-}
-
-}
+}*/
