@@ -4,6 +4,6 @@
 #include "common.h"
 #include "token.h"
 
-struct TokenStream Lexer_Process(const char *str, const char *filename);
+struct TokenStream *Lexer_Process(const char *str, const char *filename);
 
 #endif // LEXER_H_INCLUDED

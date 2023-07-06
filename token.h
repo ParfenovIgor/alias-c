@@ -55,7 +55,6 @@ struct Token {
 struct TokenStream {
     struct Token *stream;
     int stream_size;
-    int reserved_size;
     int pos;
 };
 

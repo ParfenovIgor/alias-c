@@ -22,11 +22,11 @@ struct Node *Parse(const char *filename) {
     int length = ftell(file);
     fseek(file, 0, SEEK_SET);
     char *buffer = (char*)_malloc(length + 1);
-    fread(buffer, 1, length, file);
+    int x = fread(buffer, 1, length, file);
     buffer[length] = '\0';
     fclose(file);
-    struct TokenStream token_stream = Lexer_Process(buffer, filename);
-    struct Node *node = Syntax_Process(&token_stream);
+    struct TokenStream *token_stream = Lexer_Process(buffer, filename);
+    struct Node *node = Syntax_Process(token_stream);
 
     return node;
 }
@@ -52,7 +52,7 @@ int Process() {
         char *str = concat(filename, ".asm");
         FILE *file = fopen(str, "w");
         _free(str);
-        Compile(node, file);
+        //Compile(node, file);
         /*file.close();
         if (Settings::GetAssemble() || Settings::GetLink()) {
             cmd = "nasm -f elf32 " + filename + ".asm -o " + filename + ".o";
