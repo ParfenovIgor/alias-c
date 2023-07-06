@@ -31,28 +31,29 @@ struct Node *Parse(const char *filename) {
     return node;
 }
 
-int Process() {
-    struct Node *node = Parse(Settings_GetFilename());
+int Process(struct Settings *settings) {
+    struct Node *node = Parse(settings->inputFilename);
 
     Validate(node);
-    if (Settings_GetStates()) {
+    if (settings->states) {
         PrintStatesLog();
     }
 
     const char *cmd;
-    if (Settings_GetCompile() || Settings_GetAssemble() || Settings_GetLink()) {
-        char *filename = (char*)Settings_GetFilename();
+    if (settings->compile || settings->assemble || settings->link) {
+        const char *filename = settings->inputFilename;
+        const char *output_filename = NULL;
         for (int i = 0; filename[i] != '\0'; i++) {
             if (filename[i] == '.') {
-                filename = substr(filename, i);
+                output_filename = substr(filename, i);
                 break;
             }
         }
 
-        char *str = concat(filename, ".asm");
+        char *str = concat(output_filename, ".asm");
         FILE *file = fopen(str, "w");
         _free(str);
-        //Compile(node, file);
+        Compile(node, file, settings);
         /*file.close();
         if (Settings::GetAssemble() || Settings::GetLink()) {
             cmd = "nasm -f elf32 " + filename + ".asm -o " + filename + ".o";

@@ -9,11 +9,12 @@ void print_string(const char *str);
 void print_int(int n);
 
 char *strcpy(char *a, char *b);
+char *_strdup(const char *a);
 char *_strndup(const char *a, int n);
 int strcmp(const char *a, const char *b);
 long unsigned int strlen(const char *a);
 char *concat(const char *a, const char *b);
-char *substr(char *a, int n);
+const char *substr(const char *a, int n);
 
 void program_exit(int x);
 

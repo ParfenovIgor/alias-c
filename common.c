@@ -20,6 +20,16 @@ char *strcpy(char *a, char *b) {
     return a;
 }
 
+char *_strdup(const char *a) {
+    int sz = strlen(a);
+    char *b = (char*)_malloc(sz + 1);
+    for (int i = 0; i < sz; i++) {
+        b[i] = a[i];
+    }
+    b[sz] = '\0';
+    return b;
+}
+
 char *_strndup(const char *a, int n) {
     int sz = strlen(a);
     if (n < sz) sz = n;
@@ -39,7 +49,7 @@ int strcmp(const char *a, const char *b) {
         if (a[i] > b[i]) {
             return 1;
         }
-        if (a[i] == '\0' && b[i] == '\n') {
+        if (a[i] == '\0' && b[i] == '\0') {
             return 0;
         }
     }
@@ -63,20 +73,20 @@ char *concat(const char *a, const char *b) {
     for (int i = 0; i < s_b; i++) {
         c[s_a + i] = b[i];
     }
-    c[s_a + s_b] = '\n';
+    c[s_a + s_b] = '\0';
+    return c;
 }
 
-char *substr(char *a, int n) {
+const char *substr(const char *a, int n) {
     int m = strlen(a);
     if (m <= n) {
-        return a;
+        n = m;
     }
     char *b = (char*)malloc(n + 1);
     for (int i = 0; i < n; i++) {
         b[i] = a[i];
     }
-    b[n] = '\n';
-    free(a);
+    b[n] = '\0';
     return b;
 }
 

@@ -3,6 +3,34 @@
 #include "compile.h"
 #include "settings.h"
 
+const char **push_back_string(const char **a, const char *str);
+const char **pop_back_string(const char **a);
+int get_size_string(const char **a);
+
+enum Type **push_back_type(enum Type **a, enum Type *x) {
+    int sz = 0;
+    for (enum Type **b = a; *b != NULL; b++) {
+        sz++;
+    }
+    enum Type **a_new = (enum Type**)_malloc((sz + 2) * sizeof(enum Type*));
+    for (int i = 0; i < sz; i++) {
+        a_new[i] = a[i];
+    }
+    a_new[sz] = x;
+    a_new[sz + 1] = NULL;
+    _free(a);
+    return a_new;
+}
+
+enum Type **pop_back_type(enum Type **a) {
+    enum Type **b = a;
+    while (*(b + 1) != NULL) {
+        b++;
+    }
+    *b = NULL;
+    return a;
+}
+
 /*int findInLocal(std::string &identifier, CPContext &context) {
     for (int i = (int)context.variable_stack.size() - 1; i >= 0; i--) {
         if (context.variable_stack[i] == identifier) {
@@ -61,21 +89,53 @@ int findPhase(std::string &identifier, CPContext &context) {
     }
 }*/
 
-void Compile(struct Node *node, FILE *out) {
+void CompileNode(struct Node *node, FILE *out, struct CPContext *context);
+
+void Compile(struct Node *node, FILE *out, struct Settings *settings) {
     fprintf(out, "; %s %d:%d -> program\n", node->filename, node->line_begin + 1, node->position_begin + 1);
     fprintf(out, "global main\n");
     fprintf(out, "extern malloc\n");
     fprintf(out, "extern free\n");
     fprintf(out, "section .text\n");
-    /*if (Settings::GetTopMain()) {
-        out << "main:\n";
+    if (settings->topMain) {
+        fprintf(out, "main:\n");
     }
-    out << "push ebp\n";
-    out << "mov ebp, esp\n";
-    CPContext context;
-    node->Compile(out, context);
-    out << "leave\n";
-    out << "ret\n";*/
+    fprintf(out, "push ebp\n");
+    fprintf(out, "mov ebp, esp\n");
+
+    struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
+    context->variable_stack = (const char**)_malloc(sizeof(const char*));
+    context->variable_stack[0] = NULL;
+    context->variable_stack_type = (enum Type**)_malloc(sizeof(enum Type*));
+    context->variable_stack_type[0] = NULL;
+    context->function_stack = (const char**)_malloc(sizeof(const char*));
+    context->function_stack[0] = NULL;
+
+    CompileNode(node, out, context);
+    fprintf(out, "leave\n");
+    fprintf(out, "ret\n");
+}
+
+void CompileBlock(struct Node *node, FILE *out, struct CPContext *context) {
+    fprintf(out, "; %s %d:%d -> block\n", node->filename, node->line_begin + 1, node->position_begin + 1);
+    struct Block *this = (struct Block*)node->node_ptr;
+    struct Node **statement = this->statement_list;
+    int old_variable_stack_size = get_size_string(context->variable_stack);
+    int old_function_stack_size = get_size_string(context->function_stack);
+    while (*statement != NULL) {
+        CompileNode(*statement, out, context);
+        statement++;
+    }
+    int variable_stack_size = get_size_string(context->variable_stack);
+    int function_stack_size = get_size_string(context->function_stack);
+    fprintf(out, "add esp, %d\n", 4 * (variable_stack_size - old_variable_stack_size));
+    for (int i = 0; i < variable_stack_size - old_variable_stack_size; i++) {
+        context->variable_stack = pop_back_string(context->variable_stack);
+        context->variable_stack_type = pop_back_type(context->variable_stack_type);
+    }
+    for (int i = 0; i < function_stack_size - old_function_stack_size; i++) {
+        context->function_stack = pop_back_string(context->function_stack);
+    }
 }
 
 /*void Block::Compile(std::ostream &out, CPContext &context) {
@@ -180,16 +240,19 @@ void Prototype::Compile(std::ostream &out, CPContext &context) {
     out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> prototype\n";
     out << "extern " << name << "\n";
     context.function_stack.push_back({name, -1});
+}*/
+
+void CompileDefinition(struct Node *node, FILE *out, struct CPContext *context) {
+    fprintf(out, "; %s %d:%d -> definition\n", node->filename, node->line_begin + 1, node->position_begin + 1);
+    struct Definition *this = (struct Definition*)node->node_ptr;
+    context->variable_stack = push_back_string(context->variable_stack, _strdup(this->identifier));
+    enum Type *type = (enum Type*)_malloc(sizeof(int));
+    *type = this->type;
+    context->variable_stack_type = push_back_type(context->variable_stack_type, type);
+    fprintf(out, "sub esp, 4\n");
 }
 
-void Definition::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> definition\n";
-    context.variable_stack.push_back(identifier);
-    context.variable_stack_type.push_back(type);
-    out << "sub esp, 4\n";
-}
-
-void Assignment::Compile(std::ostream &out, CPContext &context) {
+/*void Assignment::Compile(std::ostream &out, CPContext &context) {
     if (getVariableType(identifier, this, context) == Type::Ptr) {
         if (auto _addition = std::dynamic_pointer_cast <AST::Addition> (value)) {
             auto _identifier = std::dynamic_pointer_cast <AST::Identifier> (_addition->left);
@@ -486,3 +549,12 @@ void Equal::Compile(std::ostream &out, CPContext &context) {
     out << "mov [esp - 4], dword 1\n";
     out << "_setend" << idx << ":\n";
 }*/
+
+void CompileNode(struct Node *node, FILE *out, struct CPContext *context) {
+    if (node->node_type == NodeBlock) {
+        CompileBlock(node, out, context);
+    }
+    else if (node->node_type == NodeDefinition) {
+        CompileDefinition(node, out, context);
+    }
+}

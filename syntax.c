@@ -37,7 +37,7 @@ int get_size(struct Node **a) {
     return sz;
 }
 
-const char **push_back_string(const char **a, const char *node) {
+const char **push_back_string(const char **a, const char *str) {
     int sz = 0;
     for (const char **b = a; *b != NULL; b++) {
         sz++;
@@ -46,10 +46,27 @@ const char **push_back_string(const char **a, const char *node) {
     for (int i = 0; i < sz; i++) {
         a_new[i] = a[i];
     }
-    a_new[sz] = node;
+    a_new[sz] = str;
     a_new[sz + 1] = NULL;
     _free(a);
     return a_new;
+}
+
+int get_size_string(const char **a) {
+    int sz = 0;
+    for (const char **b = a; *b != NULL; b++) {
+        sz++;
+    }
+    return sz;
+}
+
+const char **pop_back_string(const char **a) {
+    const char **b = a;
+    while (*(b + 1) != NULL) {
+        b++;
+    }
+    *b = NULL;
+    return a;
 }
 
 struct Token **push_back_token(struct Token **a, struct Token *token) {
@@ -93,7 +110,7 @@ struct Node *Syntax_ProcessProgram(struct TokenStream *ts) {
     node->node_type = NodeBlock;
     node->line_begin = TokenStream_GetToken(ts).line_begin;
     node->position_begin = TokenStream_GetToken(ts).position_begin;
-    node->filename = TokenStream_GetToken(ts).filename;
+    node->filename = _strdup(TokenStream_GetToken(ts).filename);
     while (TokenStream_GetToken(ts).type != TokenEof && TokenStream_GetToken(ts).type != TokenBraceClose) {
         if (TokenStream_GetToken(ts).type == TokenInclude) {
             const char *filename = TokenStream_GetToken(ts).filename;
@@ -132,7 +149,7 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts) {
     node->node_type = NodeBlock;
     node->line_begin = TokenStream_GetToken(ts).line_begin;
     node->position_begin = TokenStream_GetToken(ts).position_begin;
-    node->filename = TokenStream_GetToken(ts).filename;
+    node->filename = _strdup(TokenStream_GetToken(ts).filename);
     TokenStream_NextToken(ts);
     while (TokenStream_GetToken(ts).type != TokenEof && TokenStream_GetToken(ts).type != TokenBraceClose) {
         if (TokenStream_GetToken(ts).type == TokenInclude) {
@@ -203,7 +220,7 @@ struct Node *process_operation(struct Node ***primaries, struct Token ***operati
     root->position_begin = left->position_begin;
     root->line_end = right->line_end;
     root->position_end = right->position_end;
-    root->filename = left->filename;
+    root->filename = _strdup(left->filename);
     
     if (token->type == TokenPlus) {
         struct Addition *addition = (struct Addition*)_malloc(sizeof(struct Addition));
@@ -378,7 +395,7 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
     struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
     node->line_begin = TokenStream_GetToken(ts).line_begin;
     node->position_begin = TokenStream_GetToken(ts).position_begin;
-    node->filename = TokenStream_GetToken(ts).filename;
+    node->filename = _strdup(TokenStream_GetToken(ts).filename);
     if (TokenStream_GetToken(ts).type == TokenDereference) {
         struct Dereference *_dereference = (struct Dereference*)_malloc(sizeof(struct Dereference));
         node->node_ptr = _dereference;
@@ -394,7 +411,7 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         struct Identifier *_identifier = (struct Identifier*)_malloc(sizeof(struct Identifier));
         node->node_ptr = _identifier;
         node->node_type = NodeIdentifier;
-        _identifier->identifier = TokenStream_GetToken(ts).value_string;
+        _identifier->identifier = _strdup(TokenStream_GetToken(ts).value_string);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
         TokenStream_NextToken(ts);
@@ -448,10 +465,10 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->node_type = NodeAsm;
         node->line_begin = TokenStream_GetToken(ts).line_begin;
         node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = TokenStream_GetToken(ts).filename;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
-        _asm->code = TokenStream_GetToken(ts).value_string;
+        _asm->code = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
         return node;
     }
@@ -467,7 +484,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->node_type = NodeIf;
         node->line_begin = TokenStream_GetToken(ts).line_begin;
         node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = TokenStream_GetToken(ts).filename;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
             SyntaxError("( expected in if condition", TokenStream_GetToken(ts));
@@ -509,7 +526,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->node_type = NodeWhile;
         node->line_begin = TokenStream_GetToken(ts).line_begin;
         node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = TokenStream_GetToken(ts).filename;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
             SyntaxError("( expected in while condition", TokenStream_GetToken(ts));
@@ -727,15 +744,15 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
         struct Definition *definition = (struct Definition*)_malloc(sizeof(struct Definition));
         node->node_ptr = definition;
-        node->node_type = NodeWhile;
+        node->node_type = NodeDefinition;
         node->line_begin = TokenStream_GetToken(ts).line_begin;
         node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = TokenStream_GetToken(ts).filename;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenIdentifier) {
             SyntaxError("Identifier expected in definition statement", TokenStream_GetToken(ts));
         }
-        definition->identifier = TokenStream_GetToken(ts).value_string;
+        definition->identifier = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenInt && TokenStream_GetToken(ts).type != TokenPtr) {
             SyntaxError("Type expected in definition statement", TokenStream_GetToken(ts));
@@ -758,7 +775,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->node_type = NodeAssumption;
         node->line_begin = TokenStream_GetToken(ts).line_begin;
         node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = TokenStream_GetToken(ts).filename;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
             SyntaxError("( expected in assume condition", TokenStream_GetToken(ts));
@@ -767,7 +784,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         if (TokenStream_GetToken(ts).type != TokenIdentifier) {
             SyntaxError("Identifier expected in assume condition", TokenStream_GetToken(ts));
         }
-        assumption->identifier = TokenStream_GetToken(ts).value_string;
+        assumption->identifier = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
         assumption->left = Syntax_ProcessExpression(ts);
         if (TokenStream_GetToken(ts).type != TokenColon) {
@@ -792,7 +809,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->node_type = NodeFree;
         node->line_begin = TokenStream_GetToken(ts).line_begin;
         node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = TokenStream_GetToken(ts).filename;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
             SyntaxError("( expected in free statement", TokenStream_GetToken(ts));
@@ -814,12 +831,12 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->node_type = NodeFunctionCall;
         node->line_begin = TokenStream_GetToken(ts).line_begin;
         node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = TokenStream_GetToken(ts).filename;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenIdentifier) {
             SyntaxError("Identifier expected in function call", TokenStream_GetToken(ts));
         }
-        function_call->identifier = TokenStream_GetToken(ts).value_string;
+        function_call->identifier = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type == TokenBracketOpen) {
             TokenStream_NextToken(ts);
@@ -831,7 +848,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
                 if (TokenStream_GetToken(ts).type != TokenIdentifier) {
                     SyntaxError("Identifier expected in metavariable list", TokenStream_GetToken(ts));
                 }
-                function_call->metavariable_name = push_back_string(function_call->metavariable_name, TokenStream_GetToken(ts).value_string);
+                function_call->metavariable_name = push_back_string(function_call->metavariable_name, _strdup(TokenStream_GetToken(ts).value_string));
                 TokenStream_NextToken(ts);
                 if (TokenStream_GetToken(ts).type != TokenEqual) {
                     SyntaxError("= expected in metavariable list", TokenStream_GetToken(ts));
@@ -857,7 +874,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
                 break;
             }
             if (TokenStream_GetToken(ts).type == TokenIdentifier) {
-                function_call->arguments = push_back_string(function_call->arguments, TokenStream_GetToken(ts).value_string);
+                function_call->arguments = push_back_string(function_call->arguments, _strdup(TokenStream_GetToken(ts).value_string));
             }
             else {
                 SyntaxError("Identifier expected in function call", TokenStream_GetToken(ts));
@@ -880,8 +897,8 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
         node->line_begin = TokenStream_GetToken(ts).line_begin;
         node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = TokenStream_GetToken(ts).filename;
-        const char *identifier = TokenStream_GetToken(ts).value_string;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
+        const char *identifier = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenAssign && TokenStream_GetToken(ts).type != TokenMove) {
             SyntaxError(":= or <- expected in assignment or movement statement", TokenStream_GetToken(ts));
@@ -907,7 +924,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
                 node->line_end = TokenStream_GetToken(ts).line_end;
                 node->position_end = TokenStream_GetToken(ts).position_end;
                 movement_string->identifier = identifier;
-                movement_string->value = TokenStream_GetToken(ts).value_string;
+                movement_string->value = _strdup(TokenStream_GetToken(ts).value_string);
                 TokenStream_NextToken(ts);
                 return node;
             }
@@ -927,5 +944,6 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
 }
 
 struct Node *Syntax_Process(struct TokenStream *token_stream) {
+    token_stream->pos = 0;
     return Syntax_ProcessProgram(token_stream);
 }

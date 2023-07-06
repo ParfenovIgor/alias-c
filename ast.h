@@ -90,11 +90,11 @@ struct VLContext {
 
 struct CPContext {
     const char **variable_stack;
-    enum Type *variable_stack_type;
+    enum Type **variable_stack_type;
     const char **variable_arguments;
-    enum Type *variable_arguments_type;
+    enum Type **variable_arguments_type;
     const char **function_stack;
-    const int *function_stack_index;
+    const int **function_stack_index;
     int function_index;
     int branch_index;
 };

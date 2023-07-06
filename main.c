@@ -19,42 +19,43 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     else {
+        struct Settings *settings = BuildSettings();
         for (int i = 1; i < argc; i++) {
             const char *arg = argv[i];
             if (strcmp(arg, "-s") == 0) {
-                Settings_SetStates(true);
+                settings->states = true;
             }
             else if(strcmp(arg, "-c") == 0) {
-                Settings_SetCompile(true);
+                settings->compile = true;
             }
             else if(strcmp(arg, "-a") == 0) {
-                Settings_SetAssemble(true);
+                settings->assemble = true;
             }
             else if (strcmp(arg, "-l") == 0) {
-                Settings_SetLink(true);
+                settings->link = true;
             }
             else if (strcmp(arg, "-m") == 0) {
-                Settings_SetTopMain(true);
+                settings->topMain = true;
             }
             else if (strcmp(arg, "-o") == 0) {
                 if (i + 1 == argc) {
                     print_string("Filename has to be specified after -o flag");
                     return 1;
                 }
-                const char *str = argv[i + 1];
-                Settings_SetOutputFilename(str);
+                const char *str = _strdup(argv[i + 1]);
+                settings->outputFilename = str;
                 i++;
             }
             else {
-                Settings_SetFilename(arg);
+                settings->inputFilename = _strdup(arg);
             }
         }
 
-        if (!Settings_GetFilename()) {
+        if (!settings->inputFilename) {
             help();
             return 0;
         }
 
-        return Process();
+        return Process(settings);
     }
 }
