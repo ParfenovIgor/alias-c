@@ -2,6 +2,8 @@
 #include "lexer.h"
 #include "exception.h"
 
+#define NULL 0
+
 int min(int a, int b) {
     if (a <= b) return a;
     else return b;
@@ -60,6 +62,12 @@ char *string_push_back(char *a, char x) {
 }
 
 void tokens_push_back(struct TokenStream *a, struct Token x) {
+    if (a->stream_size == 0) {
+        a->stream = (struct Token*)_malloc(sizeof(struct Token));
+        a->stream[0] = x;
+        a->stream_size = 1;
+        return;
+    }
     struct Token *_stream = (struct Token*)_malloc((a->stream_size + 1) * sizeof(struct Token));
     for (int i = 0; i < a->stream_size; i++) {
         _stream[i] = a->stream[i];
@@ -84,8 +92,10 @@ int get_int_value(const char *str, int l, int r) {
     return res;
 }
 
-struct TokenStream Lexer_Process(const char *str, const char *filename) {
-    struct TokenStream token_stream;
+struct TokenStream *Lexer_Process(const char *str, const char *filename) {
+    struct TokenStream *token_stream = (struct TokenStream*)_malloc(sizeof(struct TokenStream));
+    token_stream->stream_size = 0;
+    token_stream->stream = NULL;
     int line = 0, position = 0;
     int N = strlen(str);
     for (int i = 0; i < N;) {
@@ -123,7 +133,7 @@ struct TokenStream Lexer_Process(const char *str, const char *filename) {
             }
             struct Token token = Token_Build(TokenAsm, line_begin, position_begin, line, position, filename);
             token.value_string = code;
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             position++;
             i++;
         }
@@ -161,214 +171,214 @@ struct TokenStream Lexer_Process(const char *str, const char *filename) {
             }
             struct Token token = Token_Build(TokenInclude, line_begin, position_begin, line, position, filename);
             token.value_string = code;
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             position++;
             i++;
         }
         else if (is_reserved_word(str, "int", i)) {
             struct Token token = Token_Build(TokenInt, line, position, line, position + 2, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 3;
             position += 3;
         }
         else if (is_reserved_word(str, "ptr", i)) {
             struct Token token = Token_Build(TokenPtr, line, position, line, position + 2, filename);
-            tokens_push_back(&token_stream, token);i += 3;
+            tokens_push_back(token_stream, token);i += 3;
             position += 3;
         }
         else if (is_reserved_word(str, "if", i)) {
             struct Token token = Token_Build(TokenIf, line, position, line, position + 1, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 2;
             position += 2;
         }
         else if (is_reserved_word(str, "else", i)) {
             struct Token token = Token_Build(TokenElse, line, position, line, position + 3, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 4;
             position += 4;
         }
         else if (is_reserved_word(str, "while", i)) {
             struct Token token = Token_Build(TokenWhile, line, position, line, position + 4, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 5;
             position += 5;
         }
         else if (is_reserved_word(str, "func", i)) {
             struct Token token = Token_Build(TokenFunc, line, position, line, position + 3, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 4;
             position += 4;
         }
         else if (is_reserved_word(str, "proto", i)) {
             struct Token token = Token_Build(TokenProto, line, position, line, position + 4, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 5;
             position += 5;
         }
         else if (is_reserved_word(str, "def", i)) {
             struct Token token = Token_Build(TokenDef, line, position, line, position + 2, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 3;
             position += 3;
         }
         else if (is_reserved_word(str, "const", i)) {
             struct Token token = Token_Build(TokenConst, line, position, line, position + 4, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 5;
             position += 5;
         }
         else if (is_reserved_word(str, "assume", i)) {
             struct Token token = Token_Build(TokenAssume, line, position, line, position + 5, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 6;
             position += 6;
         }
         else if (is_reserved_word(str, "alloc", i)) {
             struct Token token = Token_Build(TokenAlloc, line, position, line, position + 4, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 5;
             position += 5;
         }
         else if (is_reserved_word(str, "free", i)) {
             struct Token token = Token_Build(TokenFree, line, position, line, position + 3, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 4;
             position += 4;
         }
         else if (is_reserved_word(str, "call", i)) {
             struct Token token = Token_Build(TokenCall, line, position, line, position + 3, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 4;
             position += 4;
         }
         else if (is_operator(str, ":=", i)) {
             struct Token token = Token_Build(TokenAssign, line, position, line, position + 1, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 2;
             position += 2;
         }
         else if (is_operator(str, "<-", i)) {
             struct Token token = Token_Build(TokenMove, line, position, line, position + 1, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 2;
             position += 2;
         }
         else if (is_operator(str, ",", i)) {
             struct Token token = Token_Build(TokenComma, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, ":", i)) {
             struct Token token = Token_Build(TokenColon, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, ";", i)) {
             struct Token token = Token_Build(TokenSemicolon, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "{", i)) {
             struct Token token = Token_Build(TokenBraceOpen, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "}", i)) {
             struct Token token = Token_Build(TokenBraceClose, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "(", i)) {
             struct Token token = Token_Build(TokenParenthesisOpen, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, ")", i)) {
             struct Token token = Token_Build(TokenParenthesisClose, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "[", i)) {
             struct Token token = Token_Build(TokenBracketOpen, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "]", i)) {
             struct Token token = Token_Build(TokenBracketClose, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "$", i)) {
             struct Token token = Token_Build(TokenDereference, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "^", i)) {
             struct Token token = Token_Build(TokenCaret, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "+", i)) {
             struct Token token = Token_Build(TokenPlus, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "-", i)) {
             if (i + 2 <= N && is_digit(str[i + 1]) && 
-               (token_stream.stream_size == 0 || 
-                   (token_stream.stream[token_stream.stream_size - 1].type != TokenInteger && 
-                    token_stream.stream[token_stream.stream_size - 1].type != TokenIdentifier))) {
+               (token_stream->stream_size == 0 || 
+                   (token_stream->stream[token_stream->stream_size - 1].type != TokenInteger && 
+                    token_stream->stream[token_stream->stream_size - 1].type != TokenIdentifier))) {
                 int l = i;
                 i += 2;
                 while (i + 1 <= N && is_digit(str[i])) i++;
                 int r = i - 1;
                 struct Token token = Token_Build(TokenInteger, line, position, line, position + r - l, filename);
                 token.value_int = get_int_value(str, l, r);
-                tokens_push_back(&token_stream, token);
+                tokens_push_back(token_stream, token);
                 position += r - l + 1;
             }
             else {
                 struct Token token = Token_Build(TokenMinus, line, position, line, position, filename);
-                tokens_push_back(&token_stream, token);
+                tokens_push_back(token_stream, token);
                 i += 1;
                 position += 1;
             }
         }
         else if (is_operator(str, "*", i)) {
             struct Token token = Token_Build(TokenMult, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "/", i) && (i + 2 > N || 
             (str[i + 1] != '/' && str[i + 1] != '*'))) {
             struct Token token = Token_Build(TokenDiv, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "<", i)) {
             struct Token token = Token_Build(TokenLess, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
         else if (is_operator(str, "=", i)) {
             struct Token token = Token_Build(TokenEqual, line, position, line, position, filename);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             i += 1;
             position += 1;
         }
@@ -475,7 +485,7 @@ struct TokenStream Lexer_Process(const char *str, const char *filename) {
             buffer = string_push_back(buffer, (char)0x0);
             struct Token token = Token_Build(TokenString, line_begin, position_begin, line, position, filename);
             token.value_string = buffer;
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             position++;
             i++;
         }
@@ -486,7 +496,7 @@ struct TokenStream Lexer_Process(const char *str, const char *filename) {
             int r = i - 1;
             struct Token token = Token_Build(TokenInteger, line, position, line, position + r - l, filename);
             token.value_int = get_int_value(str, l, r);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             position += r - l + 1;
         }
         else if (is_alpha(str[i])) {
@@ -496,7 +506,7 @@ struct TokenStream Lexer_Process(const char *str, const char *filename) {
             int r = i - 1;
             struct Token token = Token_Build(TokenIdentifier, line, position, line, position + r - l, filename);
             token.value_string = _strndup(str + l, r - l + 1);
-            tokens_push_back(&token_stream, token);
+            tokens_push_back(token_stream, token);
             position += r - l + 1;
         }
         else if (str[i] == ' ' || str[i] == '\t') {
@@ -514,7 +524,7 @@ struct TokenStream Lexer_Process(const char *str, const char *filename) {
     }
 
     struct Token token = Token_Build(TokenEof, line, position, line, position, filename);
-    tokens_push_back(&token_stream, token);
+    tokens_push_back(token_stream, token);
 
     return token_stream;
 }
