@@ -3,19 +3,16 @@
 
 #include "common.h"
 
-bool Settings_GetStates();
-void Settings_SetStates();
-bool Settings_GetCompile();
-void Settings_SetCompile(bool state);
-bool Settings_GetAssemble();
-void Settings_SetAssemble(bool state);
-bool Settings_GetLink();
-void Settings_SetLink(bool state);
-bool Settings_GetTopMain();
-void Settings_SetTopMain(bool state);
-const char *Settings_GetFilename();
-void Settings_SetFilename(const char *state);
-const char *Settings_GetOutputFilename();
-void Settings_SetOutputFilename(const char *state);
+struct Settings {
+    bool states;
+    bool compile;
+    bool assemble;
+    bool link;
+    bool topMain;
+    const char *inputFilename;
+    const char *outputFilename;
+};
+
+struct Settings *BuildSettings();
 
 #endif // SETTINGS_H_INCLUDED
