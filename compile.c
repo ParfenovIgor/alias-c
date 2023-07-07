@@ -100,8 +100,8 @@ void Compile(struct Node *node, FILE *out, struct Settings *settings) {
     if (settings->topMain) {
         fprintf(out, "main:\n");
     }
-    fprintf(out, "push ebp\n");
-    fprintf(out, "mov ebp, esp\n");
+    fprintf(out, "push rbp\n");
+    fprintf(out, "mov rbp, rsp\n");
 
     struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
     context->variable_stack = (const char**)_malloc(sizeof(const char*));
@@ -128,7 +128,7 @@ void CompileBlock(struct Node *node, FILE *out, struct CPContext *context) {
     }
     int variable_stack_size = get_size_string(context->variable_stack);
     int function_stack_size = get_size_string(context->function_stack);
-    fprintf(out, "add esp, %d\n", 4 * (variable_stack_size - old_variable_stack_size));
+    fprintf(out, "add rsp, %d\n", 8 * (variable_stack_size - old_variable_stack_size));
     for (int i = 0; i < variable_stack_size - old_variable_stack_size; i++) {
         context->variable_stack = pop_back_string(context->variable_stack);
         context->variable_stack_type = pop_back_type(context->variable_stack_type);
@@ -249,7 +249,7 @@ void CompileDefinition(struct Node *node, FILE *out, struct CPContext *context) 
     enum Type *type = (enum Type*)_malloc(sizeof(int));
     *type = this->type;
     context->variable_stack_type = push_back_type(context->variable_stack_type, type);
-    fprintf(out, "sub esp, 4\n");
+    fprintf(out, "sub rsp, 8\n");
 }
 
 /*void Assignment::Compile(std::ostream &out, CPContext &context) {

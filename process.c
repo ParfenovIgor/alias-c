@@ -31,6 +31,35 @@ struct Node *Parse(const char *filename) {
     return node;
 }
 
+void Assemble(const char *filename) {
+    unsigned long long pid = -1;
+    asm("mov $0x39, %%rax\n"
+        "syscall\n"
+        "mov %%rax, %0\n"
+        : "=r"(pid));
+    if (pid == 0) {
+        const char *nasm = "/usr/bin/nasm";
+        const char *const args[] = {"/usr/bin/nasm", "-f", "elf64", concat(filename, ".asm"), "-o", concat(filename, ".o"), NULL};
+        asm("mov $0x3b, %%rax\n"
+            "mov %0, %%rdi\n"
+            "mov %1, %%rsi\n"
+            "mov $0, %%rdx\n"
+            "syscall\n"
+            :
+            : "r"(nasm), "r"(args)
+            : "%rax", "%rdi", "%rsi", "%rdx");
+    }
+    asm("mov $0x3d, %%rax\n"
+        "mov %0, %%rdi\n"
+        "mov $0, %%rsi\n"
+        "mov $0, %%rdx\n"
+        "mov $0, %%r10\n"
+        "syscall\n"
+        :
+        : "r"(pid)
+        : "%rax", "%rdi", "%rsi", "%rdx", "%r10");
+}
+
 int Process(struct Settings *settings) {
     struct Node *node = Parse(settings->inputFilename);
 
@@ -54,8 +83,13 @@ int Process(struct Settings *settings) {
         FILE *file = fopen(str, "w");
         _free(str);
         Compile(node, file, settings);
-        /*file.close();
-        if (Settings::GetAssemble() || Settings::GetLink()) {
+        fclose(file);
+        if (settings->assemble || settings->link) {
+            Assemble(output_filename);
+            
+            
+        }
+        /*if (Settings::GetAssemble() || Settings::GetLink()) {
             cmd = "nasm -f elf32 " + filename + ".asm -o " + filename + ".o";
             system(cmd.c_str());
 
