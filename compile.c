@@ -93,10 +93,14 @@ void CompileNode(struct Node *node, FILE *out, struct CPContext *context);
 
 void Compile(struct Node *node, FILE *out, struct Settings *settings) {
     fprintf(out, "; %s %d:%d -> program\n", node->filename, node->line_begin + 1, node->position_begin + 1);
+    fprintf(out, "global _start\n");
     fprintf(out, "global main\n");
-    fprintf(out, "extern malloc\n");
-    fprintf(out, "extern free\n");
     fprintf(out, "section .text\n");
+    fprintf(out, "_start:\n");
+    fprintf(out, "call main\n");
+    fprintf(out, "mov rax, 0x3c\n");
+    fprintf(out, "mov rdi, 0\n");
+    fprintf(out, "syscall\n");
     if (settings->topMain) {
         fprintf(out, "main:\n");
     }
