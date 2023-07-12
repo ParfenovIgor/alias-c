@@ -1,6 +1,8 @@
 #ifndef AST_H_INCLUDED
 #define AST_H_INCLUDED
 
+#include "common.h"
+
 enum NodeType {
     NodeBlock,
     NodeAsm,
@@ -58,10 +60,10 @@ enum Type {
 };
 
 struct FunctionSignature {
-    //std::vector < std::string > identifiers;
-    //std::vector <Type> types;
-    //std::vector < std::shared_ptr <Expression> > size_in, size_out;
-    //std::vector <bool> is_const;
+    const char **identifiers;
+    enum Type **types;
+    struct Node **size_in, **size_out;
+    bool **is_const;
 };
 
 struct FunctionSignatureEvaluated {
@@ -126,6 +128,7 @@ struct While {
 };
 
 struct FunctionDefinition {
+    bool external;
     //std::string name;
     //std::vector <std::string> metavariables;
     //std::shared_ptr <FunctionSignature> signature;

@@ -2,104 +2,9 @@
 #include "syntax.h"
 #include "exception.h"
 #include "process.h"
+#include "vector.h"
 
 #include <stdio.h>
-
-struct Node **push_back(struct Node **a, struct Node *node) {
-    int sz = 0;
-    for (struct Node **b = a; *b != NULL; b++) {
-        sz++;
-    }
-    struct Node **a_new = (struct Node**)_malloc((sz + 2) * sizeof(struct Node*));
-    for (int i = 0; i < sz; i++) {
-        a_new[i] = a[i];
-    }
-    a_new[sz] = node;
-    a_new[sz + 1] = NULL;
-    _free(a);
-    return a_new;
-}
-
-struct Node **pop_back(struct Node **a) {
-    struct Node **b = a;
-    while (*(b + 1) != NULL) {
-        b++;
-    }
-    *b = NULL;
-    return a;
-}
-
-int get_size(struct Node **a) {
-    int sz = 0;
-    for (struct Node **b = a; *b != NULL; b++) {
-        sz++;
-    }
-    return sz;
-}
-
-const char **push_back_string(const char **a, const char *str) {
-    int sz = 0;
-    for (const char **b = a; *b != NULL; b++) {
-        sz++;
-    }
-    const char **a_new = (const char**)_malloc((sz + 2) * sizeof(const char*));
-    for (int i = 0; i < sz; i++) {
-        a_new[i] = a[i];
-    }
-    a_new[sz] = str;
-    a_new[sz + 1] = NULL;
-    _free(a);
-    return a_new;
-}
-
-int get_size_string(const char **a) {
-    int sz = 0;
-    for (const char **b = a; *b != NULL; b++) {
-        sz++;
-    }
-    return sz;
-}
-
-const char **pop_back_string(const char **a) {
-    const char **b = a;
-    while (*(b + 1) != NULL) {
-        b++;
-    }
-    *b = NULL;
-    return a;
-}
-
-struct Token **push_back_token(struct Token **a, struct Token *token) {
-    int sz = 0;
-    for (struct Token **b = a; *b != NULL; b++) {
-        sz++;
-    }
-    struct Token **a_new = (struct Token**)_malloc((sz + 2) * sizeof(struct Token*));
-    for (int i = 0; i < sz; i++) {
-        a_new[i] = a[i];
-    }
-    a_new[sz] = token;
-    a_new[sz + 1] = NULL;
-    _free(a);
-    return a_new;
-}
-
-struct Token *get_back_token(struct Token **a) {
-    struct Token **b = a;
-    while (*(b + 1) != NULL) {
-        b++;
-    }
-    return *b;
-}
-
-struct Token **pop_back_token(struct Token **a) {
-    struct Token **b = a;
-    while (*(b + 1) != NULL) {
-        b++;
-    }
-    *b = NULL;
-    return a;
-}
 
 struct Node *Syntax_ProcessProgram(struct TokenStream *ts) {
     struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
@@ -389,6 +294,81 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
     _free(primaries);
     _free(operations);
     return res;
+}
+
+struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts) {
+    struct FunctionSignature *function_signature = (struct FunctionSignature*)_malloc(sizeof(struct FunctionSignature));
+    while (true) {
+        if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
+            break;
+        }
+        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+            SyntaxError("Identifier expected in argument list", TokenStream_GetToken(ts));
+        }
+        function_signature->identifiers = push_back_string(function_signature->identifiers, _strdup(TokenStream_GetToken(ts).value_string));
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenInt && TokenStream_GetToken(ts).type != TokenPtr) {
+            SyntaxError("Type expected in argument list", TokenStream_GetToken(ts));
+        }
+        if (TokenStream_GetToken(ts).type == TokenInt) {
+            enum Type *type = (enum Type*)_malloc(sizeof(enum Type));
+            *type = TypeInt;
+            function_signature->types = push_back_type(function_signature->types, type);
+            TokenStream_NextToken(ts);
+
+            bool *is_const = (bool*)_malloc(sizeof(bool));
+            if (TokenStream_GetToken(ts).type == TokenConst) {
+                *is_const = true;
+                TokenStream_NextToken(ts);
+            }
+            else {
+                *is_const = false;
+            }
+            function_signature->is_const = push_back_bool(function_signature->is_const, is_const);
+
+            struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
+            size_in = 0;
+            function_signature->size_in = push_back(function_signature->size_in, size_in);
+            struct Node *size_out = (struct Node*)_malloc(sizeof(struct Node));
+            size_out = 0;
+            function_signature->size_out = push_back(function_signature->size_out, size_out);
+        }
+        else {
+            enum Type *type = (enum Type*)_malloc(sizeof(enum Type));
+            *type = TypePtr;
+            function_signature->types = push_back_type(function_signature->types, type);
+            TokenStream_NextToken(ts);
+
+            bool *is_const = (bool*)_malloc(sizeof(bool));
+            if (TokenStream_GetToken(ts).type == TokenConst) {
+                *is_const = true;
+                TokenStream_NextToken(ts);
+            }
+            else {
+                *is_const = false;
+            }
+            function_signature->is_const = push_back_bool(function_signature->is_const, is_const);
+
+            struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
+            size_in = Syntax_ProcessExpression(ts);
+            function_signature->size_in = push_back(function_signature->size_in, size_in);
+            if (TokenStream_GetToken(ts).type == TokenColon) {
+                SyntaxError(": expected in argument list", TokenStream_GetToken(ts));
+            }
+            TokenStream_NextToken(ts);
+            struct Node *size_out = (struct Node*)_malloc(sizeof(struct Node));
+            size_out = Syntax_ProcessExpression(ts);
+            function_signature->size_out = push_back(function_signature->size_out, size_out);
+        }
+        if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
+            break;
+        }
+        if (TokenStream_GetToken(ts).type != TokenComma) {
+            SyntaxError(", expected in argument list", TokenStream_GetToken(ts));
+        }
+        TokenStream_NextToken(ts);
+    }
+    return function_signature;
 }
 
 struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
