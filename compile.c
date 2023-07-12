@@ -2,34 +2,11 @@
 #include "ast.h"
 #include "compile.h"
 #include "settings.h"
+#include "vector.h"
 
 const char **push_back_string(const char **a, const char *str);
 const char **pop_back_string(const char **a);
 int get_size_string(const char **a);
-
-enum Type **push_back_type(enum Type **a, enum Type *x) {
-    int sz = 0;
-    for (enum Type **b = a; *b != NULL; b++) {
-        sz++;
-    }
-    enum Type **a_new = (enum Type**)_malloc((sz + 2) * sizeof(enum Type*));
-    for (int i = 0; i < sz; i++) {
-        a_new[i] = a[i];
-    }
-    a_new[sz] = x;
-    a_new[sz + 1] = NULL;
-    _free(a);
-    return a_new;
-}
-
-enum Type **pop_back_type(enum Type **a) {
-    enum Type **b = a;
-    while (*(b + 1) != NULL) {
-        b++;
-    }
-    *b = NULL;
-    return a;
-}
 
 /*int findInLocal(std::string &identifier, CPContext &context) {
     for (int i = (int)context.variable_stack.size() - 1; i >= 0; i--) {
@@ -142,57 +119,55 @@ void CompileBlock(struct Node *node, FILE *out, struct CPContext *context) {
     }
 }
 
-/*void Block::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> block\n";
-    size_t old_variable_stack_size = context.variable_stack.size();
-    size_t old_function_stack_size = context.function_stack.size();
-    for (auto i = statement_list.begin(); i != statement_list.end(); i++) {
-        (*i)->Compile(out, context);
+void CompileAsm(struct Node *node, FILE *out, struct CPContext *context) {
+    fprintf(out, "; %s %d:%d -> asm\n", node->filename, node->line_begin + 1, node->position_begin + 1);
+    struct Asm *this = (struct Asm*)node->node_ptr;
+    fprintf(out, "%s\n", this->code);
+}
+
+void CompileIf(struct Node *node, FILE *out, struct CPContext *context) {
+    fprintf(out, "; %s %d:%d -> if\n", node->filename, node->line_begin + 1, node->position_begin + 1);
+    struct If *this = (struct If*)node->node_ptr;
+    CompileNode(this->condition_list[0], out, context);
+    int idx = context->branch_index;
+    context->branch_index++;
+    fprintf(out, "cmp [esp - 4], dword 0\n");
+    fprintf(out, "je _if_else%d\n", idx);
+    CompileNode(this->block_list[0], out, context);
+    fprintf(out, "jmp _if_end%d\n", idx);
+    fprintf(out, "_if_else%d:\n", idx);
+    if (this->else_block) {
+        CompileNode(this->else_block, out, context);
     }
-    out << "add esp, " << 4 * (context.variable_stack.size() - old_variable_stack_size) << "\n";
-    while (context.variable_stack.size() > old_variable_stack_size)
-        context.variable_stack.pop_back();
-    while (context.variable_stack_type.size() > old_variable_stack_size)
-        context.variable_stack_type.pop_back();
-    while (context.function_stack.size() > old_function_stack_size)
-        context.function_stack.pop_back();
+    fprintf(out, "_if_end%d:\n", idx);
 }
 
-void Asm::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> asm\n";
-    out << code << "\n";
+void CompileWhile(struct Node *node, FILE *out, struct CPContext *context) {
+    fprintf(out, "; %s %d:%d -> while\n", node->filename, node->line_begin + 1, node->position_begin + 1);
+    struct While *this = (struct While*)node->node_ptr;
+    int idx = context->branch_index;
+    context->branch_index++;
+    fprintf(out, "_while%d:\n", idx);
+    CompileNode(this->condition, out, context);
+    fprintf(out, "cmp [esp - 4], dword 0\n");
+    fprintf(out, "je _while_end%d\n", idx);
+    CompileNode(this->block, out, context);
+    fprintf(out, "jmp _while%d\n", idx);
+    fprintf(out, "_while_end%d:\n", idx);
 }
 
-void If::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> if\n";
-    branch_list[0].first->Compile(out, context);
-    int idx = context.branch_index;
-    context.branch_index++;
-    out << "cmp [esp - 4], dword 0\n";
-    out << "je _if_else" << idx << "\n";
-    branch_list[0].second->Compile(out, context);
-    out << "jmp _if_end" << idx << "\n";
-    out << "_if_else" << idx << ":\n";
-    if (else_body) {
-        else_body->Compile(out, context);
+void CompileFunctionDefinition(struct Node *node, FILE *out, struct CPContext *context) {
+    fprintf(out, "; %s %d:%d -> function definition\n", node->filename, node->line_begin + 1, node->position_begin + 1);
+    struct FunctionDefinition *this = (struct FunctionDefinition*)node->node_ptr;
+    
+    char *identifier, *identifier_end;
+    int index;
+    if (this->external) {
+        
     }
-    out << "_if_end" << idx << ":\n";
 }
 
-void While::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> while\n";
-    int idx = context.branch_index;
-    context.branch_index++;
-    out << "_while" << idx << ":\n";
-    expression->Compile(out, context);
-    out << "cmp [esp - 4], dword 0\n";
-    out << "je _while_end" << idx << "\n";
-    block->Compile(out, context);
-    out << "jmp _while" << idx << "\n";
-    out << "_while_end" << idx << ":\n";
-}
-
-void FunctionDefinition::Compile(std::ostream &out, CPContext &context) {
+/*void FunctionDefinition::Compile(std::ostream &out, CPContext &context) {
     std::string identifier, identifier_end;
     int index;
     if (external) {
@@ -560,5 +535,14 @@ void CompileNode(struct Node *node, FILE *out, struct CPContext *context) {
     }
     else if (node->node_type == NodeDefinition) {
         CompileDefinition(node, out, context);
+    }
+    else if (node->node_type == NodeAsm) {
+        CompileAsm(node, out, context);
+    }
+    else if (node->node_type == NodeIf) {
+        CompileIf(node, out, context);
+    }
+    else if (node->node_type == NodeWhile) {
+        CompileWhile(node, out, context);
     }
 }
