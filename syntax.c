@@ -296,6 +296,63 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
     return res;
 }
 
+struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
+    struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+    node->line_begin = TokenStream_GetToken(ts).line_begin;
+    node->position_begin = TokenStream_GetToken(ts).position_begin;
+    node->filename = _strdup(TokenStream_GetToken(ts).filename);
+    if (TokenStream_GetToken(ts).type == TokenDereference) {
+        struct Dereference *_dereference = (struct Dereference*)_malloc(sizeof(struct Dereference));
+        node->node_ptr = _dereference;
+        node->node_type = NodeDereference;
+        TokenStream_NextToken(ts);
+        struct Node *_expression = Syntax_ProcessExpression(ts);
+        _dereference->arg = _expression;
+        node->line_end = _expression->line_end;
+        node->position_end = _expression->position_end;
+        return node;
+    }
+    if (TokenStream_GetToken(ts).type == TokenIdentifier) {
+        struct Identifier *_identifier = (struct Identifier*)_malloc(sizeof(struct Identifier));
+        node->node_ptr = _identifier;
+        node->node_type = NodeIdentifier;
+        _identifier->identifier = _strdup(TokenStream_GetToken(ts).value_string);
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
+    }
+    if (TokenStream_GetToken(ts).type == TokenInteger) {
+        struct Integer *_integer = (struct Integer*)_malloc(sizeof(struct Integer));
+        node->node_ptr = _integer;
+        node->node_type = NodeInteger;
+        _integer->value = TokenStream_GetToken(ts).value_int;
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
+    }
+    if (TokenStream_GetToken(ts).type == TokenAlloc) {
+        struct Alloc *_alloc = (struct Alloc*)_malloc(sizeof(struct Alloc));
+        node->node_ptr = _alloc;
+        node->node_type = NodeAlloc;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
+            SyntaxError("( expected in alloc expression", TokenStream_GetToken(ts));
+        }
+        TokenStream_NextToken(ts);
+        _alloc->expression = Syntax_ProcessExpression(ts);
+        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
+            SyntaxError(") expected in alloc expression", TokenStream_GetToken(ts));
+        }
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
+    }
+    SyntaxError("Identifier expected in primary expression", TokenStream_GetToken(ts));
+}
+
 struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts) {
     struct FunctionSignature *function_signature = (struct FunctionSignature*)_malloc(sizeof(struct FunctionSignature));
     while (true) {
@@ -371,61 +428,27 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
     return function_signature;
 }
 
-struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
-    struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
-    node->line_begin = TokenStream_GetToken(ts).line_begin;
-    node->position_begin = TokenStream_GetToken(ts).position_begin;
-    node->filename = _strdup(TokenStream_GetToken(ts).filename);
-    if (TokenStream_GetToken(ts).type == TokenDereference) {
-        struct Dereference *_dereference = (struct Dereference*)_malloc(sizeof(struct Dereference));
-        node->node_ptr = _dereference;
-        node->node_type = NodeDereference;
+const char **Syntax_ProcessMetavariables(struct TokenStream *ts) {
+    const char **metavariables = (const char**)_malloc(sizeof(const char*));
+    metavariables[0] = NULL;
+    while (true) {
+        if (TokenStream_GetToken(ts).type == TokenBracketClose) {
+            break;
+        }
+        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+            SyntaxError("Identifier expected in metavariable list", TokenStream_GetToken(ts));
+        }
+        metavariables = push_back_string(metavariables, _strdup(TokenStream_GetToken(ts).value_string));
         TokenStream_NextToken(ts);
-        struct Node *_expression = Syntax_ProcessExpression(ts);
-        _dereference->arg = _expression;
-        node->line_end = _expression->line_end;
-        node->position_end = _expression->position_end;
-        return node;
-    }
-    if (TokenStream_GetToken(ts).type == TokenIdentifier) {
-        struct Identifier *_identifier = (struct Identifier*)_malloc(sizeof(struct Identifier));
-        node->node_ptr = _identifier;
-        node->node_type = NodeIdentifier;
-        _identifier->identifier = _strdup(TokenStream_GetToken(ts).value_string);
-        node->line_end = TokenStream_GetToken(ts).line_end;
-        node->position_end = TokenStream_GetToken(ts).position_end;
-        TokenStream_NextToken(ts);
-        return node;
-    }
-    if (TokenStream_GetToken(ts).type == TokenInteger) {
-        struct Integer *_integer = (struct Integer*)_malloc(sizeof(struct Integer));
-        node->node_ptr = _integer;
-        node->node_type = NodeInteger;
-        _integer->value = TokenStream_GetToken(ts).value_int;
-        node->line_end = TokenStream_GetToken(ts).line_end;
-        node->position_end = TokenStream_GetToken(ts).position_end;
-        TokenStream_NextToken(ts);
-        return node;
-    }
-    if (TokenStream_GetToken(ts).type == TokenAlloc) {
-        struct Alloc *_alloc = (struct Alloc*)_malloc(sizeof(struct Alloc));
-        node->node_ptr = _alloc;
-        node->node_type = NodeAlloc;
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-            SyntaxError("( expected in alloc expression", TokenStream_GetToken(ts));
+        if (TokenStream_GetToken(ts).type == TokenBracketClose) {
+            break;
+        }
+        if (TokenStream_GetToken(ts).type != TokenComma) {
+            SyntaxError(", expected in metavariables list", TokenStream_GetToken(ts));
         }
         TokenStream_NextToken(ts);
-        _alloc->expression = Syntax_ProcessExpression(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
-            SyntaxError(") expected in alloc expression", TokenStream_GetToken(ts));
-        }
-        node->line_end = TokenStream_GetToken(ts).line_end;
-        node->position_end = TokenStream_GetToken(ts).position_end;
-        TokenStream_NextToken(ts);
-        return node;
     }
-    SyntaxError("Identifier expected in primary expression", TokenStream_GetToken(ts));
+    return metavariables;
 }
 
 struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
@@ -529,197 +552,84 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
 
         return node;
     }
-    /*if (ts.GetToken().type == TokenType::Func) {
-        std::shared_ptr <AST::FunctionDefinition> function_definition = std::make_shared <AST::FunctionDefinition> ();
-        function_definition->line_begin = ts.GetToken().line_begin;
-        function_definition->position_begin = ts.GetToken().position_begin;
-        ts.NextToken();
-        if (ts.GetToken().type == TokenType::Caret) {
+    if (TokenStream_GetToken(ts).type == TokenFunc) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct FunctionDefinition *function_definition = (struct FunctionDefinition*)_malloc(sizeof(struct FunctionDefinition));
+        node->node_ptr = function_definition;
+        node->node_type = NodeFunctionDefinition;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
+        function_definition->external = false;
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type == TokenCaret) {
             function_definition->external = true;
-            ts.NextToken();
+            TokenStream_NextToken(ts);
         }
-        if (ts.GetToken().type != TokenType::Identifier) {
-            throw AliasException("Identifier exprected in function definition", ts.GetToken());
+        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+            SyntaxError("Identifier exprected in function definition", TokenStream_GetToken(ts));
         }
-        function_definition->name = ts.GetToken().value_string;
-        ts.NextToken();
-        if (ts.GetToken().type == TokenType::BracketOpen) {
-            ts.NextToken();
-            while (true) {
-                if (ts.GetToken().type == TokenType::BracketClose) {
-                    ts.NextToken();
-                    break;
-                }
-                if (ts.GetToken().type != TokenType::Identifier) {
-                    throw AliasException("Idenfier expected in metavariable list", ts.GetToken());
-                }
-                function_definition->metavariables.push_back(ts.GetToken().value_string);
-                ts.NextToken();
-                if (ts.GetToken().type == TokenType::BracketClose) {
-                    ts.NextToken();
-                    break;
-                }
-                if (ts.GetToken().type != TokenType::Comma) {
-                    throw AliasException(", expected in metavariables list", ts.GetToken());
-                }
-                ts.NextToken();
-            }
+        function_definition->name = _strdup(TokenStream_GetToken(ts).value_string);
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type == TokenBracketOpen) {
+            TokenStream_NextToken(ts);
+            function_definition->metavariables = Syntax_ProcessMetavariables(ts);
+            TokenStream_NextToken(ts);
         }
-        if (ts.GetToken().type != TokenType::ParenthesisOpen) {
-            throw AliasException("( expected in function definition", ts.GetToken());
+        else {
+            function_definition->metavariables = (const char**)_malloc(sizeof(const char*));
+            function_definition->metavariables[0] = NULL;
         }
-        ts.NextToken();
-        std::shared_ptr <AST::FunctionSignature> function_signature = std::make_shared <AST::FunctionSignature> ();
-        while (true) {
-            if (ts.GetToken().type == TokenType::ParenthesisClose) {
-                ts.NextToken();
-                break;
-            }
-            if (ts.GetToken().type != TokenType::Identifier) {
-                throw AliasException("Idenfier expected in argument list", ts.GetToken());
-            }
-            function_signature->identifiers.push_back(ts.GetToken().value_string);
-            ts.NextToken();
-            if (ts.GetToken().type != TokenType::Int && ts.GetToken().type != TokenType::Ptr) {
-                throw AliasException("Type expected in argument list", ts.GetToken());
-            }
-            if (ts.GetToken().type == TokenType::Int) {
-                function_signature->types.push_back(AST::Type::Int);
-                ts.NextToken();
-                if (ts.GetToken().type == TokenType::Const) {
-                    function_signature->is_const.push_back(true);
-                    ts.NextToken();
-                }
-                else {
-                    function_signature->is_const.push_back(false);
-                }
-                function_signature->size_in.push_back(0);
-                function_signature->size_out.push_back(0);
-            }
-            else {
-                function_signature->types.push_back(AST::Type::Ptr);
-                ts.NextToken();
-                if (ts.GetToken().type == TokenType::Const) {
-                    function_signature->is_const.push_back(true);
-                    ts.NextToken();
-                }
-                else {
-                    function_signature->is_const.push_back(false);
-                }
-                auto _expression1 = ProcessExpression(ts);
-                if (ts.GetToken().type != TokenType::Colon) {
-                    throw AliasException(": expected in argument list", ts.GetToken());
-                }
-                ts.NextToken();
-                auto _expression2 = ProcessExpression(ts);
-                function_signature->size_in.push_back(_expression1);
-                function_signature->size_out.push_back(_expression2);
-            }
-            if (ts.GetToken().type == TokenType::ParenthesisClose) {
-                ts.NextToken();
-                break;
-            }
-            if (ts.GetToken().type != TokenType::Comma) {
-                throw AliasException(", expected in argument list", ts.GetToken());
-            }
-            ts.NextToken();
+        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
+            SyntaxError("( expected in function definition", TokenStream_GetToken(ts));
         }
-        function_definition->signature = function_signature;
-        if (ts.GetToken().type != TokenType::BraceOpen) {
-            throw AliasException("{ expected in function block", ts.GetToken());
+        TokenStream_NextToken(ts);
+        function_definition->signature = Syntax_ProcessFunctionSignature(ts);
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
+            SyntaxError("{ expected in function block", TokenStream_GetToken(ts));
         }
-        std::shared_ptr <AST::Block> _block = ProcessBlock(ts);
-        function_definition->body = _block;
-        function_definition->line_end = ts.GetToken().line_end;
-        function_definition->position_end = ts.GetToken().position_end;
-        function_definition->filename = ts.GetToken().filename;
-        ts.NextToken();
+        function_definition->block = Syntax_ProcessBlock(ts);
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
 
-        return function_definition;
+        return node;
     }
-    if (ts.GetToken().type == TokenType::Proto) {
-        std::shared_ptr <AST::Prototype> prototype = std::make_shared <AST::Prototype> ();
-        prototype->line_begin = ts.GetToken().line_begin;
-        prototype->position_begin = ts.GetToken().position_begin;
-        ts.NextToken();
-        if (ts.GetToken().type != TokenType::Identifier) {
-            throw AliasException("Identifier exprected in function prototype", ts.GetToken());
+    if (TokenStream_GetToken(ts).type == TokenProto) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct Prototype *prototype = (struct Prototype*)_malloc(sizeof(struct Prototype));
+        node->node_ptr = prototype;
+        node->node_type = NodePrototype;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+            SyntaxError("Identifier exprected in function prototype", TokenStream_GetToken(ts));
         }
-        prototype->name = ts.GetToken().value_string;
-        ts.NextToken();
-        if (ts.GetToken().type == TokenType::BracketOpen) {
-            ts.NextToken();
-            while (true) {
-                if (ts.GetToken().type == TokenType::BracketClose) {
-                    ts.NextToken();
-                    break;
-                }
-                if (ts.GetToken().type != TokenType::Identifier) {
-                    throw AliasException("Idenfier expected in metavariable list", ts.GetToken());
-                }
-                prototype->metavariables.push_back(ts.GetToken().value_string);
-                ts.NextToken();
-                if (ts.GetToken().type == TokenType::BracketClose) {
-                    ts.NextToken();
-                    break;
-                }
-                if (ts.GetToken().type != TokenType::Comma) {
-                    throw AliasException(", expected in metavariables list", ts.GetToken());
-                }
-                ts.NextToken();
-            }
+        prototype->name = _strdup(TokenStream_GetToken(ts).value_string);
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type == TokenBracketOpen) {
+            TokenStream_NextToken(ts);
+            prototype->metavariables = Syntax_ProcessMetavariables(ts);
+            TokenStream_NextToken(ts);
         }
-        if (ts.GetToken().type != TokenType::ParenthesisOpen) {
-            throw AliasException("( expected in function prototype", ts.GetToken());
+        else {
+            prototype->metavariables = (const char**)_malloc(sizeof(const char*));
+            prototype->metavariables[0] = NULL;
         }
-        ts.NextToken();
-        std::shared_ptr <AST::FunctionSignature> function_signature = std::make_shared <AST::FunctionSignature> ();
-        while (true) {
-            if (ts.GetToken().type == TokenType::ParenthesisClose) {
-                break;
-            }
-            if (ts.GetToken().type != TokenType::Identifier) {
-                throw AliasException("Idenfier expected in argument list", ts.GetToken());
-            }
-            function_signature->identifiers.push_back(ts.GetToken().value_string);
-            ts.NextToken();
-            if (ts.GetToken().type != TokenType::Int && ts.GetToken().type != TokenType::Ptr) {
-                throw AliasException("Type expected in argument list", ts.GetToken());
-            }
-            if (ts.GetToken().type == TokenType::Int) {
-                function_signature->types.push_back(AST::Type::Int);
-                ts.NextToken();
-                function_signature->size_in.push_back(0);
-                function_signature->size_out.push_back(0);
-            }
-            else {
-                function_signature->types.push_back(AST::Type::Ptr);
-                ts.NextToken();
-                auto _expression1 = ProcessExpression(ts);
-                if (ts.GetToken().type != TokenType::Colon) {
-                    throw AliasException(": expected in argument list", ts.GetToken());
-                }
-                ts.NextToken();
-                auto _expression2 = ProcessExpression(ts);
-                function_signature->size_in.push_back(_expression1);
-                function_signature->size_out.push_back(_expression2);
-            }
-            if (ts.GetToken().type == TokenType::ParenthesisClose) {
-                break;
-            }
-            if (ts.GetToken().type != TokenType::Comma) {
-                throw AliasException(", expected in argument list", ts.GetToken());
-            }
-            ts.NextToken();
+        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
+            SyntaxError("( expected in function prototype", TokenStream_GetToken(ts));
         }
-        prototype->signature = function_signature;                    
-        prototype->line_end = ts.GetToken().line_end;
-        prototype->position_end = ts.GetToken().position_end;
-        prototype->filename = ts.GetToken().filename;
-        ts.NextToken();
+        TokenStream_NextToken(ts);
+        prototype->signature = Syntax_ProcessFunctionSignature(ts);
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
 
-        return prototype;
-    }*/
+        return node;
+    }
     if (TokenStream_GetToken(ts).type == TokenDef) {
         struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
         struct Definition *definition = (struct Definition*)_malloc(sizeof(struct Definition));

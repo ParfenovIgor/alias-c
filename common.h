@@ -5,6 +5,8 @@ typedef int bool;
 #define true 1
 #define false 0
 
+char *to_string(int n);
+
 void print_string(const char *str);
 void print_int(int n);
 

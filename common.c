@@ -2,6 +2,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+char *to_string(int n) {
+    int len = 0;
+    int m = n;
+    while (m) {
+        len++;
+        m /= 10;
+    }
+    char *str = (char*)_malloc(sizeof(char) * (len + 1));
+    while (n) {
+        str[len] = (char)(n % 10 + '0');
+        n /= 10;
+        len--;
+    }
+    return str;
+}
+
 void print_string(const char *str) {
     printf("%s", str);
 }

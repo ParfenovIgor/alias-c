@@ -19,6 +19,7 @@ struct Token **pop_back_token(struct Token **a);
 enum Type **push_back_type(enum Type **a, enum Type *type);
 enum Type **pop_back_type(enum Type **a);
 
+int **push_back_int(int **a, int *x);
 bool **push_back_bool(bool **a, bool *x);
 
 #endif // VECTOR_H_INCLUDED

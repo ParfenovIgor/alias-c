@@ -122,6 +122,21 @@ enum Type **pop_back_type(enum Type **a) {
     return a;
 }
 
+int **push_back_int(int **a, int *x) {
+    int sz = 0;
+    for (int **b = a; *b != NULL; b++) {
+        sz++;
+    }
+    int **a_new = (int**)_malloc((sz + 2) * sizeof(int*));
+    for (int i = 0; i < sz; i++) {
+        a_new[i] = a[i];
+    }
+    a_new[sz] = x;
+    a_new[sz + 1] = NULL;
+    _free(a);
+    return a_new;
+}
+
 bool **push_back_bool(bool **a, bool *x) {
     int sz = 0;
     for (bool **b = a; *b != NULL; b++) {
