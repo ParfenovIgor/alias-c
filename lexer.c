@@ -389,10 +389,10 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
             position = 0;
             line++;
         }
-        else if (is_operator(str, "/&", i)) {
+        else if (is_operator(str, "/*", i)) {
             i += 2;
             position += 2;
-            while(i + 2 <= N && (str[i] != '&' || str[i + 1] != '/')) {
+            while(i + 2 <= N && (str[i] != '*' || str[i + 1] != '/')) {
                 i++;
                 position++;
                 if (str[i] == '\n') {

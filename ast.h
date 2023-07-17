@@ -96,7 +96,7 @@ struct CPContext {
     const char **variable_arguments;
     enum Type **variable_arguments_type;
     const char **function_stack;
-    const int **function_stack_index;
+    int **function_stack_index;
     int function_index;
     int branch_index;
 };
@@ -128,22 +128,17 @@ struct While {
 };
 
 struct FunctionDefinition {
+    const char *name;
+    const char **metavariables;
+    struct FunctionSignature *signature;
+    struct Node *block;
     bool external;
-    //std::string name;
-    //std::vector <std::string> metavariables;
-    //std::shared_ptr <FunctionSignature> signature;
-    //std::shared_ptr <Block> body;
-    //bool external;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
 };
 
 struct Prototype {
-    //std::string name;
-    //std::vector <std::string> metavariables;
-    //std::shared_ptr <FunctionSignature> signature;
-    //void Validate(VLContext &context);
-    //void Compile(std::ostream &out, CPContext &context);
+    const char *name;
+    const char **metavariables;
+    struct FunctionSignature *signature;
 };
 
 struct Definition {
