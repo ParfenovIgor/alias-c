@@ -11,7 +11,7 @@ int get_size_string(const char **a);
 int findInLocal(const char *identifier, struct CPContext *context) {
     int sz = get_size_string(context->variable_stack);
     for (int i = sz - 1; i >= 0; i--) {
-        if (strcmp(context->variable_stack[i], identifier) == 0) {
+        if (_strcmp(context->variable_stack[i], identifier) == 0) {
             return i;
         }
     }
@@ -21,37 +21,23 @@ int findInLocal(const char *identifier, struct CPContext *context) {
 int findInArguments(const char *identifier, struct CPContext *context) {
     int sz = get_size_string(context->variable_arguments);
     for (int i = 0; i < sz; i++) {
-        if (strcmp(context->variable_arguments[i], identifier) == 0) {
+        if (_strcmp(context->variable_arguments[i], identifier) == 0) {
             return i;
         }
     }
     return -1;
 }
 
-/*Type getVariableType(std::string id, Node *node, CPContext &context) {
-    for (int i = (int)context.variable_stack.size() - 1; i >= 0; i--) {
-        if (context.variable_stack[i] == id) {
-            return context.variable_stack_type[i];
+int findFunctionIndex(const char *identifier, struct CPContext *context) {
+    int sz = get_size_string(context->function_stack);
+    for (int i = sz - 1; i >= 0; i--) {
+        if (_strcmp(context->function_stack[i], identifier) == 0) {
+            return *context->function_stack_index[i];
         }
     }
-    for (int i = 0; i < (int)context.variable_arguments.size(); i++) {
-        if (context.variable_arguments[i] == id) {
-            return context.variable_arguments_type[i];
-        }
-    }
-    std::cout << "Error: identifier not found" << std::endl;
-    exit(1);
+    print_string("Error: function identifier not found\n");
+    program_exit(1);
 }
-
-int findFunctionIndex(std::string &identifier, CPContext &context) {
-    for (int i = (int)context.function_stack.size() - 1; i >= 0; i--) {
-        if (context.function_stack[i].first == identifier) {
-            return context.function_stack[i].second;
-        }
-    }
-    std::cout << "Error: function identifier not found" << std::endl;
-    exit(1);
-}*/
 
 int findPhase(const char *identifier, struct CPContext *context) {
     int idx = findInLocal(identifier, context);
@@ -99,9 +85,7 @@ void Compile(struct Node *node, FILE *out, struct Settings *settings) {
     fprintf(out, "ret\n");
 }
 
-void CompileBlock(struct Node *node, FILE *out, struct CPContext *context) {
-    fprintf(out, "; %s %d:%d -> block\n", node->filename, node->line_begin + 1, node->position_begin + 1);
-    struct Block *this = (struct Block*)node->node_ptr;
+void CompileBlock(struct Block *this, FILE *out, struct CPContext *context) {
     struct Node **statement = this->statement_list;
     int old_variable_stack_size = get_size_string(context->variable_stack);
     int old_function_stack_size = get_size_string(context->function_stack);
@@ -121,15 +105,11 @@ void CompileBlock(struct Node *node, FILE *out, struct CPContext *context) {
     }
 }
 
-void CompileAsm(struct Node *node, FILE *out, struct CPContext *context) {
-    fprintf(out, "; %s %d:%d -> asm\n", node->filename, node->line_begin + 1, node->position_begin + 1);
-    struct Asm *this = (struct Asm*)node->node_ptr;
+void CompileAsm(struct Asm *this, FILE *out, struct CPContext *context) {
     fprintf(out, "%s\n", this->code);
 }
 
-void CompileIf(struct Node *node, FILE *out, struct CPContext *context) {
-    fprintf(out, "; %s %d:%d -> if\n", node->filename, node->line_begin + 1, node->position_begin + 1);
-    struct If *this = (struct If*)node->node_ptr;
+void CompileIf(struct If *this, FILE *out, struct CPContext *context) {
     CompileNode(this->condition_list[0], out, context);
     int idx = context->branch_index;
     context->branch_index++;
@@ -144,9 +124,7 @@ void CompileIf(struct Node *node, FILE *out, struct CPContext *context) {
     fprintf(out, "_if_end%d:\n", idx);
 }
 
-void CompileWhile(struct Node *node, FILE *out, struct CPContext *context) {
-    fprintf(out, "; %s %d:%d -> while\n", node->filename, node->line_begin + 1, node->position_begin + 1);
-    struct While *this = (struct While*)node->node_ptr;
+void CompileWhile(struct While *this, FILE *out, struct CPContext *context) {
     int idx = context->branch_index;
     context->branch_index++;
     fprintf(out, "_while%d:\n", idx);
@@ -158,10 +136,7 @@ void CompileWhile(struct Node *node, FILE *out, struct CPContext *context) {
     fprintf(out, "_while_end%d:\n", idx);
 }
 
-void CompileFunctionDefinition(struct Node *node, FILE *out, struct CPContext *context) {
-    fprintf(out, "; %s %d:%d -> function definition\n", node->filename, node->line_begin + 1, node->position_begin + 1);
-    struct FunctionDefinition *this = (struct FunctionDefinition*)node->node_ptr;
-    
+void CompileFunctionDefinition(struct FunctionDefinition *this, FILE *out, struct CPContext *context) {
     char *identifier, *identifier_end;
     int index;
     if (this->external) {
@@ -224,9 +199,7 @@ void CompileFunctionDefinition(struct Node *node, FILE *out, struct CPContext *c
     fprintf(out, "%s:\n", identifier_end);
 }
 
-void CompilePrototype(struct Node *node, FILE *out, struct CPContext *context) {
-    fprintf(out, "; %s %d:%d -> prototype\n", node->filename, node->line_begin + 1, node->position_begin + 1);
-    struct Prototype *this = (struct Prototype*)node->node_ptr;
+void CompilePrototype(struct Prototype *this, FILE *out, struct CPContext *context) {
     fprintf(out, "extern %s\n", this->name);
     context->function_stack = push_back_string(context->function_stack, _strdup(this->name));
     int *index_ptr = (int*)_malloc(sizeof(int));
@@ -234,9 +207,7 @@ void CompilePrototype(struct Node *node, FILE *out, struct CPContext *context) {
     context->function_stack_index = push_back_int(context->function_stack_index, index_ptr);
 }
 
-void CompileDefinition(struct Node *node, FILE *out, struct CPContext *context) {
-    fprintf(out, "; %s %d:%d -> definition\n", node->filename, node->line_begin + 1, node->position_begin + 1);
-    struct Definition *this = (struct Definition*)node->node_ptr;
+void CompileDefinition(struct Definition *this, FILE *out, struct CPContext *context) {
     context->variable_stack = push_back_string(context->variable_stack, _strdup(this->identifier));
     enum Type *type = (enum Type*)_malloc(sizeof(int));
     *type = this->type;
@@ -244,18 +215,14 @@ void CompileDefinition(struct Node *node, FILE *out, struct CPContext *context) 
     fprintf(out, "sub rsp, 8\n");
 }
 
-void CompileAssignment(struct Node *node, FILE *out, struct CPContext *context) {
-    fprintf(out, "; %s %d:%d -> assignment\n", node->filename, node->line_begin + 1, node->position_begin + 1);
-    struct Assignment *this = (struct Assignment*)node->node_ptr;
+void CompileAssignment(struct Assignment *this, FILE *out, struct CPContext *context) {
     CompileNode(this->value, out, context);
     int phase = findPhase(this->identifier, context);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "mov [rbp + %d], rax\n", phase);
 }
 
-void CompileMovement(struct Node *node, FILE *out, struct CPContext *context) {
-    fprintf(out, "; %s %d:%d -> movement\n", node->filename, node->line_begin + 1, node->position_begin + 1);
-    struct Movement *this = (struct Movement*)node->node_ptr;
+void CompileMovement(struct Movement *this, FILE *out, struct CPContext *context) {
     CompileNode(this->value, out, context);
     int phase = findPhase(this->identifier, context);
     fprintf(out, "mov rax, [rsp - 8]\n");
@@ -263,284 +230,322 @@ void CompileMovement(struct Node *node, FILE *out, struct CPContext *context) {
     fprintf(out, "mov [rbx], rax\n");
 }
 
-/*void Movement::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> movement\n";
-    value->Compile(out, context);
-    int phase = findPhase(identifier, context);
-    out << "mov eax, [esp - 4]\n";
-    out << "mov ebx, [ebp + " << phase << "]\n";
-    out << "mov [ebx], eax\n";
-}
-
-void MovementString::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> movement string\n";
-    int idx = context.branch_index;
-    context.branch_index++;
-    out << "jmp _strbufend" << idx << "\n";
-    out << "_strbuf" << idx << " db ";
-    for (int i = 0; i < (int)value.size(); i++) {
-        out << (int)value[i];
-        if (i + 1 != (int)value.size()) {
-            out << ",";
+void CompileMovementString(struct MovementString *this, FILE *out, struct CPContext *context) {
+    int idx = context->branch_index;
+    context->branch_index++;
+    fprintf(out, "jmp _strbufend%d\n", idx);
+    fprintf(out, "_strbuf%d db ", idx);
+    int sz = _strlen(this->value);
+    for (int i = 0; i < sz; i++) {
+        fprintf(out, "%d", (int)this->value[i]);
+        if (i + 1 != sz) {
+            fprintf(out, ",");
         }
-        else {
-            out << "\n";
+        else{
+            fprintf(out, "\n");
         }
     }
-    out << "_strbufend" << idx << ":\n";
-    out << "mov esi, _strbuf" << idx << "\n";
-    int phase = findPhase(identifier, context);
-    out << "mov edi, [ebp + " << phase << "]\n";
-    out << "mov ecx, " << (int)value.size() << "\n";
-    out << "rep movsb\n";
+    fprintf(out, "_strbufend%d:\n", idx);
+    fprintf(out, "mov rsi, _strbuf%d\n", idx);
+    int phase = findPhase(this->identifier, context);
+    fprintf(out, "mov rdi, [rbp + %d]\n", phase);
+    fprintf(out, "mov rcx, %d\n", sz);
+    fprintf(out, "rep movsb\n");
 }
 
-void Assumption::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> assumption\n";
+void CompileAssumption(struct Assumption *this, FILE *out, struct CPContext *context, const char *error) {
+    int ind_error = context->branch_index;
+    fprintf(out, "jmp aftererror%d\n", ind_error);
+    fprintf(out, "error%d db \"%s\", 0xA\n", ind_error, error);
+    fprintf(out, "aftererror%d:\n", ind_error);
 
-    int ind_error = context.branch_index++;
-    out << "jmp aftererror" << ind_error << "\n";
-    std::string error = "Assumption fault in file " + filename + " on line " + std::to_string(line_begin + 1) + " position " + std::to_string(position_begin + 1);
-    out << "error" << ind_error << " db \"" << error << "\", 0xA\n";
-    out << "aftererror" << ind_error << ":\n";
+    int phase = findPhase(this->identifier, context);
+    int idx = context->branch_index;
+    context->branch_index++;
+    CompileNode(this->left, out, context);
+    fprintf(out, "mov rax, [rbp + %d]\n", phase);
+    fprintf(out, "sub rax, [rsp - 8]\n");
+    fprintf(out, "jl _set1_%d\n", idx);
+    fprintf(out, "jmp _setend%d\n", idx);
+    fprintf(out, "_set1_%d:\n", idx);
+    fprintf(out, "mov rax, 1\n");
+    fprintf(out, "mov rdi, 1\n");
+    fprintf(out, "mov rsi, error%d\n", ind_error);
+    fprintf(out, "mov rdx, %d\n", _strlen(error) + 1);
+    fprintf(out, "syscall\n");
+    fprintf(out, "mov rax, 0x3c\n");
+    fprintf(out, "mov rdi, 1\n");
+    fprintf(out, "syscall\n");
+    fprintf(out, "_setend%d:\n", idx);
 
-    int phase = findPhase(identifier, context);
-    int idx = context.branch_index++;
-    left->Compile(out, context);
-    out << "mov eax, [ebp + " << phase << "]\n";
-    out << "sub eax, [esp - 4]\n";
-    out << "jl " << "_set1_" << idx << "\n";
-    out << "jmp _setend" << idx << "\n";
-    out << "_set1_" << idx << ":\n";
-    out << "mov eax, 4\n";
-    out << "mov ebx, 1\n";
-    out << "mov ecx, error" << ind_error << "\n";
-    out << "mov edx, " << error.size() + 1 << "\n";
-    out << "int 0x80\n";
-    out << "mov eax, 1\n";
-    out << "mov ebx, 1\n";
-    out << "int 0x80\n";
-    out << "_setend" << idx << ":\n";
+    idx = context->branch_index;
+    context->branch_index++;
+    fprintf(out, "mov rax, [rsp - 8]\n");
+    fprintf(out, "sub rax, [rbp + %d]\n", phase);
+    fprintf(out, "jl _set1_%d\n", idx);
+    fprintf(out, "jmp _setend%d\n", idx);
+    fprintf(out, "_set1_%d:\n", idx);
+    fprintf(out, "mov rax, 1\n");
+    fprintf(out, "mov rdi, 1\n");
+    fprintf(out, "mov rsi, error%d\n", ind_error);
+    fprintf(out, "mov rdx, %d\n", _strlen(error) + 1);
+    fprintf(out, "syscall\n");
+    fprintf(out, "mov rax, 0x3c\n");
+    fprintf(out, "mov rdi, 1\n");
+    fprintf(out, "syscall\n");
+    fprintf(out, "_setend%d:\n", idx);
 
-    idx = context.branch_index++;
-    right->Compile(out, context);
-    out << "mov eax, [esp - 4]\n";
-    out << "sub eax, [ebp + " << phase << "]\n";
-    out << "jl " << "_set1_" << idx << "\n";
-    out << "jmp _setend" << idx << "\n";
-    out << "_set1_" << idx << ":\n";
-    out << "mov eax, 4\n";
-    out << "mov ebx, 1\n";
-    out << "mov ecx, error" << ind_error << "\n";
-    out << "mov edx, " << error.size() + 1 << "\n";
-    out << "int 0x80\n";
-    out << "mov eax, 1\n";
-    out << "mov ebx, 1\n";
-    out << "int 0x80\n";
-    out << "_setend" << idx << ":\n";
-
-    statement->Compile(out, context);
+    CompileNode(this->statement, out, context);
 }
 
-void Identifier::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> identifier\n";
-    int phase = findPhase(identifier, context);
-    out << "mov eax, [ebp + " << phase << "]\n";
-    out << "mov [esp - 4], eax\n";
+void CompileIdentifier(struct Identifier *this, FILE *out, struct CPContext *context) {
+    int phase = findPhase(this->identifier, context);
+    fprintf(out, "mov rax, [rbp + %d]\n", phase);
+    fprintf(out, "mov [rsp - 8], rax\n");
 }
 
-void Integer::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> integer\n";
-    out << "mov [esp - 4], dword " << value << "\n";
+void CompileInteger(struct Integer *this, FILE *out, struct CPContext *context) {
+    fprintf(out, "mov [rsp - 8], qword %d\n", this->value);
 }
 
-void Alloc::Compile(std::ostream &out, CPContext &context) {
-    int line_begin = expression->line_begin;
-    int position_begin = expression->position_begin;
-    int line_end = expression->line_end;
-    int position_end = expression->position_end;
-    std::string filename = expression->filename;
-
-    auto _multiplication = std::make_shared <AST::Multiplication> ();
-    _multiplication->line_begin = line_begin;
-    _multiplication->position_begin = position_begin;
-    _multiplication->line_end = line_end;
-    _multiplication->position_end = position_end;
-    _multiplication->filename = filename;
-
-    auto _integer  = std::make_shared <AST::Integer> ();
-    _integer->line_begin = line_begin;
-    _integer->position_begin = position_begin;
-    _integer->line_end = line_end;
-    _integer->position_end = position_end;
-    _integer->filename = filename;
-
-    _integer->value = 4;
-    _multiplication->left = expression;
-    _multiplication->right = _integer;
-    expression = _multiplication;
-
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> alloc\n";
-    expression->Compile(out, context);
-    out << "push dword [esp - 4]\n";
-    out << "call malloc\n";
-    out << "add esp, 4\n";
-    out << "mov [esp - 4], eax\n";
+void CompileAlloc(struct Alloc *this, FILE *out, struct CPContext *context) {
+    CompileNode(this->expression, out, context);
+    fprintf(out, "push qword [rsp - 8]\n");
+    fprintf(out, "call malloc\n");
+    fprintf(out, "add rsp, 8\n");
+    fprintf(out, "mov [rsp - 8], rax\n");
 }
 
-void Free::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> free\n";
-    arg->Compile(out, context);
-    out << "push dword [esp - 4]\n";
-    out << "call free\n";
-    out << "add esp, 4\n";
+void CompileFree(struct Free *this, FILE *out, struct CPContext *context) {
+    CompileNode(this->expression, out, context);
+    fprintf(out, "push qword [rsp - 8]\n");
+    fprintf(out, "call free\n");
+    fprintf(out, "add rsp, 8\n");
 }
 
-void FunctionCall::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> function call\n";
-    for (int i = (int)arguments.size() - 1; i >= 0; i--) {
-        int phase = findPhase(arguments[i], context);
-        out << "push dword [ebp + " << phase << "]\n";
+void CompileFunctionCall(struct FunctionCall *this, FILE *out, struct CPContext *context) {
+    int sz1 = get_size_string(this->arguments);
+    for (int i = sz1 - 1; i >= 0; i--) {
+        int phase = findPhase(this->arguments[i], context);
+        fprintf(out, "push qword [rbp + %d]\n", phase);
     }
-    for (int i = (int)metavariables.size() - 1; i >= 0; i--) {
-        metavariables[i].second->Compile(out, context);
-        out << "push dword [esp - 4]\n";
+    int sz2 = get_size_string(this->metavariable_name);
+    for (int i = sz2 - 1; i >= 0; i--) {
+        CompileNode(this->metavariable_value[i], out, context);
+        fprintf(out, "push qword [rsp - 8]\n");
     }
-    int idx = findFunctionIndex(identifier, context);
+    int idx = findFunctionIndex(this->identifier, context);
     if (idx == -1) {
-        out << "call " << identifier << "\n";
+        fprintf(out, "call %s\n", this->identifier);
     }
     else {
-        out << "call _fun" << idx << "\n";
+        char *str = to_string(idx);
+        fprintf(out, "call _fun%s\n", str);
+        _free(str);
     }
-    out << "add esp, " << (int)(arguments.size() + metavariables.size()) * 4 << "\n";
-    for (int i = (int)arguments.size() - 1; i >= 0; i--) {
-        int phase = findPhase(arguments[i], context);
-        out << "mov eax, [esp - " << (((int)arguments.size() - i) * 4) << "]\n";
-        out << "mov [ebp + " << phase << "], eax\n";
+    fprintf(out, "add rsp, %d\n", (sz1 + sz2) * 8);
+    for (int i = sz1 - 1; i >= 0; i--) {
+        int phase = findPhase(this->arguments[i], context);
+        fprintf(out, "mov rax, [rsp - %d]\n", (sz1 - i) * 8);
+        fprintf(out, "mov [rbp + %d], rax\n", phase);
     }
 }
 
-void Dereference::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> dereference\n";
-    arg->Compile(out, context);
-    out << "mov eax, [esp - 4]\n";
-    out << "mov ebx, [eax]\n";
-    out << "mov [esp - 4], ebx\n";
+void CompileDereference(struct Dereference *this, FILE *out, struct CPContext *context) {
+    CompileNode(this->expression, out, context);
+    fprintf(out, "mov rax, [rsp - 8]\n");
+    fprintf(out, "mov rbx, [rax]\n");
+    fprintf(out, "mov [rsp - 8], rbx\n");
 }
 
-void Addition::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> addition\n";
-    left->Compile(out, context);
-    out << "sub esp, 4\n";
-    context.variable_stack.push_back("__junk");
-    right->Compile(out, context);
-    out << "add esp, 4\n";
-    context.variable_stack.pop_back();
-    out << "mov eax, [esp - 4]\n";
-    out << "add eax, [esp - 8]\n";
-    out << "mov [esp - 4], eax\n";
+void CompileAddition(struct Addition *this, FILE *out, struct CPContext *context) {
+    CompileNode(this->left, out, context);
+    fprintf(out, "sub rsp, 8\n");
+    const char *identifier = "__junk";
+    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    CompileNode(this->right, out, context);
+    fprintf(out, "add rsp, 8\n");
+    context->variable_stack = pop_back_string(context->variable_stack);
+    fprintf(out, "mov rax, [rsp - 8]\n");
+    fprintf(out, "add rax, [rsp - 16]\n");
+    fprintf(out, "mov [rsp - 8], rax\n");
 }
 
-void Subtraction::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> subtraction\n";
-    left->Compile(out, context);
-    out << "sub esp, 4\n";
-    context.variable_stack.push_back("__junk");
-    right->Compile(out, context);
-    out << "add esp, 4\n";
-    context.variable_stack.pop_back();
-    out << "mov eax, [esp - 4]\n";
-    out << "sub eax, [esp - 8]\n";
-    out << "mov [esp - 4], eax\n";
+void CompileSubtraction(struct Subtraction *this, FILE *out, struct CPContext *context) {
+    CompileNode(this->left, out, context);
+    fprintf(out, "sub rsp, 8\n");
+    const char *identifier = "__junk";
+    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    CompileNode(this->right, out, context);
+    fprintf(out, "add rsp, 8\n");
+    context->variable_stack = pop_back_string(context->variable_stack);
+    fprintf(out, "mov rax, [rsp - 8]\n");
+    fprintf(out, "sub rax, [rsp - 16]\n");
+    fprintf(out, "mov [rsp - 8], rax\n");
 }
 
-void Multiplication::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> multiplication\n";
-    left->Compile(out, context);
-    out << "sub esp, 4\n";
-    context.variable_stack.push_back("__junk");
-    right->Compile(out, context);
-    out << "add esp, 4\n";
-    context.variable_stack.pop_back();
-    out << "mov eax, [esp - 4]\n";
-    out << "mov edx, [esp - 8]\n";
-    out << "mul edx\n";
-    out << "mov [esp - 4], eax\n";
+void CompileMultiplication(struct Multiplication *this, FILE *out, struct CPContext *context) {
+    CompileNode(this->left, out, context);
+    fprintf(out, "sub rsp, 8\n");
+    const char *identifier = "__junk";
+    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    CompileNode(this->right, out, context);
+    fprintf(out, "add rsp, 8\n");
+    context->variable_stack = pop_back_string(context->variable_stack);
+    fprintf(out, "mov rax, [rsp - 8]\n");
+    fprintf(out, "mov rdx, [rsp - 16]\n");
+    fprintf(out, "mul rdx\n");
+    fprintf(out, "mov [rsp - 8], rax\n");
 }
 
-void Division::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> division\n";
-    left->Compile(out, context);
-    out << "sub esp, 4\n";
-    context.variable_stack.push_back("__junk");
-    right->Compile(out, context);
-    out << "add esp, 4\n";
-    context.variable_stack.pop_back();
-    out << "mov eax, [esp - 4]\n";
-    out << "mov edx, 0\n";
-    out << "div dword [esp - 8]\n";
-    out << "mov [esp - 4], eax\n";
+void CompileDivision(struct Division *this, FILE *out, struct CPContext *context) {
+    CompileNode(this->left, out, context);
+    fprintf(out, "sub rsp, 8\n");
+    const char *identifier = "__junk";
+    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    CompileNode(this->right, out, context);
+    fprintf(out, "add rsp, 8\n");
+    context->variable_stack = pop_back_string(context->variable_stack);
+    fprintf(out, "mov rax, [rsp - 8]\n");
+    fprintf(out, "mov rdx, 0\n");
+    fprintf(out, "div qword [rsp - 16]\n");
+    fprintf(out, "mov [rsp - 8], rax\n");
 }
 
-void Less::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> less\n";
-    left->Compile(out, context);
-    out << "sub esp, 4\n";
-    context.variable_stack.push_back("__junk");
-    right->Compile(out, context);
-    out << "add esp, 4\n";
-    context.variable_stack.pop_back();
-    out << "mov eax, [esp - 4]\n";
-    out << "sub eax, [esp - 8]\n";
-    int idx = context.branch_index++;
-    out << "jl " << "_set1_" << idx << "\n";
-    out << "mov [esp - 4], dword 0\n";
-    out << "jmp _setend" << idx << "\n";
-    out << "_set1_" << idx << ":\n";
-    out << "mov [esp - 4], dword 1\n";
-    out << "_setend" << idx << ":\n";
+void CompileLess(struct Less *this, FILE *out, struct CPContext *context) {
+    CompileNode(this->left, out, context);
+    fprintf(out, "sub rsp, 8\n");
+    const char *identifier = "__junk";
+    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    CompileNode(this->right, out, context);
+    fprintf(out, "add rsp, 8\n");
+    context->variable_stack = pop_back_string(context->variable_stack);
+    fprintf(out, "mov rax, [rsp - 8]\n");
+    fprintf(out, "sub rax, [rsp - 16]");
+    int idx = context->branch_index;
+    context->branch_index++;
+    fprintf(out, "jl _set1_%d\n", idx);
+    fprintf(out, "mov [rsp - 8], qword 0\n");
+    fprintf(out, "jmp _setend%d\n", idx);
+    fprintf(out, "_set1_%d:\n", idx);
+    fprintf(out, "mov [rsp - 8], qword 1\n");
+    fprintf(out, "_setend%d:\n", idx);
 }
 
-void Equal::Compile(std::ostream &out, CPContext &context) {
-    out << "; " << filename << " " << line_begin + 1 << ":" << position_begin + 1 << " -> equal\n";
-    left->Compile(out, context);
-    out << "sub esp, 4\n";
-    context.variable_stack.push_back("__junk");
-    right->Compile(out, context);
-    out << "add esp, 4\n";
-    context.variable_stack.pop_back();
-    out << "mov eax, [esp - 4]\n";
-    out << "sub eax, [esp - 8]\n";
-    int idx = context.branch_index++;
-    out << "jz " << "_set1_" << idx << "\n";
-    out << "mov [esp - 4], dword 0\n";
-    out << "jmp _setend" << idx << "\n";
-    out << "_set1_" << idx << ":\n";
-    out << "mov [esp - 4], dword 1\n";
-    out << "_setend" << idx << ":\n";
-}*/
+void CompileEqual(struct Equal *this, FILE *out, struct CPContext *context) {
+    CompileNode(this->left, out, context);
+    fprintf(out, "sub rsp, 8\n");
+    const char *identifier = "__junk";
+    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    CompileNode(this->right, out, context);
+    fprintf(out, "add rsp, 8\n");
+    context->variable_stack = pop_back_string(context->variable_stack);
+    fprintf(out, "mov rax, [rsp - 8]\n");
+    fprintf(out, "sub rax, [rsp - 16]");
+    int idx = context->branch_index;
+    context->branch_index++;
+    fprintf(out, "jz _set1_%d\n", idx);
+    fprintf(out, "mov [rsp - 8], qword 0\n");
+    fprintf(out, "jmp _setend%d\n", idx);
+    fprintf(out, "_set1_%d:\n", idx);
+    fprintf(out, "mov [rsp - 8], qword 1\n");
+    fprintf(out, "_setend%d:\n", idx);
+}
 
 void CompileNode(struct Node *node, FILE *out, struct CPContext *context) {
+    fprintf(out, "; %s %d:%d -> ", node->filename, node->line_begin + 1, node->position_begin + 1);
     if (node->node_type == NodeBlock) {
-        CompileBlock(node, out, context);
-    }
-    else if (node->node_type == NodeDefinition) {
-        CompileDefinition(node, out, context);
-    }
-    else if (node->node_type == NodeAssignment) {
-        CompileAssignment(node, out, context);
-    }
-    else if (node->node_type == NodeMovement) {
-        CompileMovement(node, out, context);
+        fprintf(out, "block\n");
+        CompileBlock((struct Block*)node->node_ptr, out, context);
     }
     else if (node->node_type == NodeAsm) {
-        CompileAsm(node, out, context);
+        fprintf(out, "asm\n");
+        CompileAsm((struct Asm*)node->node_ptr, out, context);
     }
     else if (node->node_type == NodeIf) {
-        CompileIf(node, out, context);
+        fprintf(out, "if\n");
+        CompileIf((struct If*)node->node_ptr, out, context);
     }
     else if (node->node_type == NodeWhile) {
-        CompileWhile(node, out, context);
+        fprintf(out, "while\n");
+        CompileWhile((struct While*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeFunctionDefinition) {
+        fprintf(out, "function definition\n");
+        CompileFunctionDefinition((struct FunctionDefinition*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodePrototype) {
+        fprintf(out, "prototype\n");
+        CompilePrototype((struct Prototype*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeDefinition) {
+        fprintf(out, "definition\n");
+        CompileDefinition((struct Definition*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeAssignment) {
+        fprintf(out, "assignment\n");
+        CompileAssignment((struct Assignment*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeMovement) {
+        fprintf(out, "movement\n");
+        CompileMovement((struct Movement*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeMovementString) {
+        fprintf(out, "movement string\n");
+        CompileMovementString((struct MovementString*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeAssumption) {
+        fprintf(out, "assumption\n");
+        char *error = (char*)_malloc(1000);
+        snprintf(error, 1000, "Assumption fault in file %s on line %d position %d", node->filename, node->line_begin + 1, node->position_begin + 1);
+        CompileAssumption((struct Assumption*)node->node_ptr, out, context, error);
+    }
+    else if (node->node_type == NodeIdentifier) {
+        fprintf(out, "identifier\n");
+        CompileIdentifier((struct Identifier*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeInteger) {
+        fprintf(out, "integer\n");
+        CompileInteger((struct Integer*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeAlloc) {
+        fprintf(out, "alloc\n");
+        CompileAlloc((struct Alloc*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeFree) {
+        fprintf(out, "free\n");
+        CompileFree((struct Free*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeFunctionCall) {
+        fprintf(out, "function call\n");
+        CompileFunctionCall((struct FunctionCall*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeDereference) {
+        fprintf(out, "dereference\n");
+        CompileDereference((struct Dereference*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeAddition) {
+        fprintf(out, "addition\n");
+        CompileAddition((struct Addition*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeSubtraction) {
+        fprintf(out, "subtraction\n");
+        CompileSubtraction((struct Subtraction*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeMultiplication) {
+        fprintf(out, "multiplication\n");
+        CompileMultiplication((struct Multiplication*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeDivision) {
+        fprintf(out, "division\n");
+        CompileDivision((struct Division*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeLess) {
+        fprintf(out, "less\n");
+        CompileLess((struct Less*)node->node_ptr, out, context);
+    }
+    else if (node->node_type == NodeEqual) {
+        fprintf(out, "equal\n");
+        CompileEqual((struct Equal*)node->node_ptr, out, context);
     }
 }

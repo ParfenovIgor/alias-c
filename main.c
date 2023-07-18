@@ -52,22 +52,22 @@ int main(int argc, char *argv[]) {
         struct Settings *settings = BuildSettings();
         for (int i = 1; i < argc; i++) {
             const char *arg = argv[i];
-            if (strcmp(arg, "-s") == 0) {
+            if (_strcmp(arg, "-s") == 0) {
                 settings->states = true;
             }
-            else if(strcmp(arg, "-c") == 0) {
+            else if(_strcmp(arg, "-c") == 0) {
                 settings->compile = true;
             }
-            else if(strcmp(arg, "-a") == 0) {
+            else if(_strcmp(arg, "-a") == 0) {
                 settings->assemble = true;
             }
-            else if (strcmp(arg, "-l") == 0) {
+            else if (_strcmp(arg, "-l") == 0) {
                 settings->link = true;
             }
-            else if (strcmp(arg, "-m") == 0) {
+            else if (_strcmp(arg, "-m") == 0) {
                 settings->topMain = true;
             }
-            else if (strcmp(arg, "-o") == 0) {
+            else if (_strcmp(arg, "-o") == 0) {
                 if (i + 1 == argc) {
                     print_string("Filename has to be specified after -o flag");
                     return 1;

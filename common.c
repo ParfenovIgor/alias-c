@@ -26,7 +26,7 @@ void print_int(int n) {
     printf("%d", n);
 }
 
-char *strcpy(char *a, char *b) {
+char *_strcpy(char *a, char *b) {
     for (int i = 0; ; i++) {
         a[i] = b[i];
         if (b[i] == '\0') {
@@ -37,7 +37,7 @@ char *strcpy(char *a, char *b) {
 }
 
 char *_strdup(const char *a) {
-    int sz = strlen(a);
+    int sz = _strlen(a);
     char *b = (char*)_malloc(sz + 1);
     for (int i = 0; i < sz; i++) {
         b[i] = a[i];
@@ -47,7 +47,7 @@ char *_strdup(const char *a) {
 }
 
 char *_strndup(const char *a, int n) {
-    int sz = strlen(a);
+    int sz = _strlen(a);
     if (n < sz) sz = n;
     char *b = (char*)malloc(sz + 1);
     for (int i = 0; i < sz; i++) {
@@ -57,7 +57,7 @@ char *_strndup(const char *a, int n) {
     return b;
 }
 
-int strcmp(const char *a, const char *b) {
+int _strcmp(const char *a, const char *b) {
     for (int i = 0; ; i++) {
         if (a[i] < b[i]) {
             return -1;
@@ -71,7 +71,7 @@ int strcmp(const char *a, const char *b) {
     }
 }
 
-long unsigned int strlen(const char *a) {
+int _strlen(const char *a) {
     for (int i = 0; ; i++) {
         if (a[i] == '\0') {
             return i;
@@ -80,8 +80,8 @@ long unsigned int strlen(const char *a) {
 }
 
 char *concat(const char *a, const char *b) {
-    int s_a = strlen(a);
-    int s_b = strlen(b);
+    int s_a = _strlen(a);
+    int s_b = _strlen(b);
     char *c = (char*)malloc(s_a + s_b + 1);
     for (int i = 0; i < s_a; i++) {
         c[i] = a[i];
@@ -94,7 +94,7 @@ char *concat(const char *a, const char *b) {
 }
 
 const char *substr(const char *a, int n) {
-    int m = strlen(a);
+    int m = _strlen(a);
     if (m <= n) {
         n = m;
     }

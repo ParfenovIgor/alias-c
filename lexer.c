@@ -19,8 +19,8 @@ bool is_digit(char c) {
 }
 
 bool is_reserved_word(const char *str, const char *word, int i) {
-    int n = strlen(str);
-    int m = strlen(word);
+    int n = _strlen(str);
+    int m = _strlen(word);
     if (i + m <= n) {
         for (int j = 0; j < m; j++) {
             if (str[i + j] != word[j]) {
@@ -38,8 +38,8 @@ bool is_reserved_word(const char *str, const char *word, int i) {
 }
 
 bool is_operator(const char *str, const char *word, int i) {
-    int n = strlen(str);
-    int m = strlen(word);
+    int n = _strlen(str);
+    int m = _strlen(word);
     if (i + m <= n) {
         for (int j = 0; j < m; j++) {
             if (str[i + j] != word[j]) {
@@ -52,9 +52,9 @@ bool is_operator(const char *str, const char *word, int i) {
 }
 
 char *string_push_back(char *a, char x) {
-    int sz = strlen(a);
+    int sz = _strlen(a);
     char *b = (char*)_malloc(sz + 2);
-    strcpy(b, a);
+    _strcpy(b, a);
     _free(a);
     b[sz] = x;
     b[sz + 1] = '\0';
@@ -97,7 +97,7 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
     token_stream->stream_size = 0;
     token_stream->stream = NULL;
     int line = 0, position = 0;
-    int N = strlen(str);
+    int N = _strlen(str);
     for (int i = 0; i < N;) {
         if (is_reserved_word(str, "asm", i)) {
             int line_begin = line;

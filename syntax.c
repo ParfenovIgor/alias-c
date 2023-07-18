@@ -307,7 +307,7 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         node->node_type = NodeDereference;
         TokenStream_NextToken(ts);
         struct Node *_expression = Syntax_ProcessExpression(ts);
-        _dereference->arg = _expression;
+        _dereference->expression = _expression;
         node->line_end = _expression->line_end;
         node->position_end = _expression->position_end;
         return node;
