@@ -10,11 +10,11 @@ char *to_string(int n);
 void print_string(const char *str);
 void print_int(int n);
 
-char *strcpy(char *a, char *b);
+char *_strcpy(char *a, char *b);
 char *_strdup(const char *a);
 char *_strndup(const char *a, int n);
-int strcmp(const char *a, const char *b);
-long unsigned int strlen(const char *a);
+int _strcmp(const char *a, const char *b);
+int _strlen(const char *a);
 char *concat(const char *a, const char *b);
 const char *substr(const char *a, int n);
 

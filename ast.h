@@ -191,7 +191,7 @@ struct FunctionCall {
 };
 
 struct Dereference {
-    struct Node *arg;
+    struct Node *expression;
 };
 
 struct Addition {
