@@ -119,8 +119,8 @@ struct Node *process_operation(struct Node ***primaries, struct Token ***operati
     root->node_ptr = NULL;
     struct Token *token = get_back_token(*operations);
     int sz = get_size(*primaries);
-    struct Node *left = *primaries[sz - 2];
-    struct Node *right = *primaries[sz - 1];
+    struct Node *left = (*primaries)[sz - 2];
+    struct Node *right = (*primaries)[sz - 1];
     root->line_begin = left->line_begin;
     root->position_begin = left->position_begin;
     root->line_end = right->line_end;
@@ -355,6 +355,17 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
 
 struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts) {
     struct FunctionSignature *function_signature = (struct FunctionSignature*)_malloc(sizeof(struct FunctionSignature));
+    function_signature->identifiers = (const char**)_malloc(sizeof(const char*));
+    function_signature->identifiers[0] = NULL;
+    function_signature->types = (enum Type**)_malloc(sizeof(enum Type*));
+    function_signature->types[0] = NULL;
+    function_signature->size_in = (struct Node**)_malloc(sizeof(struct Node*));
+    function_signature->size_in[0] = NULL;
+    function_signature->size_out = (struct Node**)_malloc(sizeof(struct Node*));
+    function_signature->size_out[0] = NULL;
+    function_signature->is_const = (bool**)_malloc(sizeof(bool*));
+    function_signature->is_const[0] = NULL;
+
     while (true) {
         if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
             break;

@@ -79,6 +79,8 @@ void Compile(struct Node *node, FILE *out, struct Settings *settings) {
     context->variable_stack_type[0] = NULL;
     context->function_stack = (const char**)_malloc(sizeof(const char*));
     context->function_stack[0] = NULL;
+    context->function_stack_index = (int**)_malloc(sizeof(int*));
+    context->function_stack_index[0] = NULL;
 
     CompileNode(node, out, context);
     fprintf(out, "leave\n");
@@ -305,12 +307,12 @@ void CompileIdentifier(struct Identifier *this, FILE *out, struct CPContext *con
 }
 
 void CompileInteger(struct Integer *this, FILE *out, struct CPContext *context) {
-    fprintf(out, "mov [rsp - 8], qword %d\n", this->value);
+    fprintf(out, "mov [rsp - 8], dword %d\n", this->value);
 }
 
 void CompileAlloc(struct Alloc *this, FILE *out, struct CPContext *context) {
     CompileNode(this->expression, out, context);
-    fprintf(out, "push qword [rsp - 8]\n");
+    fprintf(out, "push dword [rsp - 8]\n");
     fprintf(out, "call malloc\n");
     fprintf(out, "add rsp, 8\n");
     fprintf(out, "mov [rsp - 8], rax\n");
@@ -318,7 +320,7 @@ void CompileAlloc(struct Alloc *this, FILE *out, struct CPContext *context) {
 
 void CompileFree(struct Free *this, FILE *out, struct CPContext *context) {
     CompileNode(this->expression, out, context);
-    fprintf(out, "push qword [rsp - 8]\n");
+    fprintf(out, "push dword [rsp - 8]\n");
     fprintf(out, "call free\n");
     fprintf(out, "add rsp, 8\n");
 }
@@ -327,12 +329,12 @@ void CompileFunctionCall(struct FunctionCall *this, FILE *out, struct CPContext 
     int sz1 = get_size_string(this->arguments);
     for (int i = sz1 - 1; i >= 0; i--) {
         int phase = findPhase(this->arguments[i], context);
-        fprintf(out, "push qword [rbp + %d]\n", phase);
+        fprintf(out, "push dword [rbp + %d]\n", phase);
     }
     int sz2 = get_size_string(this->metavariable_name);
     for (int i = sz2 - 1; i >= 0; i--) {
         CompileNode(this->metavariable_value[i], out, context);
-        fprintf(out, "push qword [rsp - 8]\n");
+        fprintf(out, "push dword [rsp - 8]\n");
     }
     int idx = findFunctionIndex(this->identifier, context);
     if (idx == -1) {
@@ -408,7 +410,7 @@ void CompileDivision(struct Division *this, FILE *out, struct CPContext *context
     context->variable_stack = pop_back_string(context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "mov rdx, 0\n");
-    fprintf(out, "div qword [rsp - 16]\n");
+    fprintf(out, "div dword [rsp - 16]\n");
     fprintf(out, "mov [rsp - 8], rax\n");
 }
 
@@ -421,14 +423,14 @@ void CompileLess(struct Less *this, FILE *out, struct CPContext *context) {
     fprintf(out, "add rsp, 8\n");
     context->variable_stack = pop_back_string(context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
-    fprintf(out, "sub rax, [rsp - 16]");
+    fprintf(out, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
     context->branch_index++;
     fprintf(out, "jl _set1_%d\n", idx);
-    fprintf(out, "mov [rsp - 8], qword 0\n");
+    fprintf(out, "mov [rsp - 8], dword 0\n");
     fprintf(out, "jmp _setend%d\n", idx);
     fprintf(out, "_set1_%d:\n", idx);
-    fprintf(out, "mov [rsp - 8], qword 1\n");
+    fprintf(out, "mov [rsp - 8], dword 1\n");
     fprintf(out, "_setend%d:\n", idx);
 }
 
@@ -441,14 +443,14 @@ void CompileEqual(struct Equal *this, FILE *out, struct CPContext *context) {
     fprintf(out, "add rsp, 8\n");
     context->variable_stack = pop_back_string(context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
-    fprintf(out, "sub rax, [rsp - 16]");
+    fprintf(out, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
     context->branch_index++;
     fprintf(out, "jz _set1_%d\n", idx);
-    fprintf(out, "mov [rsp - 8], qword 0\n");
+    fprintf(out, "mov [rsp - 8], dword 0\n");
     fprintf(out, "jmp _setend%d\n", idx);
     fprintf(out, "_set1_%d:\n", idx);
-    fprintf(out, "mov [rsp - 8], qword 1\n");
+    fprintf(out, "mov [rsp - 8], dword 1\n");
     fprintf(out, "_setend%d:\n", idx);
 }
 
