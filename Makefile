@@ -5,3 +5,6 @@ all:
 
 test:
 	./calias test/main.al -m -l
+
+run:
+	./test/main
