@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 
-struct Node *Syntax_ProcessProgram(struct TokenStream *ts) {
+struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
     struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
     struct Block *block = (struct Block*)_malloc(sizeof(struct Block));
     node->node_ptr = block;
@@ -16,9 +16,12 @@ struct Node *Syntax_ProcessProgram(struct TokenStream *ts) {
     node->line_begin = TokenStream_GetToken(ts).line_begin;
     node->position_begin = TokenStream_GetToken(ts).position_begin;
     node->filename = _strdup(TokenStream_GetToken(ts).filename);
+    if (braces) {
+        TokenStream_NextToken(ts);
+    }
     while (TokenStream_GetToken(ts).type != TokenEof && TokenStream_GetToken(ts).type != TokenBraceClose) {
         if (TokenStream_GetToken(ts).type == TokenInclude) {
-            const char *filename = TokenStream_GetToken(ts).filename;
+            const char *filename = TokenStream_GetToken(ts).value_string;
             FILE *file = fopen(filename, "r");
             if (!file) {
                 const char *buffer = concat("Could not open file ", filename);
@@ -40,47 +43,7 @@ struct Node *Syntax_ProcessProgram(struct TokenStream *ts) {
             block->statement_list = push_back(block->statement_list, _statement);
         }
     }
-    node->line_end = TokenStream_GetToken(ts).line_end;
-    node->position_end = TokenStream_GetToken(ts).position_end;
-    return node;
-}
-
-struct Node *Syntax_ProcessBlock(struct TokenStream *ts) {
-    struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
-    struct Block *block = (struct Block*)_malloc(sizeof(struct Block));
-    node->node_ptr = block;
-    block->statement_list = (struct Node**)_malloc(sizeof(struct Node*));
-    block->statement_list[0] = NULL;
-    node->node_type = NodeBlock;
-    node->line_begin = TokenStream_GetToken(ts).line_begin;
-    node->position_begin = TokenStream_GetToken(ts).position_begin;
-    node->filename = _strdup(TokenStream_GetToken(ts).filename);
-    TokenStream_NextToken(ts);
-    while (TokenStream_GetToken(ts).type != TokenEof && TokenStream_GetToken(ts).type != TokenBraceClose) {
-        if (TokenStream_GetToken(ts).type == TokenInclude) {
-            const char *filename = TokenStream_GetToken(ts).filename;
-            FILE *file = fopen(filename, "r");
-            if (!file) {
-                const char *buffer = concat("Could not open file ", filename);
-                SyntaxError(buffer, TokenStream_GetToken(ts));
-            }
-            struct Node *_node = Parse(filename);
-            struct Block *inc_block = (struct Block*)_node->node_ptr;
-            struct Node **ptr = inc_block->statement_list;
-            while (*ptr != NULL) {
-                block->statement_list = push_back(block->statement_list, *ptr);
-                ptr++;
-            }
-            _free(inc_block->statement_list);
-            TokenStream_NextToken(ts);
-            continue;
-        }
-        struct Node *_statement = Syntax_ProcessStatement(ts);
-        if (_statement) {
-            block->statement_list = push_back(block->statement_list, _statement);
-        }
-    }
-    if (TokenStream_GetToken(ts).type != TokenBraceClose) {
+    if (braces && TokenStream_GetToken(ts).type != TokenBraceClose) {
         SyntaxError("} expected after block", TokenStream_GetToken(ts));
     }
     node->line_end = TokenStream_GetToken(ts).line_end;
@@ -468,7 +431,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         return NULL;
     }
     if (TokenStream_GetToken(ts).type == TokenBraceOpen) {
-        struct Node *node = Syntax_ProcessBlock(ts);
+        struct Node *node = Syntax_ProcessBlock(ts, true);
         TokenStream_NextToken(ts);
         return node;
     }
@@ -512,7 +475,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
             SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
         }
-        struct Node *_block = Syntax_ProcessBlock(ts);
+        struct Node *_block = Syntax_ProcessBlock(ts, true);
         _if->condition_list = push_back(_if->condition_list, _expression);
         _if->block_list = push_back(_if->block_list, _block);
         node->line_end = TokenStream_GetToken(ts).line_end;
@@ -524,7 +487,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
             if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
                 SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
             }
-            struct Node *_block = Syntax_ProcessBlock(ts);
+            struct Node *_block = Syntax_ProcessBlock(ts, true);
             _if->else_block = _block;
             node->line_end = TokenStream_GetToken(ts).line_end;
             node->position_end = TokenStream_GetToken(ts).position_end;
@@ -554,7 +517,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
             SyntaxError("{ expected in while block", TokenStream_GetToken(ts));
         }
-        struct Node *_block = Syntax_ProcessBlock(ts);
+        struct Node *_block = Syntax_ProcessBlock(ts, true);
         _while->condition = _expression;
         _while->block = _block;
         node->line_end = TokenStream_GetToken(ts).line_end;
@@ -600,7 +563,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
             SyntaxError("{ expected in function block", TokenStream_GetToken(ts));
         }
-        function_definition->block = Syntax_ProcessBlock(ts);
+        function_definition->block = Syntax_ProcessBlock(ts, true);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
         TokenStream_NextToken(ts);
@@ -728,6 +691,12 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
     if (TokenStream_GetToken(ts).type == TokenCall) {
         struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
         struct FunctionCall *function_call = (struct FunctionCall*)_malloc(sizeof(struct FunctionCall));
+        function_call->arguments = (const char**)_malloc(sizeof(const char*));
+        function_call->arguments[0] = NULL;
+        function_call->metavariable_name = (const char**)_malloc(sizeof(const char*));
+        function_call->metavariable_name[0] = NULL;
+        function_call->metavariable_value = (struct Node**)_malloc(sizeof(struct Node*));
+        function_call->metavariable_value[0] = NULL;
         node->node_ptr = function_call;
         node->node_type = NodeFunctionCall;
         node->line_begin = TokenStream_GetToken(ts).line_begin;
@@ -846,5 +815,5 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
 
 struct Node *Syntax_Process(struct TokenStream *token_stream) {
     token_stream->pos = 0;
-    return Syntax_ProcessProgram(token_stream);
+    return Syntax_ProcessBlock(token_stream, false);
 }

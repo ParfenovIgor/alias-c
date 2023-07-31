@@ -4,7 +4,9 @@ all:
 .PHONY: test
 
 test:
-	./calias test/main.al -m -l
+	./calias test/main.al -m -a
+	gcc test/malloc.c -c -o test/malloc.o
+	ld test/main.o test/malloc.o -o test/main
 
 run:
 	./test/main

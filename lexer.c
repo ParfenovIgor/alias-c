@@ -86,7 +86,7 @@ int get_int_value(const char *str, int l, int r) {
         l++;
     }
     for (int i = l; i <= r; i++) {
-        res = res * 10 + (int)str[i];
+        res = res * 10 + (int)(str[i] - '0');
     }
     res *= sign;
     return res;

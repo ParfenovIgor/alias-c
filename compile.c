@@ -60,6 +60,7 @@ void Compile(struct Node *node, FILE *out, struct Settings *settings) {
     fprintf(out, "; %s %d:%d -> program\n", node->filename, node->line_begin + 1, node->position_begin + 1);
     fprintf(out, "global _start\n");
     fprintf(out, "global main\n");
+    fprintf(out, "extern malloc\n");
     fprintf(out, "section .text\n");
     fprintf(out, "_start:\n");
     fprintf(out, "call main\n");
@@ -81,6 +82,8 @@ void Compile(struct Node *node, FILE *out, struct Settings *settings) {
     context->function_stack[0] = NULL;
     context->function_stack_index = (int**)_malloc(sizeof(int*));
     context->function_stack_index[0] = NULL;
+    context->function_index = 0;
+    context->branch_index = 0;
 
     CompileNode(node, out, context);
     fprintf(out, "leave\n");
@@ -115,7 +118,7 @@ void CompileIf(struct If *this, FILE *out, struct CPContext *context) {
     CompileNode(this->condition_list[0], out, context);
     int idx = context->branch_index;
     context->branch_index++;
-    fprintf(out, "cmp [rsp - 8], dword 0\n");
+    fprintf(out, "cmp qword [rsp - 8], 0\n");
     fprintf(out, "je _if_else%d\n", idx);
     CompileNode(this->block_list[0], out, context);
     fprintf(out, "jmp _if_end%d\n", idx);
@@ -131,7 +134,7 @@ void CompileWhile(struct While *this, FILE *out, struct CPContext *context) {
     context->branch_index++;
     fprintf(out, "_while%d:\n", idx);
     CompileNode(this->condition, out, context);
-    fprintf(out, "cmp [rsp - 8], dword 0\n");
+    fprintf(out, "cmp qword [rsp - 8], 0\n");
     fprintf(out, "je _while_end%d\n", idx);
     CompileNode(this->block, out, context);
     fprintf(out, "jmp _while%d\n", idx);
@@ -282,6 +285,7 @@ void CompileAssumption(struct Assumption *this, FILE *out, struct CPContext *con
 
     idx = context->branch_index;
     context->branch_index++;
+    CompileNode(this->right, out, context);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "sub rax, [rbp + %d]\n", phase);
     fprintf(out, "jl _set1_%d\n", idx);
@@ -307,12 +311,12 @@ void CompileIdentifier(struct Identifier *this, FILE *out, struct CPContext *con
 }
 
 void CompileInteger(struct Integer *this, FILE *out, struct CPContext *context) {
-    fprintf(out, "mov [rsp - 8], dword %d\n", this->value);
+    fprintf(out, "mov qword [rsp - 8], %d\n", this->value);
 }
 
 void CompileAlloc(struct Alloc *this, FILE *out, struct CPContext *context) {
     CompileNode(this->expression, out, context);
-    fprintf(out, "push dword [rsp - 8]\n");
+    fprintf(out, "push qword [rsp - 8]\n");
     fprintf(out, "call malloc\n");
     fprintf(out, "add rsp, 8\n");
     fprintf(out, "mov [rsp - 8], rax\n");
@@ -320,7 +324,7 @@ void CompileAlloc(struct Alloc *this, FILE *out, struct CPContext *context) {
 
 void CompileFree(struct Free *this, FILE *out, struct CPContext *context) {
     CompileNode(this->expression, out, context);
-    fprintf(out, "push dword [rsp - 8]\n");
+    fprintf(out, "push qword [rsp - 8]\n");
     fprintf(out, "call free\n");
     fprintf(out, "add rsp, 8\n");
 }
@@ -329,12 +333,12 @@ void CompileFunctionCall(struct FunctionCall *this, FILE *out, struct CPContext 
     int sz1 = get_size_string(this->arguments);
     for (int i = sz1 - 1; i >= 0; i--) {
         int phase = findPhase(this->arguments[i], context);
-        fprintf(out, "push dword [rbp + %d]\n", phase);
+        fprintf(out, "push qword [rbp + %d]\n", phase);
     }
     int sz2 = get_size_string(this->metavariable_name);
     for (int i = sz2 - 1; i >= 0; i--) {
         CompileNode(this->metavariable_value[i], out, context);
-        fprintf(out, "push dword [rsp - 8]\n");
+        fprintf(out, "push qword [rsp - 8]\n");
     }
     int idx = findFunctionIndex(this->identifier, context);
     if (idx == -1) {
@@ -410,7 +414,7 @@ void CompileDivision(struct Division *this, FILE *out, struct CPContext *context
     context->variable_stack = pop_back_string(context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "mov rdx, 0\n");
-    fprintf(out, "div dword [rsp - 16]\n");
+    fprintf(out, "div qword [rsp - 16]\n");
     fprintf(out, "mov [rsp - 8], rax\n");
 }
 
@@ -427,10 +431,10 @@ void CompileLess(struct Less *this, FILE *out, struct CPContext *context) {
     int idx = context->branch_index;
     context->branch_index++;
     fprintf(out, "jl _set1_%d\n", idx);
-    fprintf(out, "mov [rsp - 8], dword 0\n");
+    fprintf(out, "mov qword [rsp - 8], 0\n");
     fprintf(out, "jmp _setend%d\n", idx);
     fprintf(out, "_set1_%d:\n", idx);
-    fprintf(out, "mov [rsp - 8], dword 1\n");
+    fprintf(out, "mov qword [rsp - 8], 1\n");
     fprintf(out, "_setend%d:\n", idx);
 }
 
@@ -447,10 +451,10 @@ void CompileEqual(struct Equal *this, FILE *out, struct CPContext *context) {
     int idx = context->branch_index;
     context->branch_index++;
     fprintf(out, "jz _set1_%d\n", idx);
-    fprintf(out, "mov [rsp - 8], dword 0\n");
+    fprintf(out, "mov qword [rsp - 8], 0\n");
     fprintf(out, "jmp _setend%d\n", idx);
     fprintf(out, "_set1_%d:\n", idx);
-    fprintf(out, "mov [rsp - 8], dword 1\n");
+    fprintf(out, "mov qword [rsp - 8], 1\n");
     fprintf(out, "_setend%d:\n", idx);
 }
 
