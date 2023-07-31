@@ -3,6 +3,13 @@
 #include <stdlib.h>
 
 char *to_string(int n) {
+    if (n == 0) {
+        char *str = (char*)_malloc(sizeof(char) * 2);
+        str[0] = '0';
+        str[1] = '\0';
+        return str;
+    }
+
     int len = 0;
     int m = n;
     while (m) {
@@ -10,6 +17,8 @@ char *to_string(int n) {
         m /= 10;
     }
     char *str = (char*)_malloc(sizeof(char) * (len + 1));
+    str[0] = '\0';
+    len--;
     while (n) {
         str[len] = (char)(n % 10 + '0');
         n /= 10;
