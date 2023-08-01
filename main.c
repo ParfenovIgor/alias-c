@@ -1,6 +1,7 @@
 #include "common.h"
 #include "process.h"
 #include "settings.h"
+#include "posix.h"
 #include <unistd.h>
 #include <stdio.h>
 
@@ -13,34 +14,6 @@ void help() {
     print_string("  -l        Compile, assemble and link program using gcc to executable file.\n");
     print_string("  -m        Enable top level main function.\n");
     print_string("  -o        Set output file name. File name has to follow this flag.\n");
-}
-
-void test() {
-    unsigned long long pid = -1;
-    asm("mov $0x39, %%rax\n"
-        "syscall\n"
-        "mov %%rax, %0\n"
-        : "=r"(pid));
-    if (pid == 0) {
-        const char *filename = "./aba";
-        asm("mov $0x3b, %%rax\n"
-            "mov %0, %%rdi\n"
-            "mov $0, %%rsi\n"
-            "mov $0, %%rdx\n"
-            "syscall\n"
-            :
-            : "r"(filename)
-            : "%rax", "%rdi", "%rsi", "%rdx");
-    }
-    asm("mov $0x3d, %%rax\n"
-        "mov %0, %%rdi\n"
-        "mov $0, %%rsi\n"
-        "mov $0, %%rdx\n"
-        "mov $0, %%r10\n"
-        "syscall\n"
-        :
-        : "r"(pid)
-        : "%rax", "%rdi", "%rsi", "%rdx", "%r10");
 }
 
 int main(int argc, char *argv[]) {

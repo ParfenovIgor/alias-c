@@ -4,12 +4,8 @@
 #include "settings.h"
 #include "vector.h"
 
-const char **push_back_string(const char **a, const char *str);
-const char **pop_back_string(const char **a);
-int get_size_string(const char **a);
-
 int findInLocal(const char *identifier, struct CPContext *context) {
-    int sz = get_size_string(context->variable_stack);
+    int sz = get_size((void**)context->variable_stack);
     for (int i = sz - 1; i >= 0; i--) {
         if (_strcmp(context->variable_stack[i], identifier) == 0) {
             return i;
@@ -19,7 +15,7 @@ int findInLocal(const char *identifier, struct CPContext *context) {
 }
 
 int findInArguments(const char *identifier, struct CPContext *context) {
-    int sz = get_size_string(context->variable_arguments);
+    int sz = get_size((void**)context->variable_arguments);
     for (int i = 0; i < sz; i++) {
         if (_strcmp(context->variable_arguments[i], identifier) == 0) {
             return i;
@@ -29,7 +25,7 @@ int findInArguments(const char *identifier, struct CPContext *context) {
 }
 
 int findFunctionIndex(const char *identifier, struct CPContext *context) {
-    int sz = get_size_string(context->function_stack);
+    int sz = get_size((void**)context->function_stack);
     for (int i = sz - 1; i >= 0; i--) {
         if (_strcmp(context->function_stack[i], identifier) == 0) {
             return *context->function_stack_index[i];
@@ -92,21 +88,21 @@ void Compile(struct Node *node, FILE *out, struct Settings *settings) {
 
 void CompileBlock(struct Block *this, FILE *out, struct CPContext *context) {
     struct Node **statement = this->statement_list;
-    int old_variable_stack_size = get_size_string(context->variable_stack);
-    int old_function_stack_size = get_size_string(context->function_stack);
+    int old_variable_stack_size = get_size((void**)context->variable_stack);
+    int old_function_stack_size = get_size((void**)context->function_stack);
     while (*statement != NULL) {
         CompileNode(*statement, out, context);
         statement++;
     }
-    int variable_stack_size = get_size_string(context->variable_stack);
-    int function_stack_size = get_size_string(context->function_stack);
+    int variable_stack_size = get_size((void**)context->variable_stack);
+    int function_stack_size = get_size((void**)context->function_stack);
     fprintf(out, "add rsp, %d\n", 8 * (variable_stack_size - old_variable_stack_size));
     for (int i = 0; i < variable_stack_size - old_variable_stack_size; i++) {
-        context->variable_stack = pop_back_string(context->variable_stack);
-        context->variable_stack_type = pop_back_type(context->variable_stack_type);
+        context->variable_stack = (const char**)pop_back((void**)context->variable_stack);
+        context->variable_stack_type = (enum Type**)pop_back((void**)context->variable_stack_type);
     }
     for (int i = 0; i < function_stack_size - old_function_stack_size; i++) {
-        context->function_stack = pop_back_string(context->function_stack);
+        context->function_stack = (const char**)pop_back((void**)context->function_stack);
     }
 }
 
@@ -163,7 +159,7 @@ void CompileFunctionDefinition(struct FunctionDefinition *this, FILE *out, struc
     fprintf(out, "%s:\n", identifier);
     fprintf(out, "push rbp\n");
     fprintf(out, "mov rbp, rsp\n");
-    int sz = get_size_string(this->signature->identifiers);
+    int sz = get_size((void**)this->signature->identifiers);
     fprintf(out, "sub rsp, %d\n", (sz + 2) * 8);
 
     const char **variable_stack_tmp = context->variable_stack;
@@ -172,26 +168,26 @@ void CompileFunctionDefinition(struct FunctionDefinition *this, FILE *out, struc
     context->variable_stack[0] = NULL;
     context->variable_arguments = (const char**)_malloc(sizeof(const char*));
     context->variable_arguments[0] = NULL;
-    context->function_stack = push_back_string(context->function_stack, _strdup(this->name));
+    context->function_stack = (const char**)push_back((void**)context->function_stack, _strdup(this->name));
     int *index_ptr = (int*)_malloc(sizeof(int));
     *index_ptr = index;
-    context->function_stack_index = push_back_int(context->function_stack_index, index_ptr);
+    context->function_stack_index = (int**)push_back((void**)context->function_stack_index, index_ptr);
 
-    sz = get_size_string(this->metavariables);
+    sz = get_size((void**)this->metavariables);
     for (int i = 0; i < sz; i++) {
-        context->variable_arguments = push_back_string(context->variable_arguments, this->metavariables[i]);
+        context->variable_arguments = (const char**)push_back((void**)context->variable_arguments, (void*)this->metavariables[i]);
     }
-    sz = get_size_string(this->signature->identifiers);
+    sz = get_size((void**)this->signature->identifiers);
     for (int i = 0; i < sz; i++) {
-        context->variable_arguments = push_back_string(context->variable_arguments, this->signature->identifiers[i]);
+        context->variable_arguments = (const char**)push_back((void**)context->variable_arguments, (void*)this->signature->identifiers[i]);
     }
     CompileNode(this->block, out, context);
     
-    sz = get_size_string(context->variable_stack);
+    sz = get_size((void**)context->variable_stack);
     for (int i = 0; i < sz; i++) {
         _free((void*)context->variable_stack[i]);
     }
-    sz = get_size_string(context->variable_arguments);
+    sz = get_size((void**)context->variable_arguments);
     for (int i = 0; i < sz; i++) {
         _free((void*)context->variable_arguments[i]);
     }
@@ -206,17 +202,17 @@ void CompileFunctionDefinition(struct FunctionDefinition *this, FILE *out, struc
 
 void CompilePrototype(struct Prototype *this, FILE *out, struct CPContext *context) {
     fprintf(out, "extern %s\n", this->name);
-    context->function_stack = push_back_string(context->function_stack, _strdup(this->name));
+    context->function_stack = (const char**)push_back((void**)context->function_stack, _strdup(this->name));
     int *index_ptr = (int*)_malloc(sizeof(int));
     *index_ptr = -1;
-    context->function_stack_index = push_back_int(context->function_stack_index, index_ptr);
+    context->function_stack_index = (int**)push_back((void**)context->function_stack_index, index_ptr);
 }
 
 void CompileDefinition(struct Definition *this, FILE *out, struct CPContext *context) {
-    context->variable_stack = push_back_string(context->variable_stack, _strdup(this->identifier));
+    context->variable_stack = (const char**)push_back((void**)context->variable_stack, _strdup(this->identifier));
     enum Type *type = (enum Type*)_malloc(sizeof(int));
     *type = this->type;
-    context->variable_stack_type = push_back_type(context->variable_stack_type, type);
+    context->variable_stack_type = (enum Type**)push_back((void**)context->variable_stack_type, type);
     fprintf(out, "sub rsp, 8\n");
 }
 
@@ -330,12 +326,12 @@ void CompileFree(struct Free *this, FILE *out, struct CPContext *context) {
 }
 
 void CompileFunctionCall(struct FunctionCall *this, FILE *out, struct CPContext *context) {
-    int sz1 = get_size_string(this->arguments);
+    int sz1 = get_size((void**)this->arguments);
     for (int i = sz1 - 1; i >= 0; i--) {
         int phase = findPhase(this->arguments[i], context);
         fprintf(out, "push qword [rbp + %d]\n", phase);
     }
-    int sz2 = get_size_string(this->metavariable_name);
+    int sz2 = get_size((void**)this->metavariable_name);
     for (int i = sz2 - 1; i >= 0; i--) {
         CompileNode(this->metavariable_value[i], out, context);
         fprintf(out, "push qword [rsp - 8]\n");
@@ -368,10 +364,10 @@ void CompileAddition(struct Addition *this, FILE *out, struct CPContext *context
     CompileNode(this->left, out, context);
     fprintf(out, "sub rsp, 8\n");
     const char *identifier = "__junk";
-    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    context->variable_stack = (const char**)push_back((void**)context->variable_stack, (void*)identifier);
     CompileNode(this->right, out, context);
     fprintf(out, "add rsp, 8\n");
-    context->variable_stack = pop_back_string(context->variable_stack);
+    context->variable_stack = (const char**)pop_back((void**)context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "add rax, [rsp - 16]\n");
     fprintf(out, "mov [rsp - 8], rax\n");
@@ -381,10 +377,10 @@ void CompileSubtraction(struct Subtraction *this, FILE *out, struct CPContext *c
     CompileNode(this->left, out, context);
     fprintf(out, "sub rsp, 8\n");
     const char *identifier = "__junk";
-    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    context->variable_stack = (const char**)push_back((void**)context->variable_stack, (void*)identifier);
     CompileNode(this->right, out, context);
     fprintf(out, "add rsp, 8\n");
-    context->variable_stack = pop_back_string(context->variable_stack);
+    context->variable_stack = (const char**)pop_back((void**)context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "sub rax, [rsp - 16]\n");
     fprintf(out, "mov [rsp - 8], rax\n");
@@ -394,10 +390,10 @@ void CompileMultiplication(struct Multiplication *this, FILE *out, struct CPCont
     CompileNode(this->left, out, context);
     fprintf(out, "sub rsp, 8\n");
     const char *identifier = "__junk";
-    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    context->variable_stack = (const char**)push_back((void**)context->variable_stack, (void*)identifier);
     CompileNode(this->right, out, context);
     fprintf(out, "add rsp, 8\n");
-    context->variable_stack = pop_back_string(context->variable_stack);
+    context->variable_stack = (const char**)pop_back((void**)context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "mov rdx, [rsp - 16]\n");
     fprintf(out, "mul rdx\n");
@@ -408,10 +404,10 @@ void CompileDivision(struct Division *this, FILE *out, struct CPContext *context
     CompileNode(this->left, out, context);
     fprintf(out, "sub rsp, 8\n");
     const char *identifier = "__junk";
-    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    context->variable_stack = (const char**)push_back((void**)context->variable_stack, (void*)identifier);
     CompileNode(this->right, out, context);
     fprintf(out, "add rsp, 8\n");
-    context->variable_stack = pop_back_string(context->variable_stack);
+    context->variable_stack = (const char**)pop_back((void**)context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "mov rdx, 0\n");
     fprintf(out, "div qword [rsp - 16]\n");
@@ -422,10 +418,10 @@ void CompileLess(struct Less *this, FILE *out, struct CPContext *context) {
     CompileNode(this->left, out, context);
     fprintf(out, "sub rsp, 8\n");
     const char *identifier = "__junk";
-    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    context->variable_stack = (const char**)push_back((void**)context->variable_stack, (void*)identifier);
     CompileNode(this->right, out, context);
     fprintf(out, "add rsp, 8\n");
-    context->variable_stack = pop_back_string(context->variable_stack);
+    context->variable_stack = (const char**)pop_back((void**)context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
@@ -442,10 +438,10 @@ void CompileEqual(struct Equal *this, FILE *out, struct CPContext *context) {
     CompileNode(this->left, out, context);
     fprintf(out, "sub rsp, 8\n");
     const char *identifier = "__junk";
-    context->variable_stack = push_back_string(context->variable_stack, identifier);
+    context->variable_stack = (const char**)push_back((void**)context->variable_stack, (void*)identifier);
     CompileNode(this->right, out, context);
     fprintf(out, "add rsp, 8\n");
-    context->variable_stack = pop_back_string(context->variable_stack);
+    context->variable_stack = (const char**)pop_back((void**)context->variable_stack);
     fprintf(out, "mov rax, [rsp - 8]\n");
     fprintf(out, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
