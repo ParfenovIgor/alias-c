@@ -31,7 +31,7 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
             struct Block *inc_block = (struct Block*)_node->node_ptr;
             struct Node **ptr = inc_block->statement_list;
             while (*ptr != NULL) {
-                block->statement_list = push_back(block->statement_list, *ptr);
+                block->statement_list = (struct Node**)push_back((void**)block->statement_list, *ptr);
                 ptr++;
             }
             _free(inc_block->statement_list);
@@ -40,7 +40,7 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
         }
         struct Node *_statement = Syntax_ProcessStatement(ts);
         if (_statement) {
-            block->statement_list = push_back(block->statement_list, _statement);
+            block->statement_list = (struct Node**)push_back((void**)block->statement_list, _statement);
         }
     }
     if (braces && TokenStream_GetToken(ts).type != TokenBraceClose) {
@@ -80,8 +80,8 @@ int operation_priority(struct Token *operation) {
 struct Node *process_operation(struct Node ***primaries, struct Token ***operations) {
     struct Node *root = (struct Node*)_malloc(sizeof(struct Node));
     root->node_ptr = NULL;
-    struct Token *token = get_back_token(*operations);
-    int sz = get_size(*primaries);
+    struct Token *token = (struct Token*)get_back((void**)*operations);
+    int sz = get_size((void**)*primaries);
     struct Node *left = (*primaries)[sz - 2];
     struct Node *right = (*primaries)[sz - 1];
     root->line_begin = left->line_begin;
@@ -137,10 +137,10 @@ struct Node *process_operation(struct Node ***primaries, struct Token ***operati
         SyntaxError("Binary operator expected in expression", *token);
     }
 
-    *primaries = pop_back(*primaries);
-    *primaries = pop_back(*primaries);
-    *primaries = push_back(*primaries, root);
-    *operations = pop_back_token(*operations);
+    *primaries = (struct Node**)pop_back((void**)*primaries);
+    *primaries = (struct Node**)pop_back((void**)*primaries);
+    *primaries = (struct Node**)push_back((void**)*primaries, root);
+    *operations = (struct Token**)pop_back((void**)*operations);
     return root;
 }
 
@@ -161,19 +161,19 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
     enum State CurrentState;
     if (TokenStream_GetToken(ts).type == TokenParenthesisOpen) {
         struct Token token = TokenStream_GetToken(ts);
-        operations = push_back_token(operations, &token);
+        operations = (struct Token**)push_back((void**)operations,&token);
         TokenStream_NextToken(ts);
         ParenthesisLevel++;
         CurrentState = State_ParenthesisOpen;
     }
     else if (next_is_operation(ts)) {
         struct Token token = TokenStream_GetToken(ts);
-        operations = push_back_token(operations, &token);
+        operations = (struct Token**)push_back((void**)operations, &token);
         TokenStream_NextToken(ts);
         CurrentState = State_UnaryOperation;
     }
     else {
-        primaries = push_back(primaries, Syntax_ProcessPrimary(ts));
+        primaries = (struct Node**)push_back((void**)primaries, Syntax_ProcessPrimary(ts));
         CurrentState = State_Identifier;
     }
 
@@ -189,7 +189,7 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
                 SyntaxError("Unexpected ( in expression", TokenStream_GetToken(ts));
             }
             struct Token token = TokenStream_GetToken(ts);
-            operations = push_back_token(operations, &token);
+            operations = (struct Token**)push_back((void**)operations, &token);
             TokenStream_NextToken(ts);
             ParenthesisLevel++;
             CurrentState = State_ParenthesisOpen;
@@ -199,13 +199,13 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
                 CurrentState != State_ParenthesisOpen) {
                 SyntaxError("Unexpected ) in expression", TokenStream_GetToken(ts));
             }
-            while (*operations != NULL && get_back_token(operations)->type != TokenParenthesisOpen) {
+            while (*operations != NULL && ((struct Token*)get_back((void**)operations))->type != TokenParenthesisOpen) {
                 process_operation(&primaries, &operations);
             }
-            if (*operations == NULL || get_back_token(operations)->type != TokenParenthesisOpen) {
+            if (*operations == NULL || ((struct Token*)get_back((void*)operations))->type != TokenParenthesisOpen) {
                 SyntaxError("Unexpected ) in expression", TokenStream_GetToken(ts));
             }
-            operations = pop_back_token(operations);
+            operations = (struct Token**)pop_back((void**)operations);
             TokenStream_NextToken(ts);
             ParenthesisLevel--;
             CurrentState = State_ParenthesisClose;
@@ -216,20 +216,20 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
                 CurrentState == State_ParenthesisOpen) {
                 struct Token token = TokenStream_GetToken(ts);
                 while (*operations != NULL &&
-                    operation_priority(get_back_token(operations)) <= operation_priority(&token)) {
+                    operation_priority((struct Token*)get_back((void**)operations)) <= operation_priority(&token)) {
                     process_operation(&primaries, &operations);
                 }
-                operations = push_back_token(operations, &token);
+                operations = (struct Token**)push_back((void**)operations, &token);
                 TokenStream_NextToken(ts);
                 CurrentState = State_UnaryOperation;
             }
             else {
                 struct Token token = TokenStream_GetToken(ts);
                 while (*operations != NULL &&
-                    operation_priority(get_back_token(operations)) <= operation_priority(&token)) {
+                    operation_priority((struct Token*)get_back((void**)operations)) <= operation_priority(&token)) {
                     process_operation(&primaries, &operations);
                 }
-                operations = push_back_token(operations, &token);
+                operations = (struct Token**)push_back((void**)operations, &token);
                 TokenStream_NextToken(ts);
                 CurrentState = State_BinaryOperation;
             }
@@ -240,7 +240,7 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
                 CurrentState != State_ParenthesisOpen) {
                 SyntaxError("Unexpected identifier in expression", TokenStream_GetToken(ts));
             }
-            primaries = push_back(primaries, Syntax_ProcessPrimary(ts));
+            primaries = (struct Node**)push_back((void**)primaries, Syntax_ProcessPrimary(ts));
             CurrentState = State_Identifier;
         }
     }
@@ -249,7 +249,7 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
         process_operation(&primaries, &operations);
     }
 
-    if (get_size(primaries) != 1) {
+    if (get_size((void**)primaries) != 1) {
         SyntaxError("Incorrect expression", TokenStream_GetToken(ts));
     }
 
@@ -336,7 +336,7 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
         if (TokenStream_GetToken(ts).type != TokenIdentifier) {
             SyntaxError("Identifier expected in argument list", TokenStream_GetToken(ts));
         }
-        function_signature->identifiers = push_back_string(function_signature->identifiers, _strdup(TokenStream_GetToken(ts).value_string));
+        function_signature->identifiers = (const char**)push_back((void**)function_signature->identifiers, _strdup(TokenStream_GetToken(ts).value_string));
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenInt && TokenStream_GetToken(ts).type != TokenPtr) {
             SyntaxError("Type expected in argument list", TokenStream_GetToken(ts));
@@ -344,7 +344,7 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
         if (TokenStream_GetToken(ts).type == TokenInt) {
             enum Type *type = (enum Type*)_malloc(sizeof(enum Type));
             *type = TypeInt;
-            function_signature->types = push_back_type(function_signature->types, type);
+            function_signature->types = (enum Type**)push_back((void**)function_signature->types, type);
             TokenStream_NextToken(ts);
 
             bool *is_const = (bool*)_malloc(sizeof(bool));
@@ -355,19 +355,19 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
             else {
                 *is_const = false;
             }
-            function_signature->is_const = push_back_bool(function_signature->is_const, is_const);
+            function_signature->is_const = (bool**)push_back((void**)function_signature->is_const, is_const);
 
             struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
             size_in = 0;
-            function_signature->size_in = push_back(function_signature->size_in, size_in);
+            function_signature->size_in = (struct Node**)push_back((void**)function_signature->size_in, size_in);
             struct Node *size_out = (struct Node*)_malloc(sizeof(struct Node));
             size_out = 0;
-            function_signature->size_out = push_back(function_signature->size_out, size_out);
+            function_signature->size_out = (struct Node**)push_back((void**)function_signature->size_out, size_out);
         }
         else {
             enum Type *type = (enum Type*)_malloc(sizeof(enum Type));
             *type = TypePtr;
-            function_signature->types = push_back_type(function_signature->types, type);
+            function_signature->types = (enum Type**)push_back((void**)function_signature->types, type);
             TokenStream_NextToken(ts);
 
             bool *is_const = (bool*)_malloc(sizeof(bool));
@@ -378,18 +378,18 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
             else {
                 *is_const = false;
             }
-            function_signature->is_const = push_back_bool(function_signature->is_const, is_const);
+            function_signature->is_const = (bool**)push_back((void**)function_signature->is_const, is_const);
 
             struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
             size_in = Syntax_ProcessExpression(ts);
-            function_signature->size_in = push_back(function_signature->size_in, size_in);
+            function_signature->size_in = (struct Node**)push_back((void**)function_signature->size_in, size_in);
             if (TokenStream_GetToken(ts).type == TokenColon) {
                 SyntaxError(": expected in argument list", TokenStream_GetToken(ts));
             }
             TokenStream_NextToken(ts);
             struct Node *size_out = (struct Node*)_malloc(sizeof(struct Node));
             size_out = Syntax_ProcessExpression(ts);
-            function_signature->size_out = push_back(function_signature->size_out, size_out);
+            function_signature->size_out = (struct Node**)push_back((void**)function_signature->size_out, size_out);
         }
         if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
             break;
@@ -412,7 +412,7 @@ const char **Syntax_ProcessMetavariables(struct TokenStream *ts) {
         if (TokenStream_GetToken(ts).type != TokenIdentifier) {
             SyntaxError("Identifier expected in metavariable list", TokenStream_GetToken(ts));
         }
-        metavariables = push_back_string(metavariables, _strdup(TokenStream_GetToken(ts).value_string));
+        metavariables = (const char**)push_back((void**)metavariables, _strdup(TokenStream_GetToken(ts).value_string));
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type == TokenBracketClose) {
             break;
@@ -476,8 +476,8 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
             SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
         }
         struct Node *_block = Syntax_ProcessBlock(ts, true);
-        _if->condition_list = push_back(_if->condition_list, _expression);
-        _if->block_list = push_back(_if->block_list, _block);
+        _if->condition_list = (struct Node**)push_back((void**)_if->condition_list, _expression);
+        _if->block_list = (struct Node**)push_back((void**)_if->block_list, _block);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
         TokenStream_NextToken(ts);
@@ -718,13 +718,13 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
                 if (TokenStream_GetToken(ts).type != TokenIdentifier) {
                     SyntaxError("Identifier expected in metavariable list", TokenStream_GetToken(ts));
                 }
-                function_call->metavariable_name = push_back_string(function_call->metavariable_name, _strdup(TokenStream_GetToken(ts).value_string));
+                function_call->metavariable_name = (const char**)push_back((void**)function_call->metavariable_name, _strdup(TokenStream_GetToken(ts).value_string));
                 TokenStream_NextToken(ts);
                 if (TokenStream_GetToken(ts).type != TokenEqual) {
                     SyntaxError("= expected in metavariable list", TokenStream_GetToken(ts));
                 }
                 TokenStream_NextToken(ts);
-                function_call->metavariable_value = push_back(function_call->metavariable_value, Syntax_ProcessExpression(ts));
+                function_call->metavariable_value = (struct Node**)push_back((void**)function_call->metavariable_value, Syntax_ProcessExpression(ts));
                 if (TokenStream_GetToken(ts).type == TokenBracketClose) {
                     TokenStream_NextToken(ts);
                     break;
@@ -744,7 +744,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
                 break;
             }
             if (TokenStream_GetToken(ts).type == TokenIdentifier) {
-                function_call->arguments = push_back_string(function_call->arguments, _strdup(TokenStream_GetToken(ts).value_string));
+                function_call->arguments = (const char**)push_back((void**)function_call->arguments, _strdup(TokenStream_GetToken(ts).value_string));
             }
             else {
                 SyntaxError("Identifier expected in function call", TokenStream_GetToken(ts));
