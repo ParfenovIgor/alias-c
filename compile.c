@@ -3,6 +3,7 @@
 #include "compile.h"
 #include "settings.h"
 #include "vector.h"
+#include "posix.h"
 
 int findInLocal(const char *identifier, struct CPContext *context) {
     int sz = get_size((void**)context->variable_stack);
@@ -32,7 +33,7 @@ int findFunctionIndex(const char *identifier, struct CPContext *context) {
         }
     }
     print_string("Error: function identifier not found\n");
-    program_exit(1);
+    posix_exit(1);
 }
 
 int findPhase(const char *identifier, struct CPContext *context) {
@@ -44,7 +45,7 @@ int findPhase(const char *identifier, struct CPContext *context) {
         idx = findInArguments(identifier, context);
         if (idx == -1) {
             print_string("Error: identifier not found\n");
-            program_exit(1);
+            posix_exit(1);
         }
         return (idx + 2) * 8;
     }

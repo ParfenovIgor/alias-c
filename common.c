@@ -1,4 +1,5 @@
 #include "common.h"
+#include "posix.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -28,11 +29,13 @@ char *to_string(int n) {
 }
 
 void print_string(const char *str) {
-    printf("%s", str);
+    posix_write(0, str, _strlen(str));
 }
 
 void print_int(int n) {
-    printf("%d", n);
+    char *str = to_string(n);
+    posix_write(0, str, _strlen(str));
+    free(str);
 }
 
 char *_strcpy(char *a, char *b) {
@@ -113,23 +116,6 @@ const char *substr(const char *a, int n) {
     }
     b[n] = '\0';
     return b;
-}
-
-void program_exit(int x) {
-    exit(x);
-}
-
-file_desc file_open(const char *filename, const char *par) {
-    return 0;
-    //return (file_desc)fopen(filename, par);
-}
-
-void file_print_string(file_desc file, const char *str) {
-    //fprintf(file, "%s", str);
-}
-
-void file_close(file_desc file) {
-    //fclose(file);
 }
 
 void *_malloc(int sz) {
