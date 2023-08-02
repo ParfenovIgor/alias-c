@@ -1,4 +1,5 @@
 #include "exception.h"
+#include "posix.h"
 
 void LexerError(const char *value, int line_begin, int position_begin, int line_end, int position_end, const char *filename) {
     print_string("Error\n");
@@ -14,7 +15,7 @@ void LexerError(const char *value, int line_begin, int position_begin, int line_
     print_string("\nLexer Error: ");
     print_string(value);
     print_string("\n");
-    program_exit(0);
+    posix_exit(1);
 }
 
 void SyntaxError(const char *value, struct Token token) {
@@ -31,5 +32,5 @@ void SyntaxError(const char *value, struct Token token) {
     print_string("\nSyntax Error: ");
     print_string(value);
     print_string("\n");
-    program_exit(0);
+    posix_exit(1);
 }

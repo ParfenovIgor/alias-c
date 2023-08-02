@@ -6,25 +6,44 @@
 #include "exception.h"
 #include "settings.h"
 #include "process.h"
+#include "posix.h"
 
 #include <stdio.h>
 
-struct Node *Parse(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
+char *ReadFile(const char *filename) {
+    const int block = 1000;
+    int fd = posix_open(filename, 2, 0);
+    if (fd <= 0) {
         print_string("Could not open file ");
         print_string(filename);
         print_string("\n");
-        program_exit(1);
+        posix_exit(1);
     }
 
-    fseek(file, 0, SEEK_END);
-    int length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    char *buffer = (char*)_malloc(length + 1);
-    int x = fread(buffer, 1, length, file);
-    buffer[length] = '\0';
-    fclose(file);
+    char *contents = (char*)_malloc(sizeof(char));
+    contents[0] = '\0';
+    int n_blocks = 0;
+    while (true) {
+        char *buffer = (char*)_malloc(sizeof(char) * (block + 1));
+        int cnt = posix_read(fd, buffer, block);
+        if (cnt == 0) break;
+        buffer[cnt] = '\0';
+        char *new_contents = (char*)_malloc(sizeof(char) * ((n_blocks + 1) * block + 1));
+        _strcpy(new_contents, contents);
+        _strcpy(new_contents + n_blocks * block, buffer);
+        _free(contents);
+        _free(buffer);
+        contents = new_contents;
+        n_blocks++;
+    }
+
+    int t = posix_close(fd);
+    
+    return contents;
+}
+
+struct Node *Parse(const char *filename) {
+    char *buffer = ReadFile(filename);
     struct TokenStream *token_stream = Lexer_Process(buffer, filename);
     struct Node *node = Syntax_Process(token_stream);
 
@@ -32,61 +51,23 @@ struct Node *Parse(const char *filename) {
 }
 
 void Assemble(const char *input, const char *output) {
-    unsigned long long pid = -1;
-    asm("mov $0x39, %%rax\n"
-        "syscall\n"
-        "mov %%rax, %0\n"
-        : "=r"(pid));
+    int pid = posix_fork();
     if (pid == 0) {
         const char *nasm = "/usr/bin/nasm";
         const char *const args[] = {"/usr/bin/nasm", "-f", "elf64", input, "-o", output, NULL};
-        asm("mov $0x3b, %%rax\n"
-            "mov %0, %%rdi\n"
-            "mov %1, %%rsi\n"
-            "mov $0, %%rdx\n"
-            "syscall\n"
-            :
-            : "r"(nasm), "r"(args)
-            : "%rax", "%rdi", "%rsi", "%rdx");
+        posix_execve(nasm, args, 0);
     }
-    asm("mov $0x3d, %%rax\n"
-        "mov %0, %%rdi\n"
-        "mov $0, %%rsi\n"
-        "mov $0, %%rdx\n"
-        "mov $0, %%r10\n"
-        "syscall\n"
-        :
-        : "r"(pid)
-        : "%rax", "%rdi", "%rsi", "%rdx", "%r10");
+    posix_wait4(pid, 0, 0, 0);
 }
 
 void Link(const char *input, const char *output) {
-    unsigned long long pid = -1;
-    asm("mov $0x39, %%rax\n"
-        "syscall\n"
-        "mov %%rax, %0\n"
-        : "=r"(pid));
+    int pid = posix_fork();
     if (pid == 0) {
         const char *gcc = "/usr/bin/ld";
         const char *const args[] = {"/usr/bin/ld", input, "-o", output, NULL};
-        asm("mov $0x3b, %%rax\n"
-            "mov %0, %%rdi\n"
-            "mov %1, %%rsi\n"
-            "mov $0, %%rdx\n"
-            "syscall\n"
-            :
-            : "r"(gcc), "r"(args)
-            : "%rax", "%rdi", "%rsi", "%rdx");
+        posix_execve(gcc, args, 0);
     }
-    asm("mov $0x3d, %%rax\n"
-        "mov %0, %%rdi\n"
-        "mov $0, %%rsi\n"
-        "mov $0, %%rdx\n"
-        "mov $0, %%r10\n"
-        "syscall\n"
-        :
-        : "r"(pid)
-        : "%rax", "%rdi", "%rsi", "%rdx", "%r10");
+    posix_wait4(pid, 0, 0, 0);
 }
 
 int Process(struct Settings *settings) {
