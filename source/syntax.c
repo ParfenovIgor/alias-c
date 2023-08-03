@@ -3,8 +3,7 @@
 #include "../header/exception.h"
 #include "../header/process.h"
 #include "../header/vector.h"
-
-#include <stdio.h>
+#include "../header/posix.h"
 
 struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
     struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
@@ -22,10 +21,13 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
     while (TokenStream_GetToken(ts).type != TokenEof && TokenStream_GetToken(ts).type != TokenBraceClose) {
         if (TokenStream_GetToken(ts).type == TokenInclude) {
             const char *filename = TokenStream_GetToken(ts).value_string;
-            FILE *file = fopen(filename, "r");
-            if (!file) {
+            int fd = posix_open(filename, 0, 0);
+            if (fd <= 0) {
                 const char *buffer = concat("Could not open file ", filename);
                 SyntaxError(buffer, TokenStream_GetToken(ts));
+            }
+            else {
+                posix_close(fd);
             }
             struct Node *_node = Parse(filename);
             struct Block *inc_block = (struct Block*)_node->node_ptr;

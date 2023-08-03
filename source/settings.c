@@ -1,6 +1,5 @@
 #include "../header/settings.h"
-
-#define NULL 0
+#include "../header/common.h"
 
 struct Settings *BuildSettings() {
     struct Settings *settings = (struct Settings*)_malloc(sizeof(struct Settings));

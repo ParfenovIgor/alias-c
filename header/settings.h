@@ -11,6 +11,7 @@ struct Settings {
     bool topMain;
     const char *inputFilename;
     const char *outputFilename;
+    int outputFileDescriptor;
 };
 
 struct Settings *BuildSettings();

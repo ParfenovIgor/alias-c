@@ -2,18 +2,16 @@
 #include "../header/process.h"
 #include "../header/settings.h"
 #include "../header/posix.h"
-#include <unistd.h>
-#include <stdio.h>
 
 void help() {
-    print_string("Syntax: calias [flags] file [flags]\n");
-    print_string("Flags:\n");
-    print_string("  -s        Print states collected during validation.\n");
-    print_string("  -c        Compile program to Asm code.\n");
-    print_string("  -a        Compile program and assemble it using nasm to object file.\n");
-    print_string("  -l        Compile, assemble and link program using gcc to executable file.\n");
-    print_string("  -m        Enable top level main function.\n");
-    print_string("  -o        Set output file name. File name has to follow this flag.\n");
+    print_string(0, "Syntax: calias [flags] file [flags]\n");
+    print_string(0, "Flags:\n");
+    print_string(0, "  -s        Print states collected during validation.\n");
+    print_string(0, "  -c        Compile program to Asm code.\n");
+    print_string(0, "  -a        Compile program and assemble it using nasm to object file.\n");
+    print_string(0, "  -l        Compile, assemble and link program using gcc to executable file.\n");
+    print_string(0, "  -m        Enable top level main function.\n");
+    print_string(0, "  -o        Set output file name. File name has to follow this flag.\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -42,7 +40,7 @@ int main(int argc, char *argv[]) {
             }
             else if (_strcmp(arg, "-o") == 0) {
                 if (i + 1 == argc) {
-                    print_string("Filename has to be specified after -o flag");
+                    print_string(0, "Filename has to be specified after -o flag");
                     return 1;
                 }
                 const char *str = _strdup(argv[i + 1]);

@@ -26,7 +26,7 @@ link:
 	gcc $(LDFLAGS) -o build/calias $(OBJS_ASM) $(OBJS_C)
 
 test:
-	./calias test/main.al -m -a
+	./build/calias test/main.al -m -a
 	gcc test/malloc.c -c -o test/malloc.o
 	ld test/main.o test/malloc.o -o test/main
 

@@ -3,8 +3,7 @@
 
 #include "../header/ast.h"
 #include "../header/settings.h"
-#include <stdio.h>
 
-void Compile(struct Node*, FILE *out, struct Settings *settings);
+void Compile(struct Node*, struct Settings *settings);
 
 #endif // COMPILE_H_INCLUDED

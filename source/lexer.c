@@ -2,8 +2,6 @@
 #include "../header/lexer.h"
 #include "../header/exception.h"
 
-#define NULL 0
-
 int min(int a, int b) {
     if (a <= b) return a;
     else return b;
