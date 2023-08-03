@@ -1,9 +1,9 @@
 #ifndef PROCESS_H_INCLUDED
 #define PROCESS_H_INCLUDED
 
-#include "ast.h"
-#include "process.h"
-#include "settings.h"
+#include "../header/ast.h"
+#include "../header/process.h"
+#include "../header/settings.h"
 
 struct Node *Parse(const char *filename);
 int Process(struct Settings *settings);

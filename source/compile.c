@@ -1,9 +1,9 @@
 #include <stdio.h>
-#include "ast.h"
-#include "compile.h"
-#include "settings.h"
-#include "vector.h"
-#include "posix.h"
+#include "../header/ast.h"
+#include "../header/compile.h"
+#include "../header/settings.h"
+#include "../header/vector.h"
+#include "../header/posix.h"
 
 int findInLocal(const char *identifier, struct CPContext *context) {
     int sz = get_size((void**)context->variable_stack);

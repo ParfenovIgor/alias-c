@@ -1,8 +1,8 @@
 #ifndef LEXER_H_INCLUDED
 #define LEXER_H_INCLUDED
 
-#include "common.h"
-#include "token.h"
+#include "../header/common.h"
+#include "../header/token.h"
 
 struct TokenStream *Lexer_Process(const char *str, const char *filename);
 

@@ -1,4 +1,4 @@
-#include "settings.h"
+#include "../header/settings.h"
 
 #define NULL 0
 

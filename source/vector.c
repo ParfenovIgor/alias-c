@@ -1,4 +1,4 @@
-#include "vector.h"
+#include "../header/vector.h"
 
 #define NULL 0
 

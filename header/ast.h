@@ -1,7 +1,7 @@
 #ifndef AST_H_INCLUDED
 #define AST_H_INCLUDED
 
-#include "common.h"
+#include "../header/common.h"
 
 enum NodeType {
     NodeBlock,
