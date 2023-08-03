@@ -8,15 +8,13 @@
 #include "../header/process.h"
 #include "../header/posix.h"
 
-#include <stdio.h>
-
 char *ReadFile(const char *filename) {
     const int block = 1000;
     int fd = posix_open(filename, 2, 0);
     if (fd <= 0) {
-        print_string("Could not open file ");
-        print_string(filename);
-        print_string("\n");
+        print_string(0, "Could not open file ");
+        print_string(0, filename);
+        print_string(0, "\n");
         posix_exit(1);
     }
 
@@ -96,10 +94,10 @@ int Process(struct Settings *settings) {
         else {
             str = concat(process_filename, ".asm");
         }
-        FILE *file = fopen(str, "w");
+        settings->outputFileDescriptor = posix_open(str, 1 | 0100, 0400 | 0200);
         _free(str);
-        Compile(node, file, settings);
-        fclose(file);
+        Compile(node, settings);
+        posix_close(settings->outputFileDescriptor);
         if (settings->assemble || settings->link) {
             char *str1, *str2;
             str1 = concat(process_filename, ".asm");

@@ -66,30 +66,6 @@ struct FunctionSignature {
     bool **is_const;
 };
 
-struct FunctionSignatureEvaluated {
-    //std::vector < std::string > identifiers;
-    //std::vector <Type> types;
-    //std::vector <int> size_in, size_out;
-    //std::vector <bool> is_const;
-};
-
-struct State {
-    //std::vector < std::pair <int, int> > heap;
-};
-
-struct VLContext {
-    //std::vector < std::string > variable_stack;
-    //std::vector <Type> variable_type_stack;
-    //std::vector <bool> variable_is_const_stack;
-    //std::vector < std::string > function_stack;
-    //std::vector < std::shared_ptr <FunctionSignature> > function_signature_stack;
-    //std::vector <FunctionDefinition*> function_pointer_stack;
-    //std::vector < std::set <FunctionSignatureEvaluated> > function_signature_validated;
-    //std::vector <int> packet_size;
-    //std::set <State> states;
-    //std::vector < std::pair <std::string, int> > metavariable_stack;
-};
-
 struct CPContext {
     const char **variable_stack;
     enum Type **variable_stack_type;
@@ -99,6 +75,7 @@ struct CPContext {
     int **function_stack_index;
     int function_index;
     int branch_index;
+    int outputFileDescriptor;
 };
 
 struct Node {

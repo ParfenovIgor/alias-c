@@ -1,6 +1,5 @@
 #include "../header/vector.h"
-
-#define NULL 0
+#include "../header/common.h"
 
 void **push_back(void **a, void *x) {
     int sz = 0;
