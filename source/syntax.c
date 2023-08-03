@@ -1,8 +1,8 @@
-#include "common.h"
-#include "syntax.h"
-#include "exception.h"
-#include "process.h"
-#include "vector.h"
+#include "../header/common.h"
+#include "../header/syntax.h"
+#include "../header/exception.h"
+#include "../header/process.h"
+#include "../header/vector.h"
 
 #include <stdio.h>
 

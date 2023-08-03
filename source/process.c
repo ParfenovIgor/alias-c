@@ -1,12 +1,12 @@
-#include "common.h"
-#include "lexer.h"
-#include "syntax.h"
-#include "validator.h"
-#include "compile.h"
-#include "exception.h"
-#include "settings.h"
-#include "process.h"
-#include "posix.h"
+#include "../header/common.h"
+#include "../header/lexer.h"
+#include "../header/syntax.h"
+#include "../header/validator.h"
+#include "../header/compile.h"
+#include "../header/exception.h"
+#include "../header/settings.h"
+#include "../header/process.h"
+#include "../header/posix.h"
 
 #include <stdio.h>
 

@@ -1,4 +1,4 @@
-#include "token.h"
+#include "../header/token.h"
 
 struct Token TokenStream_GetToken(struct TokenStream *this) {
     return this->stream[this->pos];

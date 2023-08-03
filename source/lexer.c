@@ -1,6 +1,6 @@
-#include "common.h"
-#include "lexer.h"
-#include "exception.h"
+#include "../header/common.h"
+#include "../header/lexer.h"
+#include "../header/exception.h"
 
 #define NULL 0
 

@@ -1,9 +1,9 @@
 #include <iostream>
 #include <set>
 #include <map>
-#include "ast.h"
-#include "validator.h"
-#include "exception.h"
+#include "../header/ast.h"
+#include "../header/validator.h"
+#include "../header/exception.h"
 
 namespace AST {
 std::map < std::string, std::vector < std::pair <int, int> > > states_log;

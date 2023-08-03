@@ -1,7 +1,7 @@
 #ifndef SETTINGS_H_INCLUDED
 #define SETTINGS_H_INCLUDED
 
-#include "common.h"
+#include "../header/common.h"
 
 struct Settings {
     bool states;

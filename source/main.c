@@ -1,7 +1,7 @@
-#include "common.h"
-#include "process.h"
-#include "settings.h"
-#include "posix.h"
+#include "../header/common.h"
+#include "../header/process.h"
+#include "../header/settings.h"
+#include "../header/posix.h"
 #include <unistd.h>
 #include <stdio.h>
 

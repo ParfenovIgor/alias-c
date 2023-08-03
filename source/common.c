@@ -1,5 +1,5 @@
-#include "common.h"
-#include "posix.h"
+#include "../header/common.h"
+#include "../header/posix.h"
 #include <stdio.h>
 #include <stdlib.h>
 
