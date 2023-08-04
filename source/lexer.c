@@ -173,17 +173,6 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
             position++;
             i++;
         }
-        else if (is_reserved_word(str, "int", i)) {
-            struct Token token = Token_Build(TokenInt, line, position, line, position + 2, filename);
-            tokens_push_back(token_stream, token);
-            i += 3;
-            position += 3;
-        }
-        else if (is_reserved_word(str, "ptr", i)) {
-            struct Token token = Token_Build(TokenPtr, line, position, line, position + 2, filename);
-            tokens_push_back(token_stream, token);i += 3;
-            position += 3;
-        }
         else if (is_reserved_word(str, "if", i)) {
             struct Token token = Token_Build(TokenIf, line, position, line, position + 1, filename);
             tokens_push_back(token_stream, token);
@@ -213,6 +202,12 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
             tokens_push_back(token_stream, token);
             i += 5;
             position += 5;
+        }
+        else if (is_reserved_word(str, "struct", i)) {
+            struct Token token = Token_Build(TokenStruct, line, position, line, position + 5, filename);
+            tokens_push_back(token_stream, token);
+            i += 6;
+            position += 6;
         }
         else if (is_reserved_word(str, "def", i)) {
             struct Token token = Token_Build(TokenDef, line, position, line, position + 2, filename);
@@ -370,6 +365,12 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
         }
         else if (is_operator(str, "<", i)) {
             struct Token token = Token_Build(TokenLess, line, position, line, position, filename);
+            tokens_push_back(token_stream, token);
+            i += 1;
+            position += 1;
+        }
+        else if (is_operator(str, ">", i)) {
+            struct Token token = Token_Build(TokenGreater, line, position, line, position, filename);
             tokens_push_back(token_stream, token);
             i += 1;
             position += 1;

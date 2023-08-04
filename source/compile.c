@@ -80,7 +80,7 @@ void Compile(struct Node *node, struct Settings *settings) {
     struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
     context->variable_stack = (const char**)_malloc(sizeof(const char*));
     context->variable_stack[0] = NULL;
-    context->variable_stack_type = (enum Type**)_malloc(sizeof(enum Type*));
+    context->variable_stack_type = (struct Type**)_malloc(sizeof(struct Type*));
     context->variable_stack_type[0] = NULL;
     context->function_stack = (const char**)_malloc(sizeof(const char*));
     context->function_stack[0] = NULL;
@@ -108,7 +108,7 @@ void CompileBlock(struct Block *this, struct CPContext *context) {
     print_stringi(context->outputFileDescriptor, "add rsp, ", 8 * (variable_stack_size - old_variable_stack_size), "\n");
     for (int i = 0; i < variable_stack_size - old_variable_stack_size; i++) {
         context->variable_stack = (const char**)pop_back((void**)context->variable_stack);
-        context->variable_stack_type = (enum Type**)pop_back((void**)context->variable_stack_type);
+        context->variable_stack_type = (struct Type**)pop_back((void**)context->variable_stack_type);
     }
     for (int i = 0; i < function_stack_size - old_function_stack_size; i++) {
         context->function_stack = (const char**)pop_back((void**)context->function_stack);
@@ -217,11 +217,16 @@ void CompilePrototype(struct Prototype *this, struct CPContext *context) {
     context->function_stack_index = (int**)push_back((void**)context->function_stack_index, index_ptr);
 }
 
+void CompileStructDefinition(struct StructDefinition *this, struct CPContext *context) {
+    
+}
+
 void CompileDefinition(struct Definition *this, struct CPContext *context) {
     context->variable_stack = (const char**)push_back((void**)context->variable_stack, _strdup(this->identifier));
-    enum Type *type = (enum Type*)_malloc(sizeof(int));
-    *type = this->type;
-    context->variable_stack_type = (enum Type**)push_back((void**)context->variable_stack_type, type);
+    struct Type *type = (struct Type*)_malloc(sizeof(int));
+    type->identifier = _strdup(this->type->identifier);
+    type->degree = this->type->degree;
+    context->variable_stack_type = (struct Type**)push_back((void**)context->variable_stack_type, type);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
 }
 
@@ -508,6 +513,10 @@ void CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodePrototype) {
         print_string(context->outputFileDescriptor, "prototype\n");
         CompilePrototype((struct Prototype*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeStructDefinition) {
+        print_string(context->outputFileDescriptor, "struct definition\n");
+        CompileStructDefinition((struct StructDefinition*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDefinition) {
         print_string(context->outputFileDescriptor, "definition\n");

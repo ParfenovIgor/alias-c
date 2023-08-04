@@ -1,6 +1,8 @@
 #include "../header/common.h"
 #include "../header/posix.h"
 
+#include <stdlib.h>
+
 char *to_string(int n) {
     if (n == 0) {
         char *str = (char*)_malloc(sizeof(char) * 2);
@@ -148,18 +150,18 @@ const char *substr(const char *a, int n) {
 unsigned long pos = 0;
 
 void *_malloc(int sz) {
-    if (pos == 0) {
+    /* if (pos == 0) {
         asm("mov %%rsp, %0\n"
         : "=r"(pos));
-        pos -= 0x100000;
+        pos -= 0x800000;
     }
     void *res = (void*)pos;
     pos += sz * sizeof(void*);
-    return res;
-    //return malloc(sz);
+    return res; */
+    return malloc(sz);
 }
 
 void _free(void *ptr) {
-    // free(ptr);
+    free(ptr);
 }
 
