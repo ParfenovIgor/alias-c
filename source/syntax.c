@@ -247,7 +247,7 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
         }
     }
 
-    while (*operations != NULL) {
+    while ((*operations) != NULL) {
         process_operation(&primaries, &operations);
     }
 
@@ -318,11 +318,37 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
     SyntaxError("Identifier expected in primary expression", TokenStream_GetToken(ts));
 }
 
+struct Type *Syntax_ProcessType(struct TokenStream *ts) {
+    struct Type *type = (struct Type*)_malloc(sizeof(struct Type));
+    if (TokenStream_GetToken(ts).type != TokenLess) {
+        SyntaxError("< expected in type", TokenStream_GetToken(ts));
+    }
+    TokenStream_NextToken(ts);
+    if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+        SyntaxError("Identifier expected in type", TokenStream_GetToken(ts));
+    }
+    type->identifier = _strdup(TokenStream_GetToken(ts).value_string);
+    TokenStream_NextToken(ts);
+    if (TokenStream_GetToken(ts).type != TokenComma) {
+        SyntaxError(", expected in type", TokenStream_GetToken(ts));
+    }
+    TokenStream_NextToken(ts);
+    if (TokenStream_GetToken(ts).type != TokenInteger) {
+        SyntaxError("Integer expected in type", TokenStream_GetToken(ts));
+    }
+    type->degree = TokenStream_GetToken(ts).value_int;
+    TokenStream_NextToken(ts);
+    if (TokenStream_GetToken(ts).type != TokenGreater) {
+        SyntaxError("> expected in type", TokenStream_GetToken(ts));
+    }
+    return type;
+}
+
 struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts) {
     struct FunctionSignature *function_signature = (struct FunctionSignature*)_malloc(sizeof(struct FunctionSignature));
     function_signature->identifiers = (const char**)_malloc(sizeof(const char*));
     function_signature->identifiers[0] = NULL;
-    function_signature->types = (enum Type**)_malloc(sizeof(enum Type*));
+    function_signature->types = (struct Type**)_malloc(sizeof(struct Type*));
     function_signature->types[0] = NULL;
     function_signature->size_in = (struct Node**)_malloc(sizeof(struct Node*));
     function_signature->size_in[0] = NULL;
@@ -340,25 +366,19 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
         }
         function_signature->identifiers = (const char**)push_back((void**)function_signature->identifiers, _strdup(TokenStream_GetToken(ts).value_string));
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenInt && TokenStream_GetToken(ts).type != TokenPtr) {
-            SyntaxError("Type expected in argument list", TokenStream_GetToken(ts));
-        }
-        if (TokenStream_GetToken(ts).type == TokenInt) {
-            enum Type *type = (enum Type*)_malloc(sizeof(enum Type));
-            *type = TypeInt;
-            function_signature->types = (enum Type**)push_back((void**)function_signature->types, type);
+        struct Type *type = Syntax_ProcessType(ts);
+        TokenStream_NextToken(ts);
+        function_signature->types = (struct Type**)push_back((void**)function_signature->types, type);
+        bool *is_const = (bool*)_malloc(sizeof(bool));
+        if (TokenStream_GetToken(ts).type == TokenConst) {
+            *is_const = true;
             TokenStream_NextToken(ts);
-
-            bool *is_const = (bool*)_malloc(sizeof(bool));
-            if (TokenStream_GetToken(ts).type == TokenConst) {
-                *is_const = true;
-                TokenStream_NextToken(ts);
-            }
-            else {
-                *is_const = false;
-            }
-            function_signature->is_const = (bool**)push_back((void**)function_signature->is_const, is_const);
-
+        }
+        else {
+            *is_const = false;
+        }
+        function_signature->is_const = (bool**)push_back((void**)function_signature->is_const, is_const);
+        if (type->degree == 0) {
             struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
             size_in = 0;
             function_signature->size_in = (struct Node**)push_back((void**)function_signature->size_in, size_in);
@@ -367,25 +387,10 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
             function_signature->size_out = (struct Node**)push_back((void**)function_signature->size_out, size_out);
         }
         else {
-            enum Type *type = (enum Type*)_malloc(sizeof(enum Type));
-            *type = TypePtr;
-            function_signature->types = (enum Type**)push_back((void**)function_signature->types, type);
-            TokenStream_NextToken(ts);
-
-            bool *is_const = (bool*)_malloc(sizeof(bool));
-            if (TokenStream_GetToken(ts).type == TokenConst) {
-                *is_const = true;
-                TokenStream_NextToken(ts);
-            }
-            else {
-                *is_const = false;
-            }
-            function_signature->is_const = (bool**)push_back((void**)function_signature->is_const, is_const);
-
             struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
             size_in = Syntax_ProcessExpression(ts);
             function_signature->size_in = (struct Node**)push_back((void**)function_signature->size_in, size_in);
-            if (TokenStream_GetToken(ts).type == TokenColon) {
+            if (TokenStream_GetToken(ts).type != TokenColon) {
                 SyntaxError(": expected in argument list", TokenStream_GetToken(ts));
             }
             TokenStream_NextToken(ts);
@@ -606,6 +611,43 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
 
         return node;
     }
+    if (TokenStream_GetToken(ts).type == TokenStruct) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct StructDefinition *struct_definition = (struct StructDefinition*)_malloc(sizeof(struct StructDefinition));
+        node->node_ptr = struct_definition;
+        node->node_type = NodeStructDefinition;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
+        struct_definition->identifiers = (const char**)_malloc(sizeof(const char*));
+        struct_definition->identifiers[0] = NULL;
+        struct_definition->types = (struct Type**)_malloc(sizeof(struct Type*));
+        struct_definition->types[0] = NULL;
+        TokenStream_NextToken(ts);
+        struct_definition->name = _strdup(TokenStream_GetToken(ts).value_string);
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
+            SyntaxError("{ expected in struct definition", TokenStream_GetToken(ts));
+        }
+        TokenStream_NextToken(ts);
+        while (true) {
+            if (TokenStream_GetToken(ts).type == TokenBraceClose) {
+                break;
+            }
+            if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+                SyntaxError("Identifier expected in struct definition", TokenStream_GetToken(ts));
+            }
+            struct_definition->identifiers = (const char**)push_back((void**)struct_definition->identifiers, (void*)TokenStream_GetToken(ts).value_string);
+            TokenStream_NextToken(ts);
+            struct_definition->types = (struct Type**)push_back((void**)struct_definition->types, Syntax_ProcessType(ts));
+            TokenStream_NextToken(ts);
+        }
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+
+        return node;
+    }
     if (TokenStream_GetToken(ts).type == TokenDef) {
         struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
         struct Definition *definition = (struct Definition*)_malloc(sizeof(struct Definition));
@@ -620,15 +662,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         }
         definition->identifier = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenInt && TokenStream_GetToken(ts).type != TokenPtr) {
-            SyntaxError("Type expected in definition statement", TokenStream_GetToken(ts));
-        }
-        if (TokenStream_GetToken(ts).type == TokenInt) {
-            definition->type = TypeInt;
-        }
-        else {
-            definition->type = TypePtr;
-        }
+        definition->type = Syntax_ProcessType(ts);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
         TokenStream_NextToken(ts);

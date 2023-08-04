@@ -94,7 +94,7 @@ int Process(struct Settings *settings) {
         else {
             str = concat(process_filename, ".asm");
         }
-        settings->outputFileDescriptor = posix_open(str, 1 | 0100, 0400 | 0200);
+        settings->outputFileDescriptor = posix_open(str, 0001 | 0100, 0400 | 0200);
         _free(str);
         Compile(node, settings);
         posix_close(settings->outputFileDescriptor);

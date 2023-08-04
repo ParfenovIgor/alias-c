@@ -10,6 +10,7 @@ enum NodeType {
     NodeWhile,
     NodeFunctionDefinition,
     NodePrototype,
+    NodeStructDefinition,
     NodeDefinition,
     NodeAssignment,
     NodeMovement,
@@ -36,6 +37,7 @@ struct If;
 struct While;
 struct FunctionDefinition;
 struct Prototype;
+struct StructDefinition;
 struct Definition;
 struct Assignment;
 struct Movement;
@@ -54,23 +56,23 @@ struct Division;
 struct Less;
 struct Equal;
 
-enum Type {
-    TypeInt,
-    TypePtr,
+struct Type {
+    const char *identifier;
+    int degree;
 };
 
 struct FunctionSignature {
     const char **identifiers;
-    enum Type **types;
+    struct Type **types;
     struct Node **size_in, **size_out;
     bool **is_const;
 };
 
 struct CPContext {
     const char **variable_stack;
-    enum Type **variable_stack_type;
+    struct Type **variable_stack_type;
     const char **variable_arguments;
-    enum Type **variable_arguments_type;
+    struct Type **variable_arguments_type;
     const char **function_stack;
     int **function_stack_index;
     int function_index;
@@ -118,9 +120,15 @@ struct Prototype {
     struct FunctionSignature *signature;
 };
 
+struct StructDefinition {
+    const char *name;
+    const char **identifiers;
+    struct Type **types;
+};
+
 struct Definition {
     const char *identifier;
-    enum Type type;
+    struct Type *type;
 };
 
 struct Assignment {

@@ -23,12 +23,13 @@ build/%.o: %.c
 	gcc $(CFLAGS) -c $< -o $@
 
 link:
-	gcc $(LDFLAGS) -o build/calias $(OBJS_ASM) $(OBJS_C)
+	gcc $(LDFLAGS) -o build/calias $(OBJS_ASM) $(OBJS_C) -z noexecstack
 
 test:
-	./build/calias test/main.al -m -a
+	./build/calias test/main.al -m -c
+	nasm -f elf64 test/main.asm -o test/main.o
 	gcc test/malloc.c -c -o test/malloc.o
-	ld test/main.o test/malloc.o -o test/main
+	ld test/main.o test/malloc.o -o test/main -z noexecstack
 
 run:
 	./test/main
