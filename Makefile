@@ -1,8 +1,11 @@
-SRCS_ASM := $(wildcard asm/*.s)
-OBJS_ASM := $(patsubst %.s, build/%.o, $(SRCS_ASM))
+SRCS_ASM := $(wildcard asm/*.asm)
+OBJS_ASM := $(patsubst %.asm, build/%.o, $(SRCS_ASM))
 
-SRCS_C := $(wildcard source/*.c)
+SRCS_C := $(wildcard src/*.c)
 OBJS_C := $(patsubst %.c, build/%.o, $(SRCS_C))
+
+SRCS_STDLIB_C := $(wildcard stdlib/src/*.c)
+OBJS_STDLIB_C := $(patsubst %.c, build/%.o, $(SRCS_STDLIB_C))
 
 ASFLAGS=-f elf64
 CFLAGS=
@@ -10,20 +13,21 @@ LDFLAGS=
 
 .PHONY: all test
 
-all: make_dir $(OBJS_ASM) $(OBJS_C) link
+all: make_dir $(OBJS_ASM) $(OBJS_C) $(OBJS_STDLIB_C) link
 
 make_dir:
 	mkdir -p build/asm
-	mkdir -p build/source
+	mkdir -p build/src
+	mkdir -p build/stdlib/src
 
-build/%.o: %.s
+build/%.o: %.asm
 	nasm $(ASFLAGS) $< -o $@
 
 build/%.o: %.c
 	gcc $(CFLAGS) -c $< -o $@
 
 link:
-	gcc $(LDFLAGS) -o build/calias $(OBJS_ASM) $(OBJS_C) -z noexecstack
+	gcc $(LDFLAGS) -o build/calias $(OBJS_ASM) $(OBJS_C) $(OBJS_STDLIB_C) -z noexecstack
 
 test:
 	./build/calias test/main.al -m -c
