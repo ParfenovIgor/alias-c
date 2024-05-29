@@ -4,6 +4,7 @@
 #include "../stdlib/include/stdbool.h"
 
 struct Settings {
+    bool languageServer;
     bool states;
     bool compile;
     bool assemble;

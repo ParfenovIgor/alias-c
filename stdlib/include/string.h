@@ -14,3 +14,4 @@ int _strncmp(const char *a, const char *b, int num);
 int _strlen(const char *a);
 char *concat(const char *a, const char *b);
 const char *substr(const char *a, int n);
+char *ReadFile(const char *filename);
