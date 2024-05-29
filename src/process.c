@@ -70,63 +70,73 @@ void Link(const char *input, const char *output) {
 }
 
 int Process(struct Settings *settings) {
-    struct Node *node = Parse(settings->inputFilename);
+    // remove the .al extension from the input filename
+    char *filename = _strdup(settings->inputFilename);
+    if (_strlen(filename) < 3 || _strcmp(filename + _strlen(filename) - 3, ".al") != 0) {
+        print_string(0, "The filename has to end with .al\n");
+        posix_exit(1);
+    }
+    filename[_strlen(filename) - 3] = '\0';
 
+    // generate AST
+    struct Node *node = Parse(settings->inputFilename);
     Validate(node);
     if (settings->states) {
         PrintStatesLog();
     }
 
-    const char *cmd;
     if (settings->compile || settings->assemble || settings->link) {
-        const char *filename = settings->inputFilename;
-        const char *process_filename = NULL;
-        for (int i = 0; filename[i] != '\0'; i++) {
-            if (filename[i] == '.') {
-                process_filename = substr(filename, i);
-                break;
-            }
-        }
-
-        char *str;
+        // choose the filename of the result of compilation
+        char *compile_out_filename;
         if (!settings->assemble && !settings->link && settings->outputFilename) {
-            str = _strdup(settings->outputFilename);
+            compile_out_filename = _strdup(settings->outputFilename);
         }
         else {
-            str = concat(process_filename, ".asm");
+            compile_out_filename = concat(filename, ".asm");
         }
-        settings->outputFileDescriptor = posix_open(str, 0001 | 0100, 0400 | 0200);
-        _free(str);
+
+        // open file and call the compiler
+        settings->outputFileDescriptor = posix_open(compile_out_filename, 0001 | 0100, 0400 | 0200);
+        _free(compile_out_filename);
         Compile(node, settings);
         posix_close(settings->outputFileDescriptor);
+
         if (settings->assemble || settings->link) {
-            char *str1, *str2;
-            str1 = concat(process_filename, ".asm");
+            // choose the filename of the result of assembly
+            char *assemble_in_filename, *assemble_out_filename;
+            assemble_in_filename = concat(filename, ".asm");
             if (!settings->link && settings->outputFilename) {
-                str2 = _strdup(settings->outputFilename);
+                assemble_out_filename = _strdup(settings->outputFilename);
             }
             else {
-                str2 = concat(process_filename, ".o");
+                assemble_out_filename = concat(filename, ".o");
             }
-            Assemble(str1, str2);
-            _free(str1);
-            _free(str2);
+
+            // call the NASM assembler
+            Assemble(assemble_in_filename, assemble_out_filename);
+            _free(assemble_in_filename);
+            _free(assemble_out_filename);
 
             if (settings->link) {
-                char *str1, *str2;
-                str1 = concat(process_filename, ".o");
+                // choose the filename of the result of linking
+                char *link_in_filename, *link_out_filename;
+                link_in_filename = concat(filename, ".o");
                 if (!settings->link && settings->outputFilename) {
-                    str2 = _strdup(settings->outputFilename);
+                    link_out_filename = _strdup(settings->outputFilename);
                 }
                 else {
-                    str2 = _strdup(process_filename);
+                    link_out_filename = _strdup(filename);
                 }
-                Link(str1, str2);
-                _free(str1);
-                _free(str2);
+
+                // call the ld linker
+                Link(link_in_filename, link_out_filename);
+                _free(link_in_filename);
+                _free(link_out_filename);
             }
         }
     }
+
+    _free(filename);
 
     return 0;
 }
