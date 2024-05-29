@@ -165,7 +165,7 @@ void CompileFunctionDefinition(struct FunctionDefinition *this, struct CPContext
     }
 
     if (this->external) {
-        print_string3(context->outputFileDescriptor, "global", identifier, "\n");
+        print_string3(context->outputFileDescriptor, "global ", identifier, "\n");
     }
     print_string3(context->outputFileDescriptor, "jmp ", identifier_end, "\n");
     print_string2(context->outputFileDescriptor, identifier, ":\n");
