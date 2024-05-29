@@ -1,4 +1,5 @@
 #include "../../stdlib/include/string.h"
+#include "../../include/posix.h"
 
 bool _isalpha(char c) {
     return ((c >= 'A' && c <= 'Z') ||
@@ -102,4 +103,33 @@ const char *substr(const char *a, int n) {
     }
     b[n] = '\0';
     return b;
+}
+
+char *ReadFile(const char *filename) {
+    const int block = 1000;
+    int fd = posix_open(filename, 2, 0);
+    if (fd <= 0) {
+        return NULL;
+    }
+
+    char *contents = (char*)_malloc(sizeof(char));
+    contents[0] = '\0';
+    int n_blocks = 0;
+    while (true) {
+        char *buffer = (char*)_malloc(sizeof(char) * (block + 1));
+        int cnt = posix_read(fd, buffer, block);
+        if (cnt == 0) break;
+        buffer[cnt] = '\0';
+        char *new_contents = (char*)_malloc(sizeof(char) * ((n_blocks + 1) * block + 1));
+        _strcpy(new_contents, contents);
+        _strcpy(new_contents + n_blocks * block, buffer);
+        _free(contents);
+        _free(buffer);
+        contents = new_contents;
+        n_blocks++;
+    }
+
+    int t = posix_close(fd);
+    
+    return contents;
 }

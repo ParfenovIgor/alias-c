@@ -1,7 +1,5 @@
 #pragma once 
 
-#define NULL 0
-
 char *to_string(int n);
 
 void print_string(int fd, const char *str);

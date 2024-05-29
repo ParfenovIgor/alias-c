@@ -9,40 +9,14 @@
 #include "../stdlib/include/stdlib.h"
 #include "../stdlib/include/string.h"
 
-char *ReadFile(const char *filename) {
-    const int block = 1000;
-    int fd = posix_open(filename, 2, 0);
-    if (fd <= 0) {
+struct Node *Parse(const char *filename) {
+    char *buffer = ReadFile(filename);
+    if (!buffer) {
         print_string(0, "Could not open file ");
         print_string(0, filename);
         print_string(0, "\n");
         posix_exit(1);
     }
-
-    char *contents = (char*)_malloc(sizeof(char));
-    contents[0] = '\0';
-    int n_blocks = 0;
-    while (true) {
-        char *buffer = (char*)_malloc(sizeof(char) * (block + 1));
-        int cnt = posix_read(fd, buffer, block);
-        if (cnt == 0) break;
-        buffer[cnt] = '\0';
-        char *new_contents = (char*)_malloc(sizeof(char) * ((n_blocks + 1) * block + 1));
-        _strcpy(new_contents, contents);
-        _strcpy(new_contents + n_blocks * block, buffer);
-        _free(contents);
-        _free(buffer);
-        contents = new_contents;
-        n_blocks++;
-    }
-
-    int t = posix_close(fd);
-    
-    return contents;
-}
-
-struct Node *Parse(const char *filename) {
-    char *buffer = ReadFile(filename);
     struct TokenStream *token_stream = Lexer_Process(buffer, filename);
     struct Node *node = Syntax_Process(token_stream);
 

@@ -2,11 +2,13 @@
 #include "../include/process.h"
 #include "../include/settings.h"
 #include "../include/posix.h"
+#include "../include/languageserver.h"
 #include "../stdlib/include/string.h"
 
 void help() {
     print_string(0, "Syntax: calias [flags] file [flags]\n");
     print_string(0, "Flags:\n");
+    print_string(0, "  -ls       Run language server.\n");
     print_string(0, "  -s        Print states collected during validation.\n");
     print_string(0, "  -c        Compile program to Asm code.\n");
     print_string(0, "  -a        Compile program and assemble it using nasm to object file.\n");
@@ -24,7 +26,10 @@ int main(int argc, char *argv[]) {
         struct Settings *settings = BuildSettings();
         for (int i = 1; i < argc; i++) {
             const char *arg = argv[i];
-            if (_strcmp(arg, "-s") == 0) {
+            if (_strcmp(arg, "-ls") == 0) {
+                settings->languageServer = true;
+            }
+            else if (_strcmp(arg, "-s") == 0) {
                 settings->states = true;
             }
             else if(_strcmp(arg, "-c") == 0) {
@@ -51,6 +56,10 @@ int main(int argc, char *argv[]) {
             else {
                 settings->inputFilename = _strdup(arg);
             }
+        }
+
+        if (settings->languageServer) {
+            LanguageServer();
         }
 
         if (!settings->inputFilename) {
