@@ -208,7 +208,13 @@ void respond(int slot) {
       if (t[1] == '\r' && t[2] == '\n')
         break;
     }
-    t = strtok(NULL, "\r\n");
+    t += 3;
+    int header_length = t - buf;
+    while (rcvd - header_length < atoi(request_header("Content-Length"))) {
+      int rcvd2 = recv(clients[slot], buf + rcvd, BUF_SIZE - rcvd, 0);
+      rcvd += rcvd2;
+      buf[rcvd] = '\0';
+    }
     t2 = request_header("Content-Length"); // and the related header if there is
     payload = t;
     payload_size = t2 ? atol(t2) : (rcvd - (t - buf));

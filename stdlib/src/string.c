@@ -20,6 +20,16 @@ char *_strcpy(char *a, char *b) {
     return a;
 }
 
+char *_strncpy(char *a, char *b, int n) {
+    for (int i = 0; i < n; i++) {
+        a[i] = b[i];
+        if (b[i] == '\0') {
+            break;
+        }
+    }
+    return a;
+}
+
 char *_strdup(const char *a) {
     int sz = _strlen(a);
     char *b = (char*)_malloc(sz + 1);

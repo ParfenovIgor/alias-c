@@ -328,7 +328,7 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
             tokens_push_back(token_stream, token);
             position += r - l + 1;
         }
-        else if (str[i] == ' ' || str[i] == '\t') {
+        else if (str[i] == ' ' || str[i] == '\t' || str[i] == '\r') {
             i++;
             position++;
         }
@@ -346,4 +346,163 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
     tokens_push_back(token_stream, token);
 
     return token_stream;
+}
+
+enum Color {
+    Color_Black,
+    Color_White,
+    Color_DarkGray,
+    Color_Gray,
+    Color_LightGray,
+    Color_Red,
+    Color_Green,
+    Color_Blue,
+    Color_Cyan,
+    Color_Magenta,
+    Color_Yellow,
+    Color_DarkRed,
+    Color_DarkGreen,
+    Color_DarkBlue,
+    Color_DarkCyan,
+    Color_DarkMagenta,
+    Color_DarkYellow,
+};
+
+const char *ColorToString(enum Color color) {
+    const char *strings[] = {
+        "#000000",
+        "#ffffff",
+        "#808080",
+        "#a0a0a4",
+        "#c0c0c0",
+        "#ff0000",
+        "#00ff00",
+        "#0000ff",
+        "#00ffff",
+        "#ff00ff",
+        "#ffff00",
+        "#800000",
+        "#008000",
+        "#000080",
+        "#008080",
+        "#800080",
+        "#808000",
+    };
+    return strings[color];
+}
+
+const char *TokenColor(enum TokenType type, 
+    int *brace_level,
+    int *parenthesis_level,
+    int *bracket_level) {
+    enum Color colors[] = {
+        Color_Blue,         // TokenAsm,
+        Color_DarkGreen,    // TokenInclude,
+        Color_Blue,         // TokenIf,
+        Color_Blue,         // TokenElse,
+        Color_Blue,         // TokenWhile,
+        Color_Blue,         // TokenFunc,
+        Color_Blue,         // TokenProto,
+        Color_Blue,         // TokenStruct,
+        Color_Blue,         // TokenDef,
+        Color_Blue,         // TokenConst,
+        Color_Blue,         // TokenAssume,
+        Color_Blue,         // TokenAlloc,
+        Color_Blue,         // TokenFree,
+        Color_Blue,         // TokenCall,
+        Color_Black,        // TokenAssign,
+        Color_Black,        // TokenMove,
+        Color_Black,        // TokenComma,
+        Color_Black,        // TokenColon,
+        Color_Black,        // TokenSemicolon,
+        Color_White,        // TokenBraceOpen,
+        Color_White,        // TokenBraceClose,
+        Color_White,        // TokenParenthesisOpen,
+        Color_White,        // TokenParenthesisClose,
+        Color_White,        // TokenBracketOpen,
+        Color_White,        // TokenBracketClose,
+        Color_Black,        // TokenDereference,
+        Color_Black,        // TokenCaret,
+        Color_Black,        // TokenPlus,
+        Color_Black,        // TokenMinus,
+        Color_Black,        // TokenMult,
+        Color_Black,        // TokenDiv,
+        Color_Black,        // TokenLess,
+        Color_Black,        // TokenGreater,
+        Color_Black,        // TokenEqual,
+        Color_Red,          // TokenString,
+        Color_DarkGreen,    // TokenInteger,
+        Color_DarkYellow,   // TokenIdentifier,
+        Color_White,        // TokenEof,
+    };
+    if (type == TokenBraceOpen) {
+        int id = 5 + *brace_level % 12;
+        (*brace_level)++;
+        return ColorToString(id);
+    }
+    if (type == TokenBraceClose) {
+        (*brace_level)--;
+        int id = 5 + *brace_level % 12;
+        return ColorToString(id);
+    }
+    if (type == TokenParenthesisOpen) {
+        int id = 5 + *parenthesis_level % 12;
+        (*parenthesis_level)++;
+        return ColorToString(id);
+    }
+    if (type == TokenParenthesisClose) {
+        (*parenthesis_level)--;
+        int id = 5 + *parenthesis_level % 12;
+        return ColorToString(id);
+    }
+    if (type == TokenBracketOpen) {
+        int id = 5 + *bracket_level % 12;
+        (*bracket_level)++;
+        return ColorToString(id);
+    }
+    if (type == TokenBracketClose) {
+        (*bracket_level)--;
+        int id = 5 + *bracket_level % 12;
+        return ColorToString(id);
+    }
+    return ColorToString(colors[type]);
+}
+
+const char *Lexer_Highlight(const char *str) {
+    struct TokenStream *token_stream = Lexer_Process(str, "");
+    
+    int buffer_size = 1000;
+    char *output = _malloc(buffer_size);
+    int pos = 0;
+
+    output[pos] = '['; pos++;
+    int brace_level = 0;
+    int parenthesis_level = 0;
+    int bracket_level = 0;
+
+    for (int i = 0; token_stream->stream[i].type != TokenEof; i++) {
+        int cnt = sprintf(output + pos,
+            "{\"lb\":%d,\"pb\":%d,\"le\":%d,\"pe\":%d,\"cl\":\"%s\"},",
+            token_stream->stream[i].line_begin,
+            token_stream->stream[i].position_begin,
+            token_stream->stream[i].line_end,
+            token_stream->stream[i].position_end,
+            TokenColor(token_stream->stream[i].type,
+                &brace_level,
+                &parenthesis_level,
+                &bracket_level));
+        pos += cnt;
+        if (pos + 100 >= buffer_size) {
+            char *tmp = _malloc(buffer_size * 2);
+            _strncpy(tmp, output, pos);
+            buffer_size *= 2;
+            _free(output);
+            output = tmp;
+        }
+    }
+    if (pos != 1) pos--;
+    output[pos] = ']'; pos++;
+    output[pos] = '\0';
+
+    return output;
 }
