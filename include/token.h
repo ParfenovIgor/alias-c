@@ -53,12 +53,14 @@ struct Token {
 
 struct TokenStream {
     struct Token *stream;
-    int stream_size;
+    int size;
+    int reserved;
     int pos;
 };
 
+struct TokenStream *TokenStream_New();
+void TokenStream_PushBack(struct TokenStream *this, struct Token token);
 struct Token TokenStream_GetToken(struct TokenStream *this);
-
 void TokenStream_NextToken(struct TokenStream *this);
 
 struct Token Token_Build(TokenType _type, int _line_begin, int _position_begin, int _line_end, int _position_end, const char *_filename);
