@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../include/common.h"
+#include "../include/type.h"
 #include "../stdlib/include/stdbool.h"
 
 enum NodeType {
@@ -56,16 +57,13 @@ struct Division;
 struct Less;
 struct Equal;
 
-struct Type {
-    const char *identifier;
-    int degree;
-};
 
 struct FunctionSignature {
     const char **identifiers;
     struct Type **types;
     struct Node **size_in, **size_out;
     bool **is_const;
+    struct Type *return_type;
 };
 
 struct CPContext {

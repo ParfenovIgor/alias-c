@@ -3,6 +3,7 @@
 #include "../include/settings.h"
 #include "../include/vector.h"
 #include "../include/posix.h"
+#include "../include/exception.h"
 #include "../stdlib/include/stdlib.h"
 #include "../stdlib/include/string.h"
 
@@ -52,7 +53,22 @@ int findPhase(const char *identifier, struct CPContext *context) {
     }
 }
 
-void CompileNode(struct Node *node, struct CPContext *context);
+struct Type *findType(const char *identifier, struct CPContext *context) {
+    int idx = findInLocal(identifier, context);
+    if (idx != -1) {
+        return context->variable_stack_type[idx];
+    }
+    else {
+        idx = findInArguments(identifier, context);
+        if (idx == -1) {
+            print_string(0, "Error: identifier not found\n");
+            posix_exit(1);
+        }
+        return context->variable_arguments_type[idx];
+    }
+}
+
+struct Type *CompileNode(struct Node *node, struct CPContext *context);
 
 void Compile(struct Node *node, struct Settings *settings) {
     print_string(settings->outputFileDescriptor, "; ");
@@ -97,7 +113,7 @@ void Compile(struct Node *node, struct Settings *settings) {
     print_string(settings->outputFileDescriptor, "ret\n");
 }
 
-void CompileBlock(struct Block *this, struct CPContext *context) {
+void CompileBlock(struct Node *node, struct Block *this, struct CPContext *context) {
     struct Node **statement = this->statement_list;
     int old_variable_stack_size = get_size((void**)context->variable_stack);
     int old_function_stack_size = get_size((void**)context->function_stack);
@@ -117,12 +133,12 @@ void CompileBlock(struct Block *this, struct CPContext *context) {
     }
 }
 
-void CompileAsm(struct Asm *this, struct CPContext *context) {
+void CompileAsm(struct Node *node, struct Asm *this, struct CPContext *context) {
     print_string(context->outputFileDescriptor, this->code);
     print_string(context->outputFileDescriptor, "\n");
 }
 
-void CompileIf(struct If *this, struct CPContext *context) {
+void CompileIf(struct Node *node, struct If *this, struct CPContext *context) {
     CompileNode(this->condition_list[0], context);
     int idx = context->branch_index;
     context->branch_index++;
@@ -137,7 +153,7 @@ void CompileIf(struct If *this, struct CPContext *context) {
     print_stringi(context->outputFileDescriptor, "_if_end", idx, ":\n");
 }
 
-void CompileWhile(struct While *this, struct CPContext *context) {
+void CompileWhile(struct Node *node, struct While *this, struct CPContext *context) {
     int idx = context->branch_index;
     context->branch_index++;
     print_stringi(context->outputFileDescriptor, "_while:", idx, ":\n");
@@ -149,7 +165,7 @@ void CompileWhile(struct While *this, struct CPContext *context) {
     print_stringi(context->outputFileDescriptor, "_while_end", idx, "\n");
 }
 
-void CompileFunctionDefinition(struct FunctionDefinition *this, struct CPContext *context) {
+void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) {
     char *identifier, *identifier_end;
     int index;
     if (this->external) {
@@ -211,7 +227,7 @@ void CompileFunctionDefinition(struct FunctionDefinition *this, struct CPContext
     print_string2(context->outputFileDescriptor, identifier_end, ":\n");
 }
 
-void CompilePrototype(struct Prototype *this, struct CPContext *context) {
+void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContext *context) {
     print_string3(context->outputFileDescriptor, "extern ", this->name, "\n");
     context->function_stack = (const char**)push_back((void**)context->function_stack, _strdup(this->name));
     int *index_ptr = (int*)_malloc(sizeof(int));
@@ -219,11 +235,11 @@ void CompilePrototype(struct Prototype *this, struct CPContext *context) {
     context->function_stack_index = (int**)push_back((void**)context->function_stack_index, index_ptr);
 }
 
-void CompileStructDefinition(struct StructDefinition *this, struct CPContext *context) {
+void CompileStructDefinition(struct Node *node, struct StructDefinition *this, struct CPContext *context) {
     
 }
 
-void CompileDefinition(struct Definition *this, struct CPContext *context) {
+void CompileDefinition(struct Node *node, struct Definition *this, struct CPContext *context) {
     context->variable_stack = (const char**)push_back((void**)context->variable_stack, _strdup(this->identifier));
     struct Type *type = (struct Type*)_malloc(sizeof(int));
     type->identifier = _strdup(this->type->identifier);
@@ -232,14 +248,23 @@ void CompileDefinition(struct Definition *this, struct CPContext *context) {
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
 }
 
-void CompileAssignment(struct Assignment *this, struct CPContext *context) {
-    CompileNode(this->value, context);
+void CompileAssignment(struct Node *node, struct Assignment *this, struct CPContext *context) {
+    struct Type *_type1 = CompileNode(this->value, context);
+    struct Type *_type2 = findType(this->identifier, context);
+    if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree) SemanticError("Assignment of not equal types", node);
+    _free(_type1);
+
     int phase = findPhase(this->identifier, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_stringi(context->outputFileDescriptor, "mov [rbp + ", phase, "], rax\n");
 }
 
-void CompileMovement(struct Movement *this, struct CPContext *context) {
+void CompileMovement(struct Node *node, struct Movement *this, struct CPContext *context) {
+    struct Type *_type1 = CompileNode(this->value, context);
+    struct Type *_type2 = findType(this->identifier, context);
+    if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree + 1) SemanticError("Movement of inappropriate types", node);
+    _free(_type1);
+
     CompileNode(this->value, context);
     int phase = findPhase(this->identifier, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
@@ -247,7 +272,7 @@ void CompileMovement(struct Movement *this, struct CPContext *context) {
     print_string(context->outputFileDescriptor, "mov [rbx], rax\n");
 }
 
-void CompileMovementString(struct MovementString *this, struct CPContext *context) {
+void CompileMovementString(struct Node *node, struct MovementString *this, struct CPContext *context) {
     int idx = context->branch_index;
     context->branch_index++;
     print_stringi(context->outputFileDescriptor, "jmp _strbufend", idx, "\n");
@@ -270,7 +295,7 @@ void CompileMovementString(struct MovementString *this, struct CPContext *contex
     print_string(context->outputFileDescriptor, "rep movsb\n");
 }
 
-void CompileAssumption(struct Assumption *this, struct CPContext *context, struct Node *node) {
+void CompileAssumption(struct Node *node, struct Assumption *this, struct CPContext *context) {
     int ind_error = context->branch_index;
     print_stringi(context->outputFileDescriptor, "jmp aftererror", ind_error, "\n");
     print_stringi(context->outputFileDescriptor, "error", ind_error, " db \"");
@@ -329,17 +354,21 @@ void CompileAssumption(struct Assumption *this, struct CPContext *context, struc
     _free(error);
 }
 
-void CompileIdentifier(struct Identifier *this, struct CPContext *context) {
+struct Type *CompileIdentifier(struct Node *node, struct Identifier *this, struct CPContext *context) {
     int phase = findPhase(this->identifier, context);
     print_stringi(context->outputFileDescriptor, "mov rax, [rbp + ", phase, "]\n");
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
+
+    struct Type *type = findType(this->identifier, context);
+    return BuildType(type->identifier, type->degree);
 }
 
-void CompileInteger(struct Integer *this, struct CPContext *context) {
+struct Type *CompileInteger(struct Node *node, struct Integer *this, struct CPContext *context) {
     print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
+    return BuildType("int", 0);
 }
 
-void CompileAlloc(struct Alloc *this, struct CPContext *context) {
+struct Type *CompileAlloc(struct Node *node, struct Alloc *this, struct CPContext *context) {
     CompileNode(this->expression, context);
     print_string(context->outputFileDescriptor, "push qword [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "call malloc\n");
@@ -347,14 +376,14 @@ void CompileAlloc(struct Alloc *this, struct CPContext *context) {
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
 }
 
-void CompileFree(struct Free *this, struct CPContext *context) {
+struct Type *CompileFree(struct Node *node, struct Free *this, struct CPContext *context) {
     CompileNode(this->expression, context);
     print_string(context->outputFileDescriptor, "push qword [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "call free\n");
     print_string(context->outputFileDescriptor, "add rsp, 8\n");
 }
 
-void CompileFunctionCall(struct FunctionCall *this, struct CPContext *context) {
+void CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
     int sz1 = get_size((void**)this->arguments);
     for (int i = sz1 - 1; i >= 0; i--) {
         int phase = findPhase(this->arguments[i], context);
@@ -382,27 +411,41 @@ void CompileFunctionCall(struct FunctionCall *this, struct CPContext *context) {
     }
 }
 
-void CompileDereference(struct Dereference *this, struct CPContext *context) {
-    CompileNode(this->expression, context);
+struct Type *CompileDereference(struct Node *node, struct Dereference *this, struct CPContext *context) {
+    struct Type *_type = CompileNode(this->expression, context);
+    if (_type->degree == 0) SemanticError("Dereference of not pointer value", node);
+    _type->degree--;
+
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "mov rbx, [rax]\n");
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+
+    return _type;
 }
 
-void CompileAddition(struct Addition *this, struct CPContext *context) {
-    CompileNode(this->left, context);
+struct Type *CompileAddition(struct Node *node, struct Addition *this, struct CPContext *context) {
+    struct Type *_type = CompileNode(this->left, context);
+    if (_strcmp(_type->identifier, "int") || _type->degree != 0) SemanticError("Integer expected in addition", node);
+    _free(_type);
+
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
     context->variable_stack = (const char**)push_back((void**)context->variable_stack, (void*)identifier);
-    CompileNode(this->right, context);
+
+    _type = CompileNode(this->right, context);
+    if (_strcmp(_type->identifier, "int") || _type->degree != 0) SemanticError("Integer expected in addition", node);
+    _free(_type);
+
     print_string(context->outputFileDescriptor, "add rsp, 8\n");
     context->variable_stack = (const char**)pop_back((void**)context->variable_stack);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "add rax, [rsp - 16]\n");
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
+
+    return BuildType("int", 0);
 }
 
-void CompileSubtraction(struct Subtraction *this, struct CPContext *context) {
+struct Type *CompileSubtraction(struct Node *node, struct Subtraction *this, struct CPContext *context) {
     CompileNode(this->left, context);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -415,7 +458,7 @@ void CompileSubtraction(struct Subtraction *this, struct CPContext *context) {
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
 }
 
-void CompileMultiplication(struct Multiplication *this, struct CPContext *context) {
+struct Type *CompileMultiplication(struct Node *node, struct Multiplication *this, struct CPContext *context) {
     CompileNode(this->left, context);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -429,7 +472,7 @@ void CompileMultiplication(struct Multiplication *this, struct CPContext *contex
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
 }
 
-void CompileDivision(struct Division *this, struct CPContext *context) {
+struct Type *CompileDivision(struct Node *node, struct Division *this, struct CPContext *context) {
     CompileNode(this->left, context);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -443,7 +486,7 @@ void CompileDivision(struct Division *this, struct CPContext *context) {
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
 }
 
-void CompileLess(struct Less *this, struct CPContext *context) {
+struct Type *CompileLess(struct Node *node, struct Less *this, struct CPContext *context) {
     CompileNode(this->left, context);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -463,7 +506,7 @@ void CompileLess(struct Less *this, struct CPContext *context) {
     print_stringi(context->outputFileDescriptor, "_setend", idx, ":\n");
 }
 
-void CompileEqual(struct Equal *this, struct CPContext *context) {
+struct Type *CompileEqual(struct Node *node, struct Equal *this, struct CPContext *context) {
     CompileNode(this->left, context);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -483,7 +526,7 @@ void CompileEqual(struct Equal *this, struct CPContext *context) {
     print_stringi(context->outputFileDescriptor, "_setend", idx, ":\n");
 }
 
-void CompileNode(struct Node *node, struct CPContext *context) {
+struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     print_string(context->outputFileDescriptor, "; ");
     print_string(context->outputFileDescriptor, node->filename);
     print_string(context->outputFileDescriptor, " ");
@@ -494,98 +537,111 @@ void CompileNode(struct Node *node, struct CPContext *context) {
 
     if (node->node_type == NodeBlock) {
         print_string(context->outputFileDescriptor, "block\n");
-        CompileBlock((struct Block*)node->node_ptr, context);
+        CompileBlock(node, (struct Block*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeAsm) {
         print_string(context->outputFileDescriptor, "asm\n");
-        CompileAsm((struct Asm*)node->node_ptr, context);
+        CompileAsm(node, (struct Asm*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeIf) {
         print_string(context->outputFileDescriptor, "if\n");
-        CompileIf((struct If*)node->node_ptr, context);
+        CompileIf(node, (struct If*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeWhile) {
         print_string(context->outputFileDescriptor, "while\n");
-        CompileWhile((struct While*)node->node_ptr, context);
+        CompileWhile(node, (struct While*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeFunctionDefinition) {
         print_string(context->outputFileDescriptor, "function definition\n");
-        CompileFunctionDefinition((struct FunctionDefinition*)node->node_ptr, context);
+        CompileFunctionDefinition(node, (struct FunctionDefinition*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodePrototype) {
         print_string(context->outputFileDescriptor, "prototype\n");
-        CompilePrototype((struct Prototype*)node->node_ptr, context);
+        CompilePrototype(node, (struct Prototype*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeStructDefinition) {
         print_string(context->outputFileDescriptor, "struct definition\n");
-        CompileStructDefinition((struct StructDefinition*)node->node_ptr, context);
+        CompileStructDefinition(node, (struct StructDefinition*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeDefinition) {
         print_string(context->outputFileDescriptor, "definition\n");
-        CompileDefinition((struct Definition*)node->node_ptr, context);
+        CompileDefinition(node, (struct Definition*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeAssignment) {
         print_string(context->outputFileDescriptor, "assignment\n");
-        CompileAssignment((struct Assignment*)node->node_ptr, context);
+        CompileAssignment(node, (struct Assignment*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeMovement) {
         print_string(context->outputFileDescriptor, "movement\n");
-        CompileMovement((struct Movement*)node->node_ptr, context);
+        CompileMovement(node, (struct Movement*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeMovementString) {
         print_string(context->outputFileDescriptor, "movement string\n");
-        CompileMovementString((struct MovementString*)node->node_ptr, context);
+        CompileMovementString(node, (struct MovementString*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeAssumption) {
         print_string(context->outputFileDescriptor, "assumption\n");
-        CompileAssumption((struct Assumption*)node->node_ptr, context, node);
+        CompileAssumption(node, (struct Assumption*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeIdentifier) {
         print_string(context->outputFileDescriptor, "identifier\n");
-        CompileIdentifier((struct Identifier*)node->node_ptr, context);
+        return CompileIdentifier(node, (struct Identifier*)node->node_ptr, context);
     }
     else if (node->node_type == NodeInteger) {
         print_string(context->outputFileDescriptor, "integer\n");
-        CompileInteger((struct Integer*)node->node_ptr, context);
+        return CompileInteger(node, (struct Integer*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAlloc) {
         print_string(context->outputFileDescriptor, "alloc\n");
-        CompileAlloc((struct Alloc*)node->node_ptr, context);
+        return CompileAlloc(node, (struct Alloc*)node->node_ptr, context);
     }
     else if (node->node_type == NodeFree) {
         print_string(context->outputFileDescriptor, "free\n");
-        CompileFree((struct Free*)node->node_ptr, context);
+        return CompileFree(node, (struct Free*)node->node_ptr, context);
     }
     else if (node->node_type == NodeFunctionCall) {
         print_string(context->outputFileDescriptor, "function call\n");
-        CompileFunctionCall((struct FunctionCall*)node->node_ptr, context);
+        CompileFunctionCall(node, (struct FunctionCall*)node->node_ptr, context);
+        return BuildType("", 0);
     }
     else if (node->node_type == NodeDereference) {
         print_string(context->outputFileDescriptor, "dereference\n");
-        CompileDereference((struct Dereference*)node->node_ptr, context);
+        return CompileDereference(node, (struct Dereference*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAddition) {
         print_string(context->outputFileDescriptor, "addition\n");
-        CompileAddition((struct Addition*)node->node_ptr, context);
+        return CompileAddition(node, (struct Addition*)node->node_ptr, context);
     }
     else if (node->node_type == NodeSubtraction) {
         print_string(context->outputFileDescriptor, "subtraction\n");
-        CompileSubtraction((struct Subtraction*)node->node_ptr, context);
+        return CompileSubtraction(node, (struct Subtraction*)node->node_ptr, context);
     }
     else if (node->node_type == NodeMultiplication) {
         print_string(context->outputFileDescriptor, "multiplication\n");
-        CompileMultiplication((struct Multiplication*)node->node_ptr, context);
+        return CompileMultiplication(node, (struct Multiplication*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDivision) {
         print_string(context->outputFileDescriptor, "division\n");
-        CompileDivision((struct Division*)node->node_ptr, context);
+        return CompileDivision(node, (struct Division*)node->node_ptr, context);
     }
     else if (node->node_type == NodeLess) {
         print_string(context->outputFileDescriptor, "less\n");
-        CompileLess((struct Less*)node->node_ptr, context);
+        return CompileLess(node, (struct Less*)node->node_ptr, context);
     }
     else if (node->node_type == NodeEqual) {
         print_string(context->outputFileDescriptor, "equal\n");
-        CompileEqual((struct Equal*)node->node_ptr, context);
+        return CompileEqual(node, (struct Equal*)node->node_ptr, context);
     }
 }
