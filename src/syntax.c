@@ -821,8 +821,10 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->filename = _strdup(TokenStream_GetToken(ts).filename);
         const char *identifier = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenAssign && TokenStream_GetToken(ts).type != TokenMove) {
-            SyntaxError(":= or <- expected in assignment or movement statement", TokenStream_GetToken(ts));
+        if (TokenStream_GetToken(ts).type != TokenAssign && 
+            TokenStream_GetToken(ts).type != TokenMove &&
+            TokenStream_GetToken(ts).type != TokenGetField) {
+            SyntaxError(":= or <- or -> expected in assignment or movement statement", TokenStream_GetToken(ts));
         }
 
         if (TokenStream_GetToken(ts).type == TokenAssign) {
@@ -859,6 +861,26 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
                 node->position_end = movement->value->position_end;
                 return node;
             }
+        }
+        else if (TokenStream_GetToken(ts).type == TokenGetField) {
+                struct MovementStructure *movement_structure = (struct MovementStructure*)_malloc(sizeof(struct MovementStructure));
+                node->node_ptr = movement_structure;
+                node->node_type = NodeMovementStructure;
+                movement_structure->identifier = identifier;
+                TokenStream_NextToken(ts);
+                if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+                    SyntaxError("Structure field expected in movement statement", TokenStream_GetToken(ts));
+                }
+                movement_structure->field = _strdup(TokenStream_GetToken(ts).value_string);
+                TokenStream_NextToken(ts);
+                if (TokenStream_GetToken(ts).type != TokenMove) {
+                    SyntaxError("<- expected in movement statement", TokenStream_GetToken(ts));
+                }
+                TokenStream_NextToken(ts);
+                movement_structure->value = Syntax_ProcessExpression(ts);
+                node->line_end = movement_structure->value->line_end;
+                node->position_end = movement_structure->value->position_end;
+                return node;
         }
     }
     SyntaxError("Statement expected", TokenStream_GetToken(ts));
