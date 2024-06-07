@@ -68,6 +68,16 @@ struct Type *findType(const char *identifier, struct CPContext *context) {
     }
 }
 
+struct Struct *findStruct(const char *identifier, struct CPContext *context) {
+    int sz = get_size((void**)context->structs);
+    for (int i = 0; i < sz; i++) {
+        if (_strcmp(context->structs[i]->name, identifier) == 0) {
+            return context->structs[i];
+        }
+    }
+    return NULL;
+}
+
 struct Type *CompileNode(struct Node *node, struct CPContext *context);
 
 void Compile(struct Node *node, struct Settings *settings) {
@@ -100,10 +110,16 @@ void Compile(struct Node *node, struct Settings *settings) {
     context->variable_stack[0] = NULL;
     context->variable_stack_type = (struct Type**)_malloc(sizeof(struct Type*));
     context->variable_stack_type[0] = NULL;
+    context->variable_arguments = (const char**)_malloc(sizeof(const char*));
+    context->variable_arguments[0] = NULL;
+    context->variable_arguments_type = (struct Type**)_malloc(sizeof(struct Type*));
+    context->variable_arguments_type[0] = NULL;
     context->function_stack = (const char**)_malloc(sizeof(const char*));
     context->function_stack[0] = NULL;
     context->function_stack_index = (int**)_malloc(sizeof(int*));
     context->function_stack_index[0] = NULL;
+    context->structs = (struct Struct**)_malloc(sizeof(struct Struct*));
+    context->structs[0] = NULL;
     context->function_index = 0;
     context->branch_index = 0;
     context->outputFileDescriptor = settings->outputFileDescriptor;
@@ -189,12 +205,20 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     print_string(context->outputFileDescriptor, "mov rbp, rsp\n");
     int sz = get_size((void**)this->signature->identifiers);
     print_stringi(context->outputFileDescriptor, "sub rsp, ", (sz + 2) * 8, "\n");
+
     const char **variable_stack_tmp = context->variable_stack;
+    struct Type **variable_stack_type_tmp = context->variable_stack_type;
     const char **variable_arguments_tmp = context->variable_arguments;
+    struct Type **variable_arguments_type_tmp = context->variable_arguments_type;
     context->variable_stack = (const char**)_malloc(sizeof(const char*));
     context->variable_stack[0] = NULL;
+    context->variable_stack_type = (struct Type**)_malloc(sizeof(struct Type*));
+    context->variable_stack_type[0] = NULL;
     context->variable_arguments = (const char**)_malloc(sizeof(const char*));
     context->variable_arguments[0] = NULL;
+    context->variable_arguments_type = (struct Type**)_malloc(sizeof(struct Type*));
+    context->variable_arguments_type[0] = NULL;
+
     context->function_stack = (const char**)push_back((void**)context->function_stack, _strdup(this->name));
     int *index_ptr = (int*)_malloc(sizeof(int));
     *index_ptr = index;
@@ -236,7 +260,17 @@ void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContex
 }
 
 void CompileStructDefinition(struct Node *node, struct StructDefinition *this, struct CPContext *context) {
-    
+    struct Struct *_struct = (struct Struct*)_malloc(sizeof(struct Struct));
+    _struct->name = this->name;
+    _struct->identifiers = (const char**)_malloc(sizeof(const char*));
+    _struct->identifiers[0] = NULL;
+    _struct->types = (struct Type**)_malloc(sizeof(struct Type*));
+    _struct->types[0] = NULL;
+    for (int i = 0; i < get_size((void**)this->identifiers); i++) {
+        _struct->identifiers = (const char**)push_back((void**)_struct->identifiers, (void*)this->identifiers[i]);
+        _struct->types = (struct Type**)push_back((void**)_struct->types, this->types[i]);
+    }
+    context->structs = (struct Struct**)push_back((void**)context->structs, (void*)_struct);
 }
 
 void CompileDefinition(struct Node *node, struct Definition *this, struct CPContext *context) {
@@ -244,6 +278,7 @@ void CompileDefinition(struct Node *node, struct Definition *this, struct CPCont
     struct Type *type = (struct Type*)_malloc(sizeof(int));
     type->identifier = _strdup(this->type->identifier);
     type->degree = this->type->degree;
+    if (_strcmp(type->identifier, "int") && type->degree == 0) SemanticError("Only pointers to structures are supported", node);
     context->variable_stack_type = (struct Type**)push_back((void**)context->variable_stack_type, type);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
 }
@@ -421,6 +456,33 @@ struct Type *CompileDereference(struct Node *node, struct Dereference *this, str
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
 
     return _type;
+}
+
+struct Type *CompileGetField(struct Node *node, struct GetField *this, struct CPContext *context) {
+    struct Type *_type = CompileNode(this->left, context);
+    if (_type->degree != 1) SemanticError("Pointer to structure expected", node);
+    struct Struct *_struct = findStruct(_type->identifier, context);
+    if (!_struct) SemanticError("Structure not found", node);
+    
+    if (this->right->node_type != NodeIdentifier) SemanticError("Identifier expected in structure get", node);
+    struct Identifier *_identifier = (struct Identifier*)this->right->node_ptr;
+
+
+    int index = -1;
+    int sz = get_size((void**)_struct->identifiers);
+    for (int i = 0; i < sz; i++) {
+        if (_strcmp(_identifier->identifier, _struct->identifiers[i]) == 0) {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1) SemanticError("Structure doesn't have corresponding field", node);
+    
+    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
+    print_stringi(context->outputFileDescriptor, "mov rbx, [rax + ", index * 8, "]\n");
+    print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+
+    return BuildType(_struct->types[index]->identifier, _struct->types[index]->degree);
 }
 
 struct Type *CompileAddition(struct Node *node, struct Addition *this, struct CPContext *context) {
@@ -619,6 +681,10 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeDereference) {
         print_string(context->outputFileDescriptor, "dereference\n");
         return CompileDereference(node, (struct Dereference*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeGetField) {
+        print_string(context->outputFileDescriptor, "get field\n");
+        return CompileGetField(node, (struct GetField*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAddition) {
         print_string(context->outputFileDescriptor, "addition\n");
