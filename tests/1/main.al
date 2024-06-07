@@ -11,6 +11,7 @@ func ^main() {
 
     def b <int, 0>
     b := a->y
+    a->x <- b
     
     // a->x = 5
     // ...

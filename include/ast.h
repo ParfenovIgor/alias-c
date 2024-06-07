@@ -15,6 +15,7 @@ enum NodeType {
     NodeDefinition,
     NodeAssignment,
     NodeMovement,
+    NodeMovementStructure,
     NodeMovementString,
     NodeAssumption,
     NodeIdentifier,
@@ -43,6 +44,7 @@ struct StructDefinition;
 struct Definition;
 struct Assignment;
 struct Movement;
+struct MovementStructure;
 struct MovementString;
 struct Assumption;
 struct Identifier;
@@ -149,6 +151,12 @@ struct Assignment {
 
 struct Movement {
     const char *identifier;
+    struct Node *value;
+};
+
+struct MovementStructure {
+    const char *identifier;
+    const char *field;
     struct Node *value;
 };
 

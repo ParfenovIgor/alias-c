@@ -300,11 +300,37 @@ void CompileMovement(struct Node *node, struct Movement *this, struct CPContext 
     if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree + 1) SemanticError("Movement of inappropriate types", node);
     _free(_type1);
 
-    CompileNode(this->value, context);
     int phase = findPhase(this->identifier, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_stringi(context->outputFileDescriptor, "mov rbx, [rbp + ", phase, "]\n");
     print_string(context->outputFileDescriptor, "mov [rbx], rax\n");
+}
+
+void CompileMovementStructure(struct Node *node, struct MovementStructure *this, struct CPContext *context) {
+    struct Type *_type_src = CompileNode(this->value, context);
+    struct Type *_type_dest = findType(this->identifier, context);
+    if (_type_dest->degree != 1) SemanticError("Pointer to structure expected", node);
+
+    struct Struct *_struct = findStruct(_type_dest->identifier, context);
+    if (!_struct) SemanticError("Structure not found", node);
+    
+    int index = -1;
+    int sz = get_size((void**)_struct->identifiers);
+    for (int i = 0; i < sz; i++) {
+        if (_strcmp(this->field, _struct->identifiers[i]) == 0) {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1) SemanticError("Structure doesn't have corresponding field", node);
+    if (_strcmp(_type_src->identifier, _struct->types[index]->identifier) || _type_src->degree != _struct->types[index]->degree)
+        SemanticError("Movement of inappropriate types", node);
+    _free(_type_src);
+
+    int phase = findPhase(this->identifier, context);
+    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
+    print_stringi(context->outputFileDescriptor, "mov rbx, [rbp + ", phase, "]\n");
+    print_stringi(context->outputFileDescriptor, "mov [rbx + ", index * 8, "], rax\n");
 }
 
 void CompileMovementString(struct Node *node, struct MovementString *this, struct CPContext *context) {
@@ -463,10 +489,10 @@ struct Type *CompileGetField(struct Node *node, struct GetField *this, struct CP
     if (_type->degree != 1) SemanticError("Pointer to structure expected", node);
     struct Struct *_struct = findStruct(_type->identifier, context);
     if (!_struct) SemanticError("Structure not found", node);
+    _free(_type);
     
     if (this->right->node_type != NodeIdentifier) SemanticError("Identifier expected in structure get", node);
     struct Identifier *_identifier = (struct Identifier*)this->right->node_ptr;
-
 
     int index = -1;
     int sz = get_size((void**)_struct->identifiers);
@@ -645,6 +671,11 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeMovement) {
         print_string(context->outputFileDescriptor, "movement\n");
         CompileMovement(node, (struct Movement*)node->node_ptr, context);
+        return BuildType("", 0);
+    }
+    else if (node->node_type == NodeMovementStructure) {
+        print_string(context->outputFileDescriptor, "movement structure\n");
+        CompileMovementStructure(node, (struct MovementStructure*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeMovementString) {
