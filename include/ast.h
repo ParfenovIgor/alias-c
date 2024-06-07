@@ -23,6 +23,7 @@ enum NodeType {
     NodeFree,
     NodeFunctionCall,
     NodeDereference,
+    NodeGetField,
     NodeAddition,
     NodeSubtraction,
     NodeMultiplication,
@@ -50,6 +51,7 @@ struct Alloc;
 struct Free;
 struct FunctionCall;
 struct Dereference;
+struct GetField;
 struct Addition;
 struct Subtraction;
 struct Multiplication;
@@ -66,6 +68,12 @@ struct FunctionSignature {
     struct Type *return_type;
 };
 
+struct Struct {
+    const char *name;
+    const char **identifiers;
+    struct Type **types;
+};
+
 struct CPContext {
     const char **variable_stack;
     struct Type **variable_stack_type;
@@ -73,6 +81,7 @@ struct CPContext {
     struct Type **variable_arguments_type;
     const char **function_stack;
     int **function_stack_index;
+    struct Struct **structs;
     int function_index;
     int branch_index;
     int outputFileDescriptor;
@@ -127,6 +136,10 @@ struct StructDefinition {
 struct Definition {
     const char *identifier;
     struct Type *type;
+};
+
+struct GetField {
+    struct Node *left, *right;
 };
 
 struct Assignment {

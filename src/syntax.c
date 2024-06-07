@@ -61,23 +61,27 @@ bool next_is_operation(struct TokenStream *ts) {
         TokenStream_GetToken(ts).type == TokenMult  ||
         TokenStream_GetToken(ts).type == TokenDiv   ||
         TokenStream_GetToken(ts).type == TokenLess  ||
-        TokenStream_GetToken(ts).type == TokenEqual);
+        TokenStream_GetToken(ts).type == TokenEqual  ||
+        TokenStream_GetToken(ts).type == TokenGetField);
 }
 
 int operation_priority(struct Token *operation) {
+    if (operation->type == TokenGetField) {
+        return 1;
+    }
     if (operation->type == TokenMult ||
         operation->type == TokenDiv) {
-        return 1;
+        return 2;
     }
     if (operation->type == TokenPlus ||
         operation->type == TokenMinus) {
-        return 2;
+        return 3;
     }
     if (operation->type == TokenLess ||
         operation->type == TokenEqual) {
-        return 3;
+        return 4;
     }
-    return 4;
+    return 5;
 }
 
 struct Node *process_operation(struct Node ***primaries, struct Token ***operations, struct TokenStream *ts) {
@@ -96,6 +100,13 @@ struct Node *process_operation(struct Node ***primaries, struct Token ***operati
     root->position_end = right->position_end;
     root->filename = _strdup(left->filename);
     
+    if (token->type == TokenGetField) {
+        struct GetField *getfield = (struct GetField*)_malloc(sizeof(struct GetField));
+        getfield->left = left;
+        getfield->right = right;
+        root->node_ptr = getfield;
+        root->node_type = NodeGetField;
+    }
     if (token->type == TokenPlus) {
         struct Addition *addition = (struct Addition*)_malloc(sizeof(struct Addition));
         addition->left = left;
