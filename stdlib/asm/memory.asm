@@ -1,24 +1,14 @@
 global _memcpy
-
 _memcpy:
-	xor rcx, rcx
+    mov rcx, rdx
+    rep movsb
+    mov rax, rdi
+    ret
 
-copy:
-	cmp rdx, rcx
-	jle decrement_rdi
- 	mov r10b, BYTE [rsi + rcx]
- 	mov [rdi], r10b
-	inc rdi
-	inc rcx
-	jmp copy
-
-decrement_rdi:
-	cmp rcx, 0
-	je end
-	dec rdi
-	dec rcx
-	jmp decrement_rdi
-
-end:
-	mov rax, rdi
-	ret
+global _memset
+_memset:
+    mov rsi, rax
+    mov rcx, rdx
+    rep stosb
+    mov rax, rdi
+    ret

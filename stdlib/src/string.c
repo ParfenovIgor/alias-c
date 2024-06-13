@@ -1,5 +1,5 @@
 #include "../../stdlib/include/string.h"
-#include "../../include/posix.h"
+#include "../../stdlib/include/posix.h"
 
 bool _isalpha(char c) {
     return ((c >= 'A' && c <= 'Z') ||
