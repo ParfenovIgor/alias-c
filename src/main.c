@@ -1,9 +1,10 @@
 #include "../include/common.h"
 #include "../include/process.h"
 #include "../include/settings.h"
-#include "../include/posix.h"
 #include "../include/languageserver.h"
+#include "../stdlib/include/posix.h"
 #include "../stdlib/include/string.h"
+#include "../stdlib/include/heap.h"
 
 void help() {
     print_string(0, "Syntax: calias [flags] file [flags]\n");

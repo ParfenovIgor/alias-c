@@ -11,7 +11,7 @@ SRCS_STDLIB_C := $(wildcard stdlib/src/*.c)
 OBJS_STDLIB_C := $(patsubst %.c, build/%.o, $(SRCS_STDLIB_C))
 
 ASFLAGS=-f elf64
-CFLAGS=
+CFLAGS=-g
 LDFLAGS=
 
 .PHONY: all test
@@ -32,12 +32,6 @@ build/%.o: %.c
 
 link:
 	gcc $(LDFLAGS) -o build/calias $(OBJS_ASM) $(OBJS_STDLIB_ASM) $(OBJS_C) $(OBJS_STDLIB_C) -z noexecstack
-
-test:
-	./build/calias test/main.al -m -c
-	nasm -f elf64 test/main.asm -o test/main.o
-	gcc test/malloc.c -c -o test/malloc.o
-	ld test/main.o test/malloc.o -o test/main -z noexecstack
 
 run:
 	./test/main
