@@ -38,10 +38,30 @@ int findFunctionIndex(const char *identifier, struct CPContext *context) {
     posix_exit(1);
 }
 
-int findPhase(const char *identifier, struct CPContext *context) {
+struct FunctionSignature *findFunctionSignature(const char *identifier, struct CPContext *context) {
+    int sz = get_size((void**)context->function_stack);
+    for (int i = sz - 1; i >= 0; i--) {
+        if (_strcmp(context->function_stack[i], identifier) == 0) {
+            return context->function_signatures[i];
+        }
+    }
+    print_string(0, "Error: function identifier not found\n");
+    posix_exit(1);
+}
+
+void findIdentifier(const char *identifier, struct CPContext *context) {
+    const char *regs[] = {
+        "rdi",
+        "rsi",
+        "rdx",
+        "rcx",
+        "r8",
+        "r9"
+    };
+
     int idx = findInLocal(identifier, context);
     if (idx != -1) {
-        return -(idx + 1) * 8;
+        print_stringi(context->outputFileDescriptor, "[rbp + ", -(idx + 1) * 8, "]");
     }
     else {
         idx = findInArguments(identifier, context);
@@ -49,7 +69,7 @@ int findPhase(const char *identifier, struct CPContext *context) {
             print_string(0, "Error: identifier not found\n");
             posix_exit(1);
         }
-        return (idx + 2) * 8;
+        print_string(context->outputFileDescriptor, regs[idx]);
     }
 }
 
@@ -118,6 +138,8 @@ void Compile(struct Node *node, struct Settings *settings) {
     context->function_stack[0] = NULL;
     context->function_stack_index = (int**)_malloc(sizeof(int*));
     context->function_stack_index[0] = NULL;
+    context->function_signatures = (struct FunctionSignature**)_malloc(sizeof(struct FunctionSignature*));
+    context->function_signatures[0] = NULL;
     context->structs = (struct Struct**)_malloc(sizeof(struct Struct*));
     context->structs[0] = NULL;
     context->function_index = 0;
@@ -223,6 +245,7 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     int *index_ptr = (int*)_malloc(sizeof(int));
     *index_ptr = index;
     context->function_stack_index = (int**)push_back((void**)context->function_stack_index, index_ptr);
+    context->function_signatures = (struct FunctionSignature**)push_back((void**)context->function_signatures, this->signature);
 
     sz = get_size((void**)this->metavariables);
     for (int i = 0; i < sz; i++) {
@@ -257,6 +280,7 @@ void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContex
     int *index_ptr = (int*)_malloc(sizeof(int));
     *index_ptr = -1;
     context->function_stack_index = (int**)push_back((void**)context->function_stack_index, index_ptr);
+    context->function_signatures = (struct FunctionSignature**)push_back((void**)context->function_signatures, this->signature);
 }
 
 void CompileStructDefinition(struct Node *node, struct StructDefinition *this, struct CPContext *context) {
@@ -289,9 +313,10 @@ void CompileAssignment(struct Node *node, struct Assignment *this, struct CPCont
     if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree) SemanticError("Assignment of not equal types", node);
     _free(_type1);
 
-    int phase = findPhase(this->identifier, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_stringi(context->outputFileDescriptor, "mov [rbp + ", phase, "], rax\n");
+    print_string(context->outputFileDescriptor, "mov ");
+    findIdentifier(this->identifier, context);
+    print_string(context->outputFileDescriptor, ", rax\n");
 }
 
 void CompileMovement(struct Node *node, struct Movement *this, struct CPContext *context) {
@@ -300,9 +325,10 @@ void CompileMovement(struct Node *node, struct Movement *this, struct CPContext 
     if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree + 1) SemanticError("Movement of inappropriate types", node);
     _free(_type1);
 
-    int phase = findPhase(this->identifier, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_stringi(context->outputFileDescriptor, "mov rbx, [rbp + ", phase, "]\n");
+    print_string(context->outputFileDescriptor, "mov rbx, ");
+    findIdentifier(this->identifier, context);
+    print_string(context->outputFileDescriptor, "\n");
     print_string(context->outputFileDescriptor, "mov [rbx], rax\n");
 }
 
@@ -327,14 +353,15 @@ void CompileMovementStructure(struct Node *node, struct MovementStructure *this,
         SemanticError("Movement of inappropriate types", node);
     _free(_type_src);
 
-    int phase = findPhase(this->identifier, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_stringi(context->outputFileDescriptor, "mov rbx, [rbp + ", phase, "]\n");
+    print_string(context->outputFileDescriptor, "mov rbx, ");
+    findIdentifier(this->identifier, context);
+    print_string(context->outputFileDescriptor, "\n");
     print_stringi(context->outputFileDescriptor, "mov [rbx + ", index * 8, "], rax\n");
 }
 
 void CompileMovementString(struct Node *node, struct MovementString *this, struct CPContext *context) {
-    int idx = context->branch_index;
+    /* int idx = context->branch_index;
     context->branch_index++;
     print_stringi(context->outputFileDescriptor, "jmp _strbufend", idx, "\n");
     print_stringi(context->outputFileDescriptor, "_strbuf ", idx, " db ");
@@ -353,11 +380,11 @@ void CompileMovementString(struct Node *node, struct MovementString *this, struc
     int phase = findPhase(this->identifier, context);
     print_stringi(context->outputFileDescriptor, "mov rdi, [rbp +", phase, "]\n");
     print_stringi(context->outputFileDescriptor, "mov rcx, ", sz, "\n");
-    print_string(context->outputFileDescriptor, "rep movsb\n");
+    print_string(context->outputFileDescriptor, "rep movsb\n"); */
 }
 
 void CompileAssumption(struct Node *node, struct Assumption *this, struct CPContext *context) {
-    int ind_error = context->branch_index;
+    /* int ind_error = context->branch_index;
     print_stringi(context->outputFileDescriptor, "jmp aftererror", ind_error, "\n");
     print_stringi(context->outputFileDescriptor, "error", ind_error, " db \"");
     
@@ -412,12 +439,13 @@ void CompileAssumption(struct Node *node, struct Assumption *this, struct CPCont
     print_stringi(context->outputFileDescriptor, "_setend", idx, ":\n");
 
     CompileNode(this->statement, context);
-    _free(error);
+    _free(error); */
 }
 
 struct Type *CompileIdentifier(struct Node *node, struct Identifier *this, struct CPContext *context) {
-    int phase = findPhase(this->identifier, context);
-    print_stringi(context->outputFileDescriptor, "mov rax, [rbp + ", phase, "]\n");
+    print_string(context->outputFileDescriptor, "mov rax, ");
+    findIdentifier(this->identifier, context);
+    print_string(context->outputFileDescriptor, "\n");
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
 
     struct Type *type = findType(this->identifier, context);
@@ -426,6 +454,13 @@ struct Type *CompileIdentifier(struct Node *node, struct Identifier *this, struc
 
 struct Type *CompileInteger(struct Node *node, struct Integer *this, struct CPContext *context) {
     print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
+    return BuildType("int", 0);
+}
+
+struct Type *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
+    struct Struct *_struct = findStruct(this->identifier, context);
+    int size = get_size((void**)_struct->identifiers);
+    print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", size * 8, "\n");
     return BuildType("int", 0);
 }
 
@@ -444,16 +479,22 @@ struct Type *CompileFree(struct Node *node, struct Free *this, struct CPContext 
     print_string(context->outputFileDescriptor, "add rsp, 8\n");
 }
 
-void CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
+struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
+    const char *regs[] = {
+        "rdi",
+        "rsi",
+        "rdx",
+        "rcx",
+        "r8",
+        "r9"
+    };
+
     int sz1 = get_size((void**)this->arguments);
-    for (int i = sz1 - 1; i >= 0; i--) {
-        int phase = findPhase(this->arguments[i], context);
-        print_stringi(context->outputFileDescriptor, "push qword [rbp + ", phase, "]\n");
-    }
-    int sz2 = get_size((void**)this->metavariable_name);
-    for (int i = sz2 - 1; i >= 0; i--) {
-        CompileNode(this->metavariable_value[i], context);
-        print_string(context->outputFileDescriptor, "push qword [rsp - 8]\n");
+    for (int i = 0; i < sz1; i++) {
+        CompileNode(this->arguments[i], context);
+        print_string(context->outputFileDescriptor, "mov ");
+        print_string(context->outputFileDescriptor, regs[i]);
+        print_string(context->outputFileDescriptor, ", [rsp - 8]\n");
     }
     int idx = findFunctionIndex(this->identifier, context);
     if (idx == -1) {
@@ -464,12 +505,11 @@ void CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CP
         print_string3(context->outputFileDescriptor, "call _fun", str, "\n");
         _free(str);
     }
-    print_stringi(context->outputFileDescriptor, "add rsp, ", (sz1 + sz2) * 8, "\n");
-    for (int i = sz1 - 1; i >= 0; i--) {
-        int phase = findPhase(this->arguments[i], context);
-        print_stringi(context->outputFileDescriptor, "mov rax, [rsp - ", (sz1 - i) * 8, "]\n");
-        print_stringi(context->outputFileDescriptor, "mov [rbp + ", phase, "], rax\n");
-    }
+    
+    print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
+    
+    struct Type *_type = findFunctionSignature(this->identifier, context)->return_type;
+    return BuildType(_type->identifier, _type->degree);
 }
 
 struct Type *CompileDereference(struct Node *node, struct Dereference *this, struct CPContext *context) {
@@ -696,6 +736,10 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
         print_string(context->outputFileDescriptor, "integer\n");
         return CompileInteger(node, (struct Integer*)node->node_ptr, context);
     }
+    else if (node->node_type == NodeSizeof) {
+        print_string(context->outputFileDescriptor, "sizeof\n");
+        return CompileSizeof(node, (struct Sizeof*)node->node_ptr, context);
+    }
     else if (node->node_type == NodeAlloc) {
         print_string(context->outputFileDescriptor, "alloc\n");
         return CompileAlloc(node, (struct Alloc*)node->node_ptr, context);
@@ -706,8 +750,7 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     }
     else if (node->node_type == NodeFunctionCall) {
         print_string(context->outputFileDescriptor, "function call\n");
-        CompileFunctionCall(node, (struct FunctionCall*)node->node_ptr, context);
-        return BuildType("", 0);
+        return CompileFunctionCall(node, (struct FunctionCall*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDereference) {
         print_string(context->outputFileDescriptor, "dereference\n");

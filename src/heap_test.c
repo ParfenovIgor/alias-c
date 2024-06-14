@@ -43,10 +43,10 @@ void heap_test() {
             }
         }
         if (op % 1000 == 0) {
-            printf("Iteration: %d\n", op);
-            printf("Memory used: %f\n", memoryUsed * 1.0 / heap_size);
-            printf("Malloc success rate: %f\n", mallocSucceeded * 1.0 / mallocAttempts);
-            printf("\n");
+            // printf("Iteration: %d\n", op);
+            // printf("Memory used: %f\n", memoryUsed * 1.0 / heap_size);
+            // printf("Malloc success rate: %f\n", mallocSucceeded * 1.0 / mallocAttempts);
+            // printf("\n");
         }
     }
 }

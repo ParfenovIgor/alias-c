@@ -20,6 +20,7 @@ enum NodeType {
     NodeAssumption,
     NodeIdentifier,
     NodeInteger,
+    NodeSizeof,
     NodeAlloc,
     NodeFree,
     NodeFunctionCall,
@@ -49,6 +50,7 @@ struct MovementString;
 struct Assumption;
 struct Identifier;
 struct Integer;
+struct Sizeof;
 struct Alloc;
 struct Free;
 struct FunctionCall;
@@ -83,6 +85,7 @@ struct CPContext {
     struct Type **variable_arguments_type;
     const char **function_stack;
     int **function_stack_index;
+    struct FunctionSignature **function_signatures;
     struct Struct **structs;
     int function_index;
     int branch_index;
@@ -179,6 +182,10 @@ struct Integer {
     int value;
 };
 
+struct Sizeof {
+    const char *identifier;
+};
+
 struct Alloc {
     struct Node *expression;
 };
@@ -191,7 +198,7 @@ struct FunctionCall {
     const char *identifier;
     const char **metavariable_name;
     struct Node **metavariable_value;
-    const char **arguments;
+    struct Node **arguments;
 };
 
 struct Dereference {

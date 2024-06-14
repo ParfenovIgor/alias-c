@@ -4,18 +4,19 @@
 #include "../include/languageserver.h"
 #include "../stdlib/include/posix.h"
 #include "../stdlib/include/string.h"
+#include "../stdlib/include/stdio.h"
 #include "../stdlib/include/heap.h"
 
 void help() {
-    print_string(0, "Syntax: calias [flags] file [flags]\n");
-    print_string(0, "Flags:\n");
-    print_string(0, "  -ls       Run language server.\n");
-    print_string(0, "  -s        Print states collected during validation.\n");
-    print_string(0, "  -c        Compile program to Asm code.\n");
-    print_string(0, "  -a        Compile program and assemble it using nasm to object file.\n");
-    print_string(0, "  -l        Compile, assemble and link program using gcc to executable file.\n");
-    print_string(0, "  -m        Enable top level main function.\n");
-    print_string(0, "  -o        Set output file name. File name has to follow this flag.\n");
+    _puts("Syntax: calias [flags] file [flags]");
+    _puts("Flags:");
+    _puts("  -ls       Run language server.");
+    _puts("  -s        Print states collected during validation.");
+    _puts("  -c        Compile program to Asm code.");
+    _puts("  -a        Compile program and assemble it using nasm to object file.");
+    _puts("  -l        Compile, assemble and link program using gcc to executable file.");
+    _puts("  -m        Enable top level main function.");
+    _puts("  -o        Set output file name. File name has to follow this flag.");
 }
 
 int main(int argc, char *argv[]) {
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
             }
             else if (_strcmp(arg, "-o") == 0) {
                 if (i + 1 == argc) {
-                    print_string(0, "Filename has to be specified after -o flag");
+                    _puts("Filename has to be specified after -o flag");
                     return 1;
                 }
                 const char *str = _strdup(argv[i + 1]);
