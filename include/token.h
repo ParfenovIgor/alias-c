@@ -12,6 +12,8 @@ enum TokenType {
     TokenProto,
     TokenStruct,
     TokenDef,
+    TokenReturn,
+    TokenAs,
     TokenConst,
     TokenAssume,
     TokenAlloc,

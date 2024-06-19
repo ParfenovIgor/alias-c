@@ -6,4 +6,4 @@ struct Type {
 };
 
 struct Type *BuildType(const char *id, int deg);
-
+struct Type *CopyType(struct Type *type);

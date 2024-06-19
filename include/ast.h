@@ -13,6 +13,8 @@ enum NodeType {
     NodePrototype,
     NodeStructDefinition,
     NodeDefinition,
+    NodeReturn,
+    NodeAs,
     NodeAssignment,
     NodeMovement,
     NodeMovementStructure,
@@ -43,6 +45,8 @@ struct FunctionDefinition;
 struct Prototype;
 struct StructDefinition;
 struct Definition;
+struct Return;
+struct As;
 struct Assignment;
 struct Movement;
 struct MovementStructure;
@@ -79,13 +83,13 @@ struct Struct {
 };
 
 struct CPContext {
-    const char **variable_stack;
-    struct Type **variable_stack_type;
-    const char **variable_arguments;
-    struct Type **variable_arguments_type;
-    const char **function_stack;
-    int **function_stack_index;
-    struct FunctionSignature **function_signatures;
+    const char **variable_local_name;
+    struct Type **variable_local_type;
+    const char **variable_argument_name;
+    struct Type **variable_argument_type;
+    const char **function_name;
+    int **function_name_index;
+    struct FunctionSignature **function_signature;
     struct Struct **structs;
     int function_index;
     int branch_index;
@@ -143,6 +147,15 @@ struct Definition {
     struct Type *type;
 };
 
+struct Return {
+    struct Node *expression;
+};
+
+struct As {
+    struct Node *expression;
+    struct Type *type;
+};
+
 struct GetField {
     struct Node *left, *right;
 };
@@ -183,7 +196,7 @@ struct Integer {
 };
 
 struct Sizeof {
-    const char *identifier;
+    struct Type *type;
 };
 
 struct Alloc {

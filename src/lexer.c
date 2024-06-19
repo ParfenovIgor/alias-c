@@ -163,6 +163,8 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
         else if (AppendToken(str, N, &i, "proto", TokenProto, false, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "struct", TokenStruct, false, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "def", TokenDef, false, line, &position, filename, token_stream)) {}
+        else if (AppendToken(str, N, &i, "return", TokenReturn, false, line, &position, filename, token_stream)) {}
+        else if (AppendToken(str, N, &i, "as", TokenAs, false, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "const", TokenConst, false, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "assume", TokenAssume, false, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "alloc", TokenAlloc, false, line, &position, filename, token_stream)) {}
@@ -387,6 +389,8 @@ const char *TokenColor(enum TokenType type,
         Color_Blue,         // TokenProto,
         Color_Blue,         // TokenStruct,
         Color_Blue,         // TokenDef,
+        Color_Blue,         // TokenReturn,
+        Color_Blue,         // TokenAs,
         Color_Blue,         // TokenConst,
         Color_Blue,         // TokenAssume,
         Color_Blue,         // TokenAlloc,
