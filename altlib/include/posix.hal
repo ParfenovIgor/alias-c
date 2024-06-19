@@ -1,0 +1,10 @@
+proto posix_read(fd <int, 0>, buffer <int, 1>, count <int, 0>) -> <int, 0>
+proto posix_write(fd <int, 0>, buffer <int, 1>, count <int, 0>) -> <int, 0>
+proto posix_open(filename <int, 1>, flags <int, 0>, mode <int, 0>) -> <int, 0>
+proto posix_close(fd <int, 0>) -> <int, 0>
+proto posix_mmap(start <int, 1>, length <int, 0>, prot <int, 0>, flags <int, 0>, fd <int, 0>, offset <int, 0>) -> <int, 1>
+proto posix_munmap(start <int, 1>, length <int, 0>) -> <int, 0>
+proto posix_fork() -> <int, 0>
+proto posix_execve(filename <int, 1>, argv <int, 2>, envp <int, 2>) -> <int, 0>
+proto posix_exit(error_code <int, 0>) -> <int, 0>
+proto posix_wait4(pid <int, 0>, stat_addr <int, 1>, options <int, 0>, rusage <int, 1>) -> <int, 0>
