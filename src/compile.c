@@ -196,13 +196,13 @@ void CompileIf(struct Node *node, struct If *this, struct CPContext *context) {
 void CompileWhile(struct Node *node, struct While *this, struct CPContext *context) {
     int idx = context->branch_index;
     context->branch_index++;
-    print_stringi(context->outputFileDescriptor, "_while:", idx, ":\n");
+    print_stringi(context->outputFileDescriptor, "_while", idx, ":\n");
     CompileNode(this->condition, context);
     print_string(context->outputFileDescriptor, "cmp qword [rsp - 8], 0\n");
-    print_stringi(context->outputFileDescriptor, "jmp _while_end", idx, "\n");
+    print_stringi(context->outputFileDescriptor, "je _while_end", idx, "\n");
     CompileNode(this->block, context);
     print_stringi(context->outputFileDescriptor, "jmp _while", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "_while_end", idx, "\n");
+    print_stringi(context->outputFileDescriptor, "_while_end", idx, ":\n");
 }
 
 void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) {
@@ -473,7 +473,7 @@ struct Type *CompileInteger(struct Node *node, struct Integer *this, struct CPCo
 struct Type *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
     int size;
     if (_strcmp(this->type->identifier, "int") == 0 || this->type->degree != 0) {
-        size = 8;
+        size = 1;
     }
     else {
         struct Struct *_struct = findStruct(this->type->identifier, context);
@@ -573,6 +573,31 @@ struct Type *CompileGetField(struct Node *node, struct GetField *this, struct CP
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
 
     return CopyType(_struct->types[index]);
+}
+
+struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContext *context) {
+    struct Type *_type = CompileNode(this->left, context);
+    if (_type->degree != 1) SemanticError("Pointer expected", node);
+
+    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
+    const char *identifier = "__junk";
+    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
+
+    struct Type *_type2 = CompileNode(this->right, context);
+    if (_strcmp(_type2->identifier, "int") || _type2->degree != 0) SemanticError("Integer expected", node);
+    _free(_type2);
+    
+    print_string(context->outputFileDescriptor, "add rsp, 8\n");
+    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    print_string(context->outputFileDescriptor, "mov rax, [rsp - 16]\n");
+    print_string(context->outputFileDescriptor, "mov rbx, 8\n");
+    print_string(context->outputFileDescriptor, "mul rbx\n");
+    print_string(context->outputFileDescriptor, "add rax, [rsp - 8]\n");
+    print_string(context->outputFileDescriptor, "mov rbx, [rax]\n");
+    print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+
+    _type->degree--;
+    return _type;
 }
 
 struct Type *CompileAddition(struct Node *node, struct Addition *this, struct CPContext *context) {
@@ -797,6 +822,10 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeDereference) {
         print_string(context->outputFileDescriptor, "dereference\n");
         return CompileDereference(node, (struct Dereference*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeIndex) {
+        print_string(context->outputFileDescriptor, "index\n");
+        return CompileIndex(node, (struct Index*)node->node_ptr, context);
     }
     else if (node->node_type == NodeGetField) {
         print_string(context->outputFileDescriptor, "get field\n");
