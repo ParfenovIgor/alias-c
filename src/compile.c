@@ -109,21 +109,7 @@ void Compile(struct Node *node, struct Settings *settings) {
     print_int   (settings->outputFileDescriptor, node->position_begin + 1);
     print_string(settings->outputFileDescriptor, " -> program\n");
 
-    print_string(settings->outputFileDescriptor, "global _start\n");
-    print_string(settings->outputFileDescriptor, "global main\n");
-    print_string(settings->outputFileDescriptor, "extern malloc\n");
-    print_string(settings->outputFileDescriptor, "extern free\n");
     print_string(settings->outputFileDescriptor, "section .text\n");
-    print_string(settings->outputFileDescriptor, "_start:\n");
-    print_string(settings->outputFileDescriptor, "call main\n");
-    print_string(settings->outputFileDescriptor, "mov rax, 0x3c\n");
-    print_string(settings->outputFileDescriptor, "mov rdi, 0\n");
-    print_string(settings->outputFileDescriptor, "syscall\n");
-    if (settings->topMain) {
-        print_string(settings->outputFileDescriptor, "main:\n");
-    }
-    print_string(settings->outputFileDescriptor, "push rbp\n");
-    print_string(settings->outputFileDescriptor, "mov rbp, rsp\n");
 
     struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
     context->variable_local_name = (const char**)_malloc(sizeof(const char*));
