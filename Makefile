@@ -11,7 +11,6 @@ SRCS_STDLIB_C := $(wildcard stdlib/src/*.c)
 OBJS_STDLIB_C := $(patsubst %.c, build/%.o, $(SRCS_STDLIB_C))
 
 SRCS_TEST_AL := $(wildcard test/src/*.al)
-SRCS_TEST_ASM:= $(wildcard test/src/*.asm)
 OBJS_TEST_AL := $(patsubst %.al, build/%.o, $(SRCS_TEST_AL))
 
 ASFLAGS=-f elf64
@@ -46,10 +45,7 @@ link:
 run:
 	./test/main
 
-test: make_dir $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) $(OBJS_TEST_AL) link_test remove_tmp
-
-remove_tmp:
-	rm $(SRCS_TEST_ASM) || true
+test: make_dir $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) $(OBJS_TEST_AL) link_test
 
 link_test:
 	ld $(LDFLAGS) -o build/testal $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) $(OBJS_TEST_AL) -z noexecstack

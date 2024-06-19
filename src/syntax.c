@@ -54,6 +54,32 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
     return node;
 }
 
+struct Type *Syntax_ProcessType(struct TokenStream *ts) {
+    struct Type *type = (struct Type*)_malloc(sizeof(struct Type));
+    if (TokenStream_GetToken(ts).type != TokenLess) {
+        SyntaxError("< expected in type", TokenStream_GetToken(ts));
+    }
+    TokenStream_NextToken(ts);
+    if (TokenStream_GetToken(ts).type != TokenIdentifier) {
+        SyntaxError("Identifier expected in type", TokenStream_GetToken(ts));
+    }
+    type->identifier = _strdup(TokenStream_GetToken(ts).value_string);
+    TokenStream_NextToken(ts);
+    if (TokenStream_GetToken(ts).type != TokenComma) {
+        SyntaxError(", expected in type", TokenStream_GetToken(ts));
+    }
+    TokenStream_NextToken(ts);
+    if (TokenStream_GetToken(ts).type != TokenInteger) {
+        SyntaxError("Integer expected in type", TokenStream_GetToken(ts));
+    }
+    type->degree = TokenStream_GetToken(ts).value_int;
+    TokenStream_NextToken(ts);
+    if (TokenStream_GetToken(ts).type != TokenGreater) {
+        SyntaxError("> expected in type", TokenStream_GetToken(ts));
+    }
+    return type;
+}
+
 bool next_is_operation(struct TokenStream *ts) {
     return (
         TokenStream_GetToken(ts).type == TokenPlus  ||
@@ -65,29 +91,29 @@ bool next_is_operation(struct TokenStream *ts) {
         TokenStream_GetToken(ts).type == TokenGetField);
 }
 
-int operation_priority(struct Token *operation) {
-    if (operation->type == TokenGetField) {
+int operation_priority(enum TokenType *operation) {
+    if (*operation == TokenGetField) {
         return 1;
     }
-    if (operation->type == TokenMult ||
-        operation->type == TokenDiv) {
+    if (*operation == TokenMult ||
+        *operation == TokenDiv) {
         return 2;
     }
-    if (operation->type == TokenPlus ||
-        operation->type == TokenMinus) {
+    if (*operation == TokenPlus ||
+        *operation == TokenMinus) {
         return 3;
     }
-    if (operation->type == TokenLess ||
-        operation->type == TokenEqual) {
+    if (*operation == TokenLess ||
+        *operation == TokenEqual) {
         return 4;
     }
     return 5;
 }
 
-struct Node *process_operation(struct Node ***primaries, struct Token ***operations, struct TokenStream *ts) {
+struct Node *process_operation(struct Node ***primaries, enum TokenType ***operations, struct TokenStream *ts) {
     struct Node *root = (struct Node*)_malloc(sizeof(struct Node));
     root->node_ptr = NULL;
-    struct Token *token = (struct Token*)get_back((void**)*operations);
+    enum TokenType *token = (enum TokenType*)get_back((void**)*operations);
     int sz = get_size((void**)*primaries);
     if (sz < 2) {
         SyntaxError("Incorrect structure of the expression", TokenStream_GetToken(ts));
@@ -100,49 +126,49 @@ struct Node *process_operation(struct Node ***primaries, struct Token ***operati
     root->position_end = right->position_end;
     root->filename = _strdup(left->filename);
     
-    if (token->type == TokenGetField) {
+    if (*token == TokenGetField) {
         struct GetField *getfield = (struct GetField*)_malloc(sizeof(struct GetField));
         getfield->left = left;
         getfield->right = right;
         root->node_ptr = getfield;
         root->node_type = NodeGetField;
     }
-    if (token->type == TokenPlus) {
+    if (*token == TokenPlus) {
         struct Addition *addition = (struct Addition*)_malloc(sizeof(struct Addition));
         addition->left = left;
         addition->right = right;
         root->node_ptr = addition;
         root->node_type = NodeAddition;
     }
-    if (token->type == TokenMinus) {
+    if (*token == TokenMinus) {
         struct Subtraction *subtraction = (struct Subtraction*)_malloc(sizeof(struct Subtraction));
         subtraction->left = left;
         subtraction->right = right;
         root->node_ptr = subtraction;
         root->node_type = NodeSubtraction;
     }
-    if (token->type == TokenMult) {
+    if (*token == TokenMult) {
         struct Multiplication *multiplication = (struct Multiplication*)_malloc(sizeof(struct Multiplication));
         multiplication->left = left;
         multiplication->right = right;
         root->node_ptr = multiplication;
         root->node_type = NodeMultiplication;
     }
-    if (token->type == TokenDiv) {
+    if (*token == TokenDiv) {
         struct Division *division = (struct Division*)_malloc(sizeof(struct Division));
         division->left = left;
         division->right = right;
         root->node_ptr = division;
         root->node_type = NodeDivision;
     }
-    if (token->type == TokenLess) {
+    if (*token == TokenLess) {
         struct Less *less = (struct Less*)_malloc(sizeof(struct Less));
         less->left = left;
         less->right = right;
         root->node_ptr = less;
         root->node_type = NodeLess;
     }
-    if (token->type == TokenEqual) {
+    if (*token == TokenEqual) {
         struct Equal *equal = (struct Equal*)_malloc(sizeof(struct Equal));
         equal->left = left;
         equal->right = right;
@@ -151,20 +177,22 @@ struct Node *process_operation(struct Node ***primaries, struct Token ***operati
     }
 
     if (root->node_ptr == NULL) {
-        SyntaxError("Binary operator expected in expression", *token);
+        print_string(0, "Fatal Error\n");
+        posix_exit(3);
     }
 
     *primaries = (struct Node**)pop_back((void**)*primaries);
     *primaries = (struct Node**)pop_back((void**)*primaries);
     *primaries = (struct Node**)push_back((void**)*primaries, root);
-    *operations = (struct Token**)pop_back((void**)*operations);
+    _free(token);
+    *operations = (enum TokenType**)pop_back((void**)*operations);
     return root;
 }
 
 struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
     struct Node **primaries = (struct Node**)_malloc(sizeof(struct Node*));
     primaries[0] = NULL;
-    struct Token **operations = (struct Token**)_malloc(sizeof(struct Token*));
+    enum TokenType **operations = (enum TokenType**)_malloc(sizeof(enum TokenType*));
     operations[0] = NULL;
     int ParenthesisLevel = 0;
     
@@ -178,14 +206,18 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
     enum State CurrentState;
     if (TokenStream_GetToken(ts).type == TokenParenthesisOpen) {
         struct Token token = TokenStream_GetToken(ts);
-        operations = (struct Token**)push_back((void**)operations,&token);
+        enum TokenType *token_type = (enum TokenType*)_malloc(sizeof(enum TokenType));
+        *token_type = token.type;
+        operations = (enum TokenType**)push_back((void**)operations, token_type);
         TokenStream_NextToken(ts);
         ParenthesisLevel++;
         CurrentState = State_ParenthesisOpen;
     }
     else if (next_is_operation(ts)) {
         struct Token token = TokenStream_GetToken(ts);
-        operations = (struct Token**)push_back((void**)operations, &token);
+        enum TokenType *token_type = (enum TokenType*)_malloc(sizeof(enum TokenType));
+        *token_type = token.type;
+        operations = (enum TokenType**)push_back((void**)operations, token_type);
         TokenStream_NextToken(ts);
         CurrentState = State_UnaryOperation;
     }
@@ -193,12 +225,13 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
         primaries = (struct Node**)push_back((void**)primaries, Syntax_ProcessPrimary(ts));
         CurrentState = State_Identifier;
     }
-
+    
     while (CurrentState == State_UnaryOperation ||
            CurrentState == State_BinaryOperation ||
            CurrentState == State_ParenthesisOpen ||
            next_is_operation(ts) ||
            ParenthesisLevel != 0) {
+        
         if (TokenStream_GetToken(ts).type == TokenParenthesisOpen) {
             if (CurrentState != State_UnaryOperation &&
                 CurrentState != State_BinaryOperation &&
@@ -206,7 +239,9 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
                 SyntaxError("Unexpected ( in expression", TokenStream_GetToken(ts));
             }
             struct Token token = TokenStream_GetToken(ts);
-            operations = (struct Token**)push_back((void**)operations, &token);
+            enum TokenType *token_type = (enum TokenType*)_malloc(sizeof(enum TokenType));
+            *token_type = token.type;
+            operations = (enum TokenType**)push_back((void**)operations, token_type);
             TokenStream_NextToken(ts);
             ParenthesisLevel++;
             CurrentState = State_ParenthesisOpen;
@@ -216,13 +251,14 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
                 CurrentState != State_ParenthesisOpen) {
                 SyntaxError("Unexpected ) in expression", TokenStream_GetToken(ts));
             }
-            while (*operations != NULL && ((struct Token*)get_back((void**)operations))->type != TokenParenthesisOpen) {
+            while (*operations != NULL && *((enum TokenType*)get_back((void**)operations)) != TokenParenthesisOpen) {
                 process_operation(&primaries, &operations, ts);
             }
-            if (*operations == NULL || ((struct Token*)get_back((void*)operations))->type != TokenParenthesisOpen) {
+            if (*operations == NULL || *((enum TokenType*)get_back((void*)operations)) != TokenParenthesisOpen) {
                 SyntaxError("Unexpected ) in expression", TokenStream_GetToken(ts));
             }
-            operations = (struct Token**)pop_back((void**)operations);
+            _free(get_back((void*)operations));
+            operations = (enum TokenType**)pop_back((void**)operations);
             TokenStream_NextToken(ts);
             ParenthesisLevel--;
             CurrentState = State_ParenthesisClose;
@@ -231,22 +267,18 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
             if (CurrentState == State_UnaryOperation ||
                 CurrentState == State_BinaryOperation ||
                 CurrentState == State_ParenthesisOpen) {
-                struct Token token = TokenStream_GetToken(ts);
-                while (*operations != NULL &&
-                    operation_priority((struct Token*)get_back((void**)operations)) <= operation_priority(&token)) {
-                    process_operation(&primaries, &operations, ts);
-                }
-                operations = (struct Token**)push_back((void**)operations, &token);
-                TokenStream_NextToken(ts);
-                CurrentState = State_UnaryOperation;
+                SyntaxError("Unexpected operator in expression", TokenStream_GetToken(ts));
             }
             else {
                 struct Token token = TokenStream_GetToken(ts);
                 while (*operations != NULL &&
-                    operation_priority((struct Token*)get_back((void**)operations)) <= operation_priority(&token)) {
+                    operation_priority((enum TokenType*)get_back((void**)operations)) <= 
+                        operation_priority((enum TokenType*)&token.type)) {
                     process_operation(&primaries, &operations, ts);
                 }
-                operations = (struct Token**)push_back((void**)operations, &token);
+                enum TokenType *token_type = (enum TokenType*)_malloc(sizeof(enum TokenType));
+                *token_type = token.type;
+                operations = (enum TokenType**)push_back((void**)operations, token_type);
                 TokenStream_NextToken(ts);
                 CurrentState = State_BinaryOperation;
             }
@@ -273,6 +305,23 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
     struct Node *res = primaries[0];
     _free(primaries);
     _free(operations);
+
+    if (TokenStream_GetToken(ts).type == TokenAs) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct As *_as = (struct As*)_malloc(sizeof(struct As));
+        node->node_ptr = _as;
+        node->node_type = NodeAs;
+        node->line_begin = res->line_begin;
+        node->position_begin = res->position_begin;
+        node->filename = _strdup(res->filename);
+        _as->expression = res;
+        TokenStream_NextToken(ts);
+        _as->type = Syntax_ProcessType(ts);
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
+    }
     return res;
 }
 
@@ -317,10 +366,7 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         node->node_ptr = _sizeof;
         node->node_type = NodeSizeof;
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-            SyntaxError("Struct name expected in sizeof", TokenStream_GetToken(ts));
-        }
-        _sizeof->identifier = TokenStream_GetToken(ts).value_string;
+        _sizeof->type = Syntax_ProcessType(ts);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
         TokenStream_NextToken(ts);
@@ -416,32 +462,6 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
     SyntaxError("Identifier expected in primary expression", TokenStream_GetToken(ts));
 }
 
-struct Type *Syntax_ProcessType(struct TokenStream *ts) {
-    struct Type *type = (struct Type*)_malloc(sizeof(struct Type));
-    if (TokenStream_GetToken(ts).type != TokenLess) {
-        SyntaxError("< expected in type", TokenStream_GetToken(ts));
-    }
-    TokenStream_NextToken(ts);
-    if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-        SyntaxError("Identifier expected in type", TokenStream_GetToken(ts));
-    }
-    type->identifier = _strdup(TokenStream_GetToken(ts).value_string);
-    TokenStream_NextToken(ts);
-    if (TokenStream_GetToken(ts).type != TokenComma) {
-        SyntaxError(", expected in type", TokenStream_GetToken(ts));
-    }
-    TokenStream_NextToken(ts);
-    if (TokenStream_GetToken(ts).type != TokenInteger) {
-        SyntaxError("Integer expected in type", TokenStream_GetToken(ts));
-    }
-    type->degree = TokenStream_GetToken(ts).value_int;
-    TokenStream_NextToken(ts);
-    if (TokenStream_GetToken(ts).type != TokenGreater) {
-        SyntaxError("> expected in type", TokenStream_GetToken(ts));
-    }
-    return type;
-}
-
 struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts) {
     struct FunctionSignature *function_signature = (struct FunctionSignature*)_malloc(sizeof(struct FunctionSignature));
     function_signature->identifiers = (const char**)_malloc(sizeof(const char*));
@@ -477,14 +497,14 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
             *is_const = false;
         }
         function_signature->is_const = (bool**)push_back((void**)function_signature->is_const, is_const);
-        if (type->degree == 0) {
+        // if (type->degree == 0) {
             struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
             size_in = 0;
             function_signature->size_in = (struct Node**)push_back((void**)function_signature->size_in, size_in);
             struct Node *size_out = (struct Node*)_malloc(sizeof(struct Node));
             size_out = 0;
             function_signature->size_out = (struct Node**)push_back((void**)function_signature->size_out, size_out);
-        }
+        /* }
         else {
             struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
             size_in = Syntax_ProcessExpression(ts);
@@ -496,7 +516,7 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
             struct Node *size_out = (struct Node*)_malloc(sizeof(struct Node));
             size_out = Syntax_ProcessExpression(ts);
             function_signature->size_out = (struct Node**)push_back((void**)function_signature->size_out, size_out);
-        }
+        } */
         if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
             TokenStream_NextToken(ts);
             break;
@@ -774,6 +794,20 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
         TokenStream_NextToken(ts);
+        return node;
+    }
+    if (TokenStream_GetToken(ts).type == TokenReturn) {
+        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
+        struct Return *_return = (struct Return*)_malloc(sizeof(struct Return));
+        node->node_ptr = _return;
+        node->node_type = NodeReturn;
+        node->line_begin = TokenStream_GetToken(ts).line_begin;
+        node->position_begin = TokenStream_GetToken(ts).position_begin;
+        node->filename = _strdup(TokenStream_GetToken(ts).filename);
+        TokenStream_NextToken(ts);
+        _return->expression = Syntax_ProcessExpression(ts);
+        node->line_end = _return->expression->line_end;
+        node->position_end = _return->expression->position_end;
         return node;
     }
     if (TokenStream_GetToken(ts).type == TokenAssume) {

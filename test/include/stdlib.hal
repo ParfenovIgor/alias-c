@@ -1,0 +1,2 @@
+proto _malloc(sz <int, 0>) -> <int, 1>
+proto _free(pt <int, 1>) -> <int, 0>
