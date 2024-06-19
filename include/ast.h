@@ -27,6 +27,7 @@ enum NodeType {
     NodeFree,
     NodeFunctionCall,
     NodeDereference,
+    NodeIndex,
     NodeGetField,
     NodeAddition,
     NodeSubtraction,
@@ -59,6 +60,7 @@ struct Alloc;
 struct Free;
 struct FunctionCall;
 struct Dereference;
+struct Index;
 struct GetField;
 struct Addition;
 struct Subtraction;
@@ -154,6 +156,10 @@ struct Return {
 struct As {
     struct Node *expression;
     struct Type *type;
+};
+
+struct Index {
+    struct Node *left, *right;
 };
 
 struct GetField {

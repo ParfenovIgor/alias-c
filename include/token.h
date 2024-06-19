@@ -31,6 +31,7 @@ enum TokenType {
     TokenBracketOpen,
     TokenBracketClose,
     TokenDereference,
+    TokenIndex,
     TokenGetField,
     TokenCaret,
     TokenPlus,

@@ -88,10 +88,14 @@ bool next_is_operation(struct TokenStream *ts) {
         TokenStream_GetToken(ts).type == TokenDiv   ||
         TokenStream_GetToken(ts).type == TokenLess  ||
         TokenStream_GetToken(ts).type == TokenEqual  ||
+        TokenStream_GetToken(ts).type == TokenIndex  ||
         TokenStream_GetToken(ts).type == TokenGetField);
 }
 
 int operation_priority(enum TokenType *operation) {
+    if (*operation == TokenIndex) {
+        return 0;
+    }
     if (*operation == TokenGetField) {
         return 1;
     }
@@ -126,6 +130,13 @@ struct Node *process_operation(struct Node ***primaries, enum TokenType ***opera
     root->position_end = right->position_end;
     root->filename = _strdup(left->filename);
     
+    if (*token == TokenIndex) {
+        struct Index *index = (struct Index*)_malloc(sizeof(struct Index));
+        index->left = left;
+        index->right = right;
+        root->node_ptr = index;
+        root->node_type = NodeIndex;
+    }
     if (*token == TokenGetField) {
         struct GetField *getfield = (struct GetField*)_malloc(sizeof(struct GetField));
         getfield->left = left;

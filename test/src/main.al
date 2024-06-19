@@ -19,7 +19,7 @@ func ^main() -> <int, 0> {
     def _ <int, 0>
 
     def pt <int, 1>
-    pt := call _malloc(^<int, 0> * 10)
+    pt := call _malloc(^<int, 0> * 20)
     pt <- 4
     _ := call _puti($pt)
     
@@ -28,6 +28,21 @@ func ^main() -> <int, 0> {
     a->x <- 5
     a->y <- a->x * a->x
     _ := call _free(a as <int, 1>)
+
+    def i <int, 0>
+    i := 10
+    while (i < 20) {
+        def j <int, 0>; j := pt as <int, 0>
+        j := j + ^<int, 0> * i
+        def pt2 <int, 1>; pt2 := j as <int, 1>
+        pt2 <- i
+        i := i + 1
+    }
+    i := 10
+    while (i < 20) {
+        _ := call _puti(pt !! i)
+        i := i + 1
+    }
 
     _ := call _puti(a->x)
     _ := call _puti(a->y)

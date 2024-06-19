@@ -182,6 +182,7 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
         else if (AppendToken(str, N, &i, "[", TokenBracketOpen, true, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "]", TokenBracketClose, true, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "$", TokenDereference, true, line, &position, filename, token_stream)) {}
+        else if (AppendToken(str, N, &i, "!!", TokenIndex, true, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "->", TokenGetField, true, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "^", TokenCaret, true, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "+", TokenPlus, true, line, &position, filename, token_stream)) {}
@@ -408,6 +409,7 @@ const char *TokenColor(enum TokenType type,
         Color_White,        // TokenBracketOpen,
         Color_White,        // TokenBracketClose,
         Color_Black,        // TokenDereference,
+        Color_Black,        // TokenIndex,
         Color_Black,        // TokenGetField,
         Color_Black,        // TokenCaret,
         Color_Black,        // TokenPlus,
