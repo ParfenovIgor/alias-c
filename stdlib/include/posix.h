@@ -22,3 +22,4 @@ int posix_fork();
 int posix_execve(const char *filename, const char *const *argv, const char *const *envp);
 void posix_exit(int error_code);
 int posix_wait4(int pid, int *stat_addr, int options, void *rusage);
+int posix_unlink(const char *pathname);

@@ -88,6 +88,7 @@ int Process(struct Settings *settings) {
 
             // call the NASM assembler
             Assemble(assemble_in_filename, assemble_out_filename);
+            posix_unlink(assemble_in_filename);
             _free(assemble_in_filename);
             _free(assemble_out_filename);
 
@@ -104,6 +105,7 @@ int Process(struct Settings *settings) {
 
                 // call the ld linker
                 Link(link_in_filename, link_out_filename);
+                posix_unlink(link_in_filename);
                 _free(link_in_filename);
                 _free(link_out_filename);
             }
