@@ -7,6 +7,15 @@
 #include "../stdlib/include/stdlib.h"
 #include "../stdlib/include/string.h"
 
+const char *regs[] = {
+    "rdi",
+    "rsi",
+    "rdx",
+    "rcx",
+    "r8",
+    "r9"
+};
+
 int findInLocal(const char *identifier, struct CPContext *context) {
     int sz = get_size((void**)context->variable_local_name);
     for (int i = sz - 1; i >= 0; i--) {
@@ -50,18 +59,10 @@ struct FunctionSignature *findFunctionSignature(const char *identifier, struct C
 }
 
 void findIdentifier(const char *identifier, struct CPContext *context) {
-    const char *regs[] = {
-        "rdi",
-        "rsi",
-        "rdx",
-        "rcx",
-        "r8",
-        "r9"
-    };
-
+    int cnt_args = get_size((void**)context->variable_argument_name);
     int idx = findInLocal(identifier, context);
     if (idx != -1) {
-        print_stringi(context->outputFileDescriptor, "[rbp + ", -(idx + 1) * 8, "]");
+        print_stringi(context->outputFileDescriptor, "[rbp + ", -(idx + 1 + cnt_args) * 8, "]");
     }
     else {
         idx = findInArguments(identifier, context);
@@ -69,7 +70,7 @@ void findIdentifier(const char *identifier, struct CPContext *context) {
             print_string(0, "Error: identifier not found\n");
             posix_exit(1);
         }
-        print_string(context->outputFileDescriptor, regs[idx]);
+        print_stringi(context->outputFileDescriptor, "[rbp + ", -(idx + 1) * 8, "]");
     }
 }
 
@@ -213,8 +214,6 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     print_string2(context->outputFileDescriptor, identifier, ":\n");
     print_string(context->outputFileDescriptor, "push rbp\n");
     print_string(context->outputFileDescriptor, "mov rbp, rsp\n");
-    int sz = get_size((void**)this->signature->identifiers);
-    print_stringi(context->outputFileDescriptor, "sub rsp, ", (sz + 2) * 8, "\n");
 
     const char **variable_local_name_tmp = context->variable_local_name;
     struct Type **variable_local_type_tmp = context->variable_local_type;
@@ -235,14 +234,15 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     context->function_name_index = (int**)push_back((void**)context->function_name_index, index_ptr);
     context->function_signature = (struct FunctionSignature**)push_back((void**)context->function_signature, this->signature);
 
-    sz = get_size((void**)this->signature->identifiers);
+    int sz = get_size((void**)this->signature->identifiers);
     for (int i = 0; i < sz; i++) {
+        print_string3(context->outputFileDescriptor, "push ", regs[i], "\n");
         context->variable_argument_name = (const char**)push_back((void**)context->variable_argument_name, (void*)this->signature->identifiers[i]);
         context->variable_argument_type = (struct Type**)push_back((void**)context->variable_argument_type, CopyType(this->signature->types[i]));
     }
     CompileNode(this->block, context);
     
-    sz = get_size((void**)context->variable_argument_name);
+    print_stringi(context->outputFileDescriptor, "add rsp, ", sz * 8, "\n");
     for (int i = 0; i < sz; i++) {
         _free((void*)context->variable_argument_name[i]);
         _free((void*)context->variable_argument_type[i]);
@@ -485,15 +485,6 @@ struct Type *CompileFree(struct Node *node, struct Free *this, struct CPContext 
 }
 
 struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
-    const char *regs[] = {
-        "rdi",
-        "rsi",
-        "rdx",
-        "rcx",
-        "r8",
-        "r9"
-    };
-
     struct FunctionSignature *signature = findFunctionSignature(this->identifier, context);
     int sz = get_size((void**)this->arguments);
     if (sz != get_size((void**)signature->identifiers)) SemanticError("Incorrect number of arguments in function call", node);
