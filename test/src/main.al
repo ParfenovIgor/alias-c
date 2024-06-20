@@ -9,10 +9,13 @@ struct Astr {
 }
 
 func foo(a <int, 0>) -> <int, 0> {
+    func boo(b <int, 0>) -> <int, 0> {
+        return b + 4
+    }
     def _ <int, 0>;
     _ := call _puti(a);
     def b <int, 0>
-    b := 43
+    b := call boo(a)
     return b
 }
 
@@ -51,7 +54,7 @@ func ^_start() -> <int, 0> {
     def y <int, 0>; y := 48
     _ := call _puti(call al_min(x, y))
 
-    _ := call posix_fork();
+    // _ := call posix_fork();
     _ := call foo(1234);
     _ := call _puti(_)
 
