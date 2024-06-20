@@ -43,7 +43,7 @@ int findFunctionIndex(const char *identifier, struct CPContext *context) {
             return *context->function_name_index[i];
         }
     }
-    print_string(0, "Error: function identifier not found\n");
+    print_string(STDOUT, "Error: function identifier not found\n");
     posix_exit(1);
 }
 
@@ -54,7 +54,7 @@ struct FunctionSignature *findFunctionSignature(const char *identifier, struct C
             return context->function_signature[i];
         }
     }
-    print_string(0, "Error: function identifier not found\n");
+    print_string(STDOUT, "Error: function identifier not found\n");
     posix_exit(1);
 }
 
@@ -67,7 +67,7 @@ void findIdentifier(const char *identifier, struct CPContext *context) {
     else {
         idx = findInArguments(identifier, context);
         if (idx == -1) {
-            print_string(0, "Error: identifier not found\n");
+            print_string(STDOUT, "Error: identifier not found\n");
             posix_exit(1);
         }
         print_stringi(context->outputFileDescriptor, "[rbp + ", -(idx + 1) * 8, "]");
@@ -82,7 +82,7 @@ struct Type *findType(const char *identifier, struct CPContext *context) {
     else {
         idx = findInArguments(identifier, context);
         if (idx == -1) {
-            print_string(0, "Error: identifier not found\n");
+            print_string(STDOUT, "Error: identifier not found\n");
             posix_exit(1);
         }
         return context->variable_argument_type[idx];
