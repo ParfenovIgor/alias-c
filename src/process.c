@@ -12,9 +12,9 @@
 struct Node *Parse(const char *filename) {
     char *buffer = ReadFile(filename);
     if (!buffer) {
-        print_string(0, "Could not open file ");
-        print_string(0, filename);
-        print_string(0, "\n");
+        print_string(STDOUT, "Could not open file ");
+        print_string(STDOUT, filename);
+        print_string(STDOUT, "\n");
         posix_exit(1);
     }
     struct TokenStream *token_stream = Lexer_Process(buffer, filename);
@@ -47,7 +47,7 @@ int Process(struct Settings *settings) {
     // remove the .al extension from the input filename
     char *filename = _strdup(settings->inputFilename);
     if (_strlen(filename) < 3 || _strcmp(filename + _strlen(filename) - 3, ".al") != 0) {
-        print_string(0, "The filename has to end with .al\n");
+        print_string(STDOUT, "The filename has to end with .al\n");
         posix_exit(1);
     }
     filename[_strlen(filename) - 3] = '\0';

@@ -188,7 +188,7 @@ struct Node *process_operation(struct Node ***primaries, enum TokenType ***opera
     }
 
     if (root->node_ptr == NULL) {
-        print_string(0, "Fatal Error\n");
+        print_string(STDOUT, "Fatal Error\n");
         posix_exit(3);
     }
 

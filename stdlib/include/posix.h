@@ -10,7 +10,9 @@
 #define	MAP_ANON	0x20
 #define	MAP_ANONYMOUS	MAP_ANON
 
+#define STDIN       0x00
 #define STDOUT      0x01
+#define STDERR      0x02
 
 int posix_read(int fd, char *buffer, int count);
 int posix_write(int fd, const char *buffer, int count);
