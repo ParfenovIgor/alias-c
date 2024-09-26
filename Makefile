@@ -17,12 +17,27 @@ SRCS_TEST_AL := $(wildcard test/src/*.al)
 OBJS_TEST_AL := $(patsubst %.al, build/%.o, $(SRCS_TEST_AL))
 
 ASFLAGS=-f elf64
-CFLAGS=-g
-LDFLAGS=
+CFLAGS=-g -fno-stack-protector
+LDFLAGS=-z noexecstack
 
-.PHONY: all compiler test
+compiler: build/calias
 
-all: calias
+build/calias: make_dir $(OBJS_ASM) $(OBJS_C) $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C)
+	gcc $(LDFLAGS) -o build/calias $(OBJS_ASM) $(OBJS_C) $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C)
+
+build/%.o: %.asm make_dir
+	nasm $(ASFLAGS) $< -o $@
+
+build/%.o: %.c make_dir
+	gcc $(CFLAGS) -c $< -o $@
+
+build/%.o: %.al make_dir
+	build/calias -a $< -o $@
+
+test: make_dir $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) $(OBJS_ALTLIB_AL) $(OBJS_TEST_AL)
+	ld $(LDFLAGS) -o build/testal $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) $(OBJS_ALTLIB_AL) $(OBJS_TEST_AL)
+	./build/testal > build/test/output
+	diff build/test/output test/output || (echo "Test failed"; exit 1)
 
 make_dir:
 	mkdir -p build/asm
@@ -31,25 +46,6 @@ make_dir:
 	mkdir -p build/stdlib/src
 	mkdir -p build/altlib/src
 	mkdir -p build/test/src
-
-build/%.o: %.asm
-	nasm $(ASFLAGS) $< -o $@
-
-build/%.o: %.c
-	gcc $(CFLAGS) -c $< -o $@ -fno-stack-protector
-
-build/%.o: %.al
-	build/calias -a $< -o $@
-
-calias: make_dir $(OBJS_ASM) $(OBJS_C) $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) link_calias
-
-link_calias:
-	gcc $(LDFLAGS) -o build/calias $(OBJS_ASM) $(OBJS_C) $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) -z noexecstack
-
-test: make_dir $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) $(OBJS_ALTLIB_AL) $(OBJS_TEST_AL) link_test
-
-link_test:
-	ld $(LDFLAGS) -o build/testal $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) $(OBJS_ALTLIB_AL)  $(OBJS_TEST_AL) -z noexecstack
 
 clean:
 	rm -r build

@@ -58,5 +58,5 @@ func ^_start() -> <int, 0> {
     _ := call foo(1234);
     _ := call _puti(_)
 
-    _ := call posix_exit(123)
+    _ := call posix_exit(0)
 }

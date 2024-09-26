@@ -382,65 +382,6 @@ void CompileMovementString(struct Node *node, struct MovementString *this, struc
     print_string(context->outputFileDescriptor, "rep movsb\n"); */
 }
 
-void CompileAssumption(struct Node *node, struct Assumption *this, struct CPContext *context) {
-    /* int ind_error = context->branch_index;
-    print_stringi(context->outputFileDescriptor, "jmp aftererror", ind_error, "\n");
-    print_stringi(context->outputFileDescriptor, "error", ind_error, " db \"");
-    
-    char *str1 = concat("Assumption fault in file ", node->filename);
-    char *str2 = concat(str1, " on line ");
-    char *str3 = concat(str2, to_string(node->line_begin + 1));
-    char *str4 = concat(str3, " position ");
-    char *error = concat(str4, to_string(node->position_begin + 1));
-    _free(str1);
-    _free(str2);
-    _free(str3);
-    _free(str4);
-
-    print_string2(context->outputFileDescriptor, error, "\", 0xA\n");
-    print_stringi(context->outputFileDescriptor, "aftererror", ind_error, ":\n");
-
-    int phase = findPhase(this->identifier, context);
-    int idx = context->branch_index;
-    context->branch_index++;
-    CompileNode(this->left, context);
-    print_stringi(context->outputFileDescriptor, "mov rax, [rbp + ", phase, "]\n");
-    print_string(context->outputFileDescriptor, "sub rax, [rsp - 8]\n");
-    print_stringi(context->outputFileDescriptor, "jl _set1_", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "jmp _setend", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "_set1_", idx, ":\n");
-    print_string(context->outputFileDescriptor, "mov rax, 1\n");
-    print_string(context->outputFileDescriptor, "mov rdi, 1\n");
-    print_stringi(context->outputFileDescriptor, "mov rsi, error", ind_error, "\n");
-    print_stringi(context->outputFileDescriptor, "mov rdx, ", _strlen(error) + 1, "\n");
-    print_string(context->outputFileDescriptor, "syscall\n");
-    print_string(context->outputFileDescriptor, "mov rax, 0x3c\n");
-    print_string(context->outputFileDescriptor, "mov rdi, 1\n");
-    print_string(context->outputFileDescriptor, "syscall\n");
-    print_stringi(context->outputFileDescriptor, "_setend", idx, ":\n");
-
-    idx = context->branch_index;
-    context->branch_index++;
-    CompileNode(this->right, context);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_stringi(context->outputFileDescriptor, "sub rax, [rbp + ", phase, "]\n");
-    print_stringi(context->outputFileDescriptor, "jl _set1_", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "jmp _setend", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "_set1_", idx, ":\n");
-    print_string(context->outputFileDescriptor, "mov rax, 1\n");
-    print_string(context->outputFileDescriptor, "mov rdi, 1\n");
-    print_stringi(context->outputFileDescriptor, "mov rsi, error", ind_error, "\n");
-    print_stringi(context->outputFileDescriptor, "mov rdx, ", _strlen(error) + 1, "\n");
-    print_string(context->outputFileDescriptor, "syscall\n");
-    print_string(context->outputFileDescriptor, "mov rax, 0x3c\n");
-    print_string(context->outputFileDescriptor, "mov rdi, 1\n");
-    print_string(context->outputFileDescriptor, "syscall\n");
-    print_stringi(context->outputFileDescriptor, "_setend", idx, ":\n");
-
-    CompileNode(this->statement, context);
-    _free(error); */
-}
-
 struct Type *CompileIdentifier(struct Node *node, struct Identifier *this, struct CPContext *context) {
     print_string(context->outputFileDescriptor, "mov rax, ");
     findIdentifier(this->identifier, context);
@@ -467,21 +408,6 @@ struct Type *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPCont
     }
     print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", size * 8, "\n");
     return BuildType("int", 0);
-}
-
-struct Type *CompileAlloc(struct Node *node, struct Alloc *this, struct CPContext *context) {
-    CompileNode(this->expression, context);
-    print_string(context->outputFileDescriptor, "push qword [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "call malloc\n");
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
-}
-
-struct Type *CompileFree(struct Node *node, struct Free *this, struct CPContext *context) {
-    CompileNode(this->expression, context);
-    print_string(context->outputFileDescriptor, "push qword [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "call free\n");
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
 }
 
 struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
@@ -767,11 +693,6 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
         CompileMovementString(node, (struct MovementString*)node->node_ptr, context);
         return BuildType("", 0);
     }
-    else if (node->node_type == NodeAssumption) {
-        print_string(context->outputFileDescriptor, "assumption\n");
-        CompileAssumption(node, (struct Assumption*)node->node_ptr, context);
-        return BuildType("", 0);
-    }
     else if (node->node_type == NodeIdentifier) {
         print_string(context->outputFileDescriptor, "identifier\n");
         return CompileIdentifier(node, (struct Identifier*)node->node_ptr, context);
@@ -783,14 +704,6 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeSizeof) {
         print_string(context->outputFileDescriptor, "sizeof\n");
         return CompileSizeof(node, (struct Sizeof*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeAlloc) {
-        print_string(context->outputFileDescriptor, "alloc\n");
-        return CompileAlloc(node, (struct Alloc*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeFree) {
-        print_string(context->outputFileDescriptor, "free\n");
-        return CompileFree(node, (struct Free*)node->node_ptr, context);
     }
     else if (node->node_type == NodeFunctionCall) {
         print_string(context->outputFileDescriptor, "function call\n");
