@@ -73,8 +73,6 @@ struct Equal;
 struct FunctionSignature {
     const char **identifiers;
     struct Type **types;
-    struct Node **size_in, **size_out;
-    bool **is_const;
     struct Type *return_type;
 };
 
@@ -126,7 +124,6 @@ struct While {
 
 struct FunctionDefinition {
     const char *name;
-    const char **metavariables;
     struct FunctionSignature *signature;
     struct Node *block;
     bool external;
@@ -134,7 +131,6 @@ struct FunctionDefinition {
 
 struct Prototype {
     const char *name;
-    const char **metavariables;
     struct FunctionSignature *signature;
 };
 
@@ -187,12 +183,6 @@ struct MovementString {
     const char *value;
 };
 
-struct Assumption {
-    const char *identifier;
-    struct Node *left, *right;
-    struct Node *statement;
-};
-
 struct Identifier {
     const char *identifier;
 };
@@ -205,18 +195,8 @@ struct Sizeof {
     struct Type *type;
 };
 
-struct Alloc {
-    struct Node *expression;
-};
-
-struct Free {
-    struct Node *expression;
-};
-
 struct FunctionCall {
     const char *identifier;
-    const char **metavariable_name;
-    struct Node **metavariable_value;
     struct Node **arguments;
 };
 

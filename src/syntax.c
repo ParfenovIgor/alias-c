@@ -383,33 +383,11 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         TokenStream_NextToken(ts);
         return node;
     }
-    if (TokenStream_GetToken(ts).type == TokenAlloc) {
-        struct Alloc *_alloc = (struct Alloc*)_malloc(sizeof(struct Alloc));
-        node->node_ptr = _alloc;
-        node->node_type = NodeAlloc;
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-            SyntaxError("( expected in alloc expression", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-        _alloc->expression = Syntax_ProcessExpression(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
-            SyntaxError(") expected in alloc expression", TokenStream_GetToken(ts));
-        }
-        node->line_end = TokenStream_GetToken(ts).line_end;
-        node->position_end = TokenStream_GetToken(ts).position_end;
-        TokenStream_NextToken(ts);
-        return node;
-    }
     if (TokenStream_GetToken(ts).type == TokenCall) {
         struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
         struct FunctionCall *function_call = (struct FunctionCall*)_malloc(sizeof(struct FunctionCall));
         function_call->arguments = (struct Node**)_malloc(sizeof(struct Node*));
         function_call->arguments[0] = NULL;
-        function_call->metavariable_name = (const char**)_malloc(sizeof(const char*));
-        function_call->metavariable_name[0] = NULL;
-        function_call->metavariable_value = (struct Node**)_malloc(sizeof(struct Node*));
-        function_call->metavariable_value[0] = NULL;
         node->node_ptr = function_call;
         node->node_type = NodeFunctionCall;
         node->line_begin = TokenStream_GetToken(ts).line_begin;
@@ -421,33 +399,6 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         }
         function_call->identifier = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type == TokenBracketOpen) {
-            TokenStream_NextToken(ts);
-            while (true) {
-                if (TokenStream_GetToken(ts).type == TokenBracketClose) {
-                    TokenStream_NextToken(ts);
-                    break;
-                }
-                if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-                    SyntaxError("Identifier expected in metavariable list", TokenStream_GetToken(ts));
-                }
-                function_call->metavariable_name = (const char**)push_back((void**)function_call->metavariable_name, _strdup(TokenStream_GetToken(ts).value_string));
-                TokenStream_NextToken(ts);
-                if (TokenStream_GetToken(ts).type != TokenEqual) {
-                    SyntaxError("= expected in metavariable list", TokenStream_GetToken(ts));
-                }
-                TokenStream_NextToken(ts);
-                function_call->metavariable_value = (struct Node**)push_back((void**)function_call->metavariable_value, Syntax_ProcessExpression(ts));
-                if (TokenStream_GetToken(ts).type == TokenBracketClose) {
-                    TokenStream_NextToken(ts);
-                    break;
-                }
-                if (TokenStream_GetToken(ts).type != TokenComma) {
-                    SyntaxError(", expected in metavariables list", TokenStream_GetToken(ts));
-                }
-                TokenStream_NextToken(ts);
-            }
-        }
         if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
             SyntaxError("( expected in function call", TokenStream_GetToken(ts));
         }
@@ -479,12 +430,6 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
     function_signature->identifiers[0] = NULL;
     function_signature->types = (struct Type**)_malloc(sizeof(struct Type*));
     function_signature->types[0] = NULL;
-    function_signature->size_in = (struct Node**)_malloc(sizeof(struct Node*));
-    function_signature->size_in[0] = NULL;
-    function_signature->size_out = (struct Node**)_malloc(sizeof(struct Node*));
-    function_signature->size_out[0] = NULL;
-    function_signature->is_const = (bool**)_malloc(sizeof(bool*));
-    function_signature->is_const[0] = NULL;
 
     while (true) {
         if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
@@ -500,34 +445,6 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
         TokenStream_NextToken(ts);
         function_signature->types = (struct Type**)push_back((void**)function_signature->types, type);
         bool *is_const = (bool*)_malloc(sizeof(bool));
-        if (TokenStream_GetToken(ts).type == TokenConst) {
-            *is_const = true;
-            TokenStream_NextToken(ts);
-        }
-        else {
-            *is_const = false;
-        }
-        function_signature->is_const = (bool**)push_back((void**)function_signature->is_const, is_const);
-        // if (type->degree == 0) {
-            struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
-            size_in = 0;
-            function_signature->size_in = (struct Node**)push_back((void**)function_signature->size_in, size_in);
-            struct Node *size_out = (struct Node*)_malloc(sizeof(struct Node));
-            size_out = 0;
-            function_signature->size_out = (struct Node**)push_back((void**)function_signature->size_out, size_out);
-        /* }
-        else {
-            struct Node *size_in = (struct Node *)_malloc(sizeof(struct Node));
-            size_in = Syntax_ProcessExpression(ts);
-            function_signature->size_in = (struct Node**)push_back((void**)function_signature->size_in, size_in);
-            if (TokenStream_GetToken(ts).type != TokenColon) {
-                SyntaxError(": expected in argument list", TokenStream_GetToken(ts));
-            }
-            TokenStream_NextToken(ts);
-            struct Node *size_out = (struct Node*)_malloc(sizeof(struct Node));
-            size_out = Syntax_ProcessExpression(ts);
-            function_signature->size_out = (struct Node**)push_back((void**)function_signature->size_out, size_out);
-        } */
         if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
             TokenStream_NextToken(ts);
             break;
@@ -543,29 +460,6 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
     TokenStream_NextToken(ts);
     function_signature->return_type = Syntax_ProcessType(ts);
     return function_signature;
-}
-
-const char **Syntax_ProcessMetavariables(struct TokenStream *ts) {
-    const char **metavariables = (const char**)_malloc(sizeof(const char*));
-    metavariables[0] = NULL;
-    while (true) {
-        if (TokenStream_GetToken(ts).type == TokenBracketClose) {
-            break;
-        }
-        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-            SyntaxError("Identifier expected in metavariable list", TokenStream_GetToken(ts));
-        }
-        metavariables = (const char**)push_back((void**)metavariables, _strdup(TokenStream_GetToken(ts).value_string));
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type == TokenBracketClose) {
-            break;
-        }
-        if (TokenStream_GetToken(ts).type != TokenComma) {
-            SyntaxError(", expected in metavariables list", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-    }
-    return metavariables;
 }
 
 struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
@@ -688,15 +582,6 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         }
         function_definition->name = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type == TokenBracketOpen) {
-            TokenStream_NextToken(ts);
-            function_definition->metavariables = Syntax_ProcessMetavariables(ts);
-            TokenStream_NextToken(ts);
-        }
-        else {
-            function_definition->metavariables = (const char**)_malloc(sizeof(const char*));
-            function_definition->metavariables[0] = NULL;
-        }
         if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
             SyntaxError("( expected in function definition", TokenStream_GetToken(ts));
         }
@@ -727,15 +612,6 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         }
         prototype->name = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type == TokenBracketOpen) {
-            TokenStream_NextToken(ts);
-            prototype->metavariables = Syntax_ProcessMetavariables(ts);
-            TokenStream_NextToken(ts);
-        }
-        else {
-            prototype->metavariables = (const char**)_malloc(sizeof(const char*));
-            prototype->metavariables[0] = NULL;
-        }
         if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
             SyntaxError("( expected in function prototype", TokenStream_GetToken(ts));
         }
@@ -819,62 +695,6 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         _return->expression = Syntax_ProcessExpression(ts);
         node->line_end = _return->expression->line_end;
         node->position_end = _return->expression->position_end;
-        return node;
-    }
-    if (TokenStream_GetToken(ts).type == TokenAssume) {
-        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
-        struct Assumption *assumption = (struct Assumption*)_malloc(sizeof(struct Assumption));
-        node->node_ptr = assumption;
-        node->node_type = NodeAssumption;
-        node->line_begin = TokenStream_GetToken(ts).line_begin;
-        node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = _strdup(TokenStream_GetToken(ts).filename);
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-            SyntaxError("( expected in assume condition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-            SyntaxError("Identifier expected in assume condition", TokenStream_GetToken(ts));
-        }
-        assumption->identifier = _strdup(TokenStream_GetToken(ts).value_string);
-        TokenStream_NextToken(ts);
-        assumption->left = Syntax_ProcessExpression(ts);
-        if (TokenStream_GetToken(ts).type != TokenColon) {
-            SyntaxError(": expected in assume condition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-        assumption->right = Syntax_ProcessExpression(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
-            SyntaxError(") expected in assume condition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-        struct Node *_statement = Syntax_ProcessStatement(ts);
-        assumption->statement = _statement;
-        node->line_end = _statement->line_end;
-        node->position_end =_statement->position_end;
-        return node;
-    }
-    if (TokenStream_GetToken(ts).type == TokenFree) {
-        struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
-        struct Free *_free = (struct Free*)_malloc(sizeof(struct Free));
-        node->node_ptr = _free;
-        node->node_type = NodeFree;
-        node->line_begin = TokenStream_GetToken(ts).line_begin;
-        node->position_begin = TokenStream_GetToken(ts).position_begin;
-        node->filename = _strdup(TokenStream_GetToken(ts).filename);
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-            SyntaxError("( expected in free statement", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-        _free->expression = Syntax_ProcessExpression(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
-            SyntaxError(") expected in free expression", TokenStream_GetToken(ts));
-        }
-        node->line_end = TokenStream_GetToken(ts).line_end;
-        node->position_end = TokenStream_GetToken(ts).position_end;
-        TokenStream_NextToken(ts);
         return node;
     }
     if (TokenStream_GetToken(ts).type == TokenIdentifier) {
