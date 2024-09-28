@@ -70,6 +70,7 @@ int Process(struct Settings *settings) {
         }
 
         // open file and call the compiler
+        posix_unlink(compile_out_filename);
         settings->outputFileDescriptor = posix_open(compile_out_filename, 0001 | 0100, 0400 | 0200);
         _free(compile_out_filename);
         Compile(node, settings);
@@ -87,6 +88,7 @@ int Process(struct Settings *settings) {
             }
 
             // call the NASM assembler
+            posix_unlink(assemble_out_filename);
             Assemble(assemble_in_filename, assemble_out_filename);
             posix_unlink(assemble_in_filename);
             _free(assemble_in_filename);
@@ -104,6 +106,7 @@ int Process(struct Settings *settings) {
                 }
 
                 // call the ld linker
+                posix_unlink(link_out_filename);
                 Link(link_in_filename, link_out_filename);
                 posix_unlink(link_in_filename);
                 _free(link_in_filename);

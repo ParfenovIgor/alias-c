@@ -17,7 +17,6 @@ enum NodeType {
     NodeAs,
     NodeAssignment,
     NodeMovement,
-    NodeMovementStructure,
     NodeMovementString,
     NodeAssumption,
     NodeIdentifier,
@@ -50,7 +49,6 @@ struct Return;
 struct As;
 struct Assignment;
 struct Movement;
-struct MovementStructure;
 struct MovementString;
 struct Assumption;
 struct Identifier;
@@ -156,26 +154,21 @@ struct As {
 
 struct Index {
     struct Node *left, *right;
+    bool address;
 };
 
 struct GetField {
-    struct Node *left, *right;
+    struct Node *left;
+    const char *field;
+    bool address;
 };
 
 struct Assignment {
-    const char *identifier;
-    struct Node *value;
+    struct Node *dst, *src;
 };
 
 struct Movement {
-    const char *identifier;
-    struct Node *value;
-};
-
-struct MovementStructure {
-    const char *identifier;
-    const char *field;
-    struct Node *value;
+    struct Node *dst, *src;
 };
 
 struct MovementString {
@@ -198,6 +191,7 @@ struct Sizeof {
 struct FunctionCall {
     const char *identifier;
     struct Node **arguments;
+    struct Node *caller;
 };
 
 struct Dereference {
