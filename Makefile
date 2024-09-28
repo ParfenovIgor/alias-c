@@ -1,6 +1,3 @@
-SRCS_ASM := $(wildcard asm/*.asm)
-OBJS_ASM := $(patsubst %.asm, build/%.o, $(SRCS_ASM))
-
 SRCS_C := $(wildcard src/*.c)
 OBJS_C := $(patsubst %.c, build/%.o, $(SRCS_C))
 
@@ -25,14 +22,14 @@ compiler: build/calias
 build/calias: make_dir $(OBJS_ASM) $(OBJS_C) $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C)
 	gcc $(LDFLAGS) -o build/calias $(OBJS_ASM) $(OBJS_C) $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C)
 
+build/%.o: %.al make_dir
+	build/calias -a $< -o $@
+
 build/%.o: %.asm make_dir
 	nasm $(ASFLAGS) $< -o $@
 
 build/%.o: %.c make_dir
 	gcc $(CFLAGS) -c $< -o $@
-
-build/%.o: %.al make_dir
-	build/calias -a $< -o $@
 
 test: make_dir $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) $(OBJS_ALTLIB_AL) $(OBJS_TEST_AL)
 	ld $(LDFLAGS) -o build/testal $(OBJS_STDLIB_ASM) $(OBJS_STDLIB_C) $(OBJS_ALTLIB_AL) $(OBJS_TEST_AL)

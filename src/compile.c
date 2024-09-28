@@ -307,56 +307,41 @@ struct Type *CompileAs(struct Node *node, struct As *this, struct CPContext *con
 }
 
 void CompileAssignment(struct Node *node, struct Assignment *this, struct CPContext *context) {
-    struct Type *_type1 = CompileNode(this->value, context);
-    struct Type *_type2 = findType(this->identifier, context);
+    if (this->dst->node_type != NodeIdentifier) {
+        SemanticError("Identifier expected in assignment", node);
+    }
+    struct Identifier *_identifier = (struct Identifier*)(this->dst->node_ptr);
+    struct Type *_type1 = findType(_identifier->identifier, context);
+    struct Type *_type2 = CompileNode(this->src, context);
     if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree) SemanticError("Assignment of not equal types", node);
-    _free(_type1);
+    _free(_type2);
 
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "mov ");
-    findIdentifier(this->identifier, context);
+    findIdentifier(_identifier->identifier, context);
     print_string(context->outputFileDescriptor, ", rax\n");
 }
 
 void CompileMovement(struct Node *node, struct Movement *this, struct CPContext *context) {
-    struct Type *_type1 = CompileNode(this->value, context);
-    struct Type *_type2 = findType(this->identifier, context);
-    if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree + 1 != _type2->degree) SemanticError("Movement of inappropriate types", node);
-    _free(_type1);
+    struct Type *_type1 = CompileNode(this->dst, context);
+    if (_type1->degree == 0) SemanticError("Pointer expected in movement", node);
 
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "mov rbx, ");
-    findIdentifier(this->identifier, context);
-    print_string(context->outputFileDescriptor, "\n");
-    print_string(context->outputFileDescriptor, "mov [rbx], rax\n");
-}
+    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
+    const char *identifier = "__junk";
+    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
 
-void CompileMovementStructure(struct Node *node, struct MovementStructure *this, struct CPContext *context) {
-    struct Type *_type_src = CompileNode(this->value, context);
-    struct Type *_type_dest = findType(this->identifier, context);
-    if (_type_dest->degree != 1) SemanticError("Pointer to structure expected", node);
-
-    struct Struct *_struct = findStruct(_type_dest->identifier, context);
-    if (!_struct) SemanticError("Structure not found", node);
-    
-    int index = -1;
-    int sz = get_size((void**)_struct->identifiers);
-    for (int i = 0; i < sz; i++) {
-        if (_strcmp(this->field, _struct->identifiers[i]) == 0) {
-            index = i;
-            break;
-        }
-    }
-    if (index == -1) SemanticError("Structure doesn't have corresponding field", node);
-    if (_strcmp(_type_src->identifier, _struct->types[index]->identifier) || _type_src->degree != _struct->types[index]->degree)
+    struct Type *_type2 = CompileNode(this->src, context);
+    if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree + 1) {
         SemanticError("Movement of inappropriate types", node);
-    _free(_type_src);
+    }
+    _free(_type1);
+    _free(_type2);
 
+    print_string(context->outputFileDescriptor, "add rsp, 8\n");
+    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "mov rbx, ");
-    findIdentifier(this->identifier, context);
-    print_string(context->outputFileDescriptor, "\n");
-    print_stringi(context->outputFileDescriptor, "mov [rbx + ", index * 8, "], rax\n");
+    print_string(context->outputFileDescriptor, "mov rbx, [rsp - 16]\n");
+    print_string(context->outputFileDescriptor, "mov [rax], rbx\n");
 }
 
 void CompileMovementString(struct Node *node, struct MovementString *this, struct CPContext *context) {
@@ -457,25 +442,30 @@ struct Type *CompileGetField(struct Node *node, struct GetField *this, struct CP
     struct Struct *_struct = findStruct(_type->identifier, context);
     if (!_struct) SemanticError("Structure not found", node);
     _free(_type);
-    
-    if (this->right->node_type != NodeIdentifier) SemanticError("Identifier expected in structure get", node);
-    struct Identifier *_identifier = (struct Identifier*)this->right->node_ptr;
 
     int index = -1;
     int sz = get_size((void**)_struct->identifiers);
     for (int i = 0; i < sz; i++) {
-        if (_strcmp(_identifier->identifier, _struct->identifiers[i]) == 0) {
+        if (_strcmp(this->field, _struct->identifiers[i]) == 0) {
             index = i;
             break;
         }
     }
     if (index == -1) SemanticError("Structure doesn't have corresponding field", node);
     
+    _type = CopyType(_struct->types[index]);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_stringi(context->outputFileDescriptor, "mov rbx, [rax + ", index * 8, "]\n");
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+    if (!this->address) {    
+        print_stringi(context->outputFileDescriptor, "mov rbx, [rax + ", index * 8, "]\n");
+        print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+    }
+    else {
+        print_stringi(context->outputFileDescriptor, "lea rbx, [rax + ", index * 8, "]\n");
+        print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+        _type->degree++;
+    }
 
-    return CopyType(_struct->types[index]);
+    return _type;
 }
 
 struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContext *context) {
@@ -496,10 +486,15 @@ struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContex
     print_string(context->outputFileDescriptor, "mov rbx, 8\n");
     print_string(context->outputFileDescriptor, "mul rbx\n");
     print_string(context->outputFileDescriptor, "add rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "mov rbx, [rax]\n");
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
-
-    _type->degree--;
+    if (!this->address) {
+        print_string(context->outputFileDescriptor, "mov rbx, [rax]\n");
+        print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+        _type->degree--;
+    }
+    else {
+        print_string(context->outputFileDescriptor, "lea rbx, [rax]\n");
+        print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+    }
     return _type;
 }
 
@@ -681,11 +676,6 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeMovement) {
         print_string(context->outputFileDescriptor, "movement\n");
         CompileMovement(node, (struct Movement*)node->node_ptr, context);
-        return BuildType("", 0);
-    }
-    else if (node->node_type == NodeMovementStructure) {
-        print_string(context->outputFileDescriptor, "movement structure\n");
-        CompileMovementStructure(node, (struct MovementStructure*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeMovementString) {
