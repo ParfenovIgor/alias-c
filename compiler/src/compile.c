@@ -36,11 +36,11 @@ int findInArguments(const char *identifier, struct CPContext *context) {
     return -1;
 }
 
-int findFunctionIndex(const char *identifier, struct CPContext *context) {
-    int sz = get_size((void**)context->function_name);
+const char *findFunctionBack(const char *identifier, struct CPContext *context) {
+    int sz = get_size((void**)context->function_name_front);
     for (int i = sz - 1; i >= 0; i--) {
-        if (_strcmp(context->function_name[i], identifier) == 0) {
-            return *context->function_name_index[i];
+        if (_strcmp(context->function_name_front[i], identifier) == 0) {
+            return context->function_name_back[i];
         }
     }
     print_string(STDOUT, "Error: function identifier not found\n");
@@ -48,9 +48,9 @@ int findFunctionIndex(const char *identifier, struct CPContext *context) {
 }
 
 struct FunctionSignature *findFunctionSignature(const char *identifier, struct CPContext *context) {
-    int sz = get_size((void**)context->function_name);
+    int sz = get_size((void**)context->function_name_front);
     for (int i = sz - 1; i >= 0; i--) {
-        if (_strcmp(context->function_name[i], identifier) == 0) {
+        if (_strcmp(context->function_name_front[i], identifier) == 0) {
             return context->function_signature[i];
         }
     }
@@ -121,10 +121,10 @@ void Compile(struct Node *node, struct Settings *settings) {
     context->variable_argument_name[0] = NULL;
     context->variable_argument_type = (struct Type**)_malloc(sizeof(struct Type*));
     context->variable_argument_type[0] = NULL;
-    context->function_name = (const char**)_malloc(sizeof(const char*));
-    context->function_name[0] = NULL;
-    context->function_name_index = (int**)_malloc(sizeof(int*));
-    context->function_name_index[0] = NULL;
+    context->function_name_front = (const char**)_malloc(sizeof(const char*));
+    context->function_name_front[0] = NULL;
+    context->function_name_back = (const char**)_malloc(sizeof(const char*));
+    context->function_name_back[0] = NULL;
     context->function_signature = (struct FunctionSignature**)_malloc(sizeof(struct FunctionSignature*));
     context->function_signature[0] = NULL;
     context->structs = (struct Struct**)_malloc(sizeof(struct Struct*));
@@ -141,21 +141,21 @@ void Compile(struct Node *node, struct Settings *settings) {
 void CompileBlock(struct Node *node, struct Block *this, struct CPContext *context) {
     struct Node **statement = this->statement_list;
     int old_cnt_local_var = get_size((void**)context->variable_local_name);
-    int old_cnt_functions = get_size((void**)context->function_name);
+    int old_cnt_functions = get_size((void**)context->function_name_front);
     while (*statement != NULL) {
         CompileNode(*statement, context);
         statement++;
     }
     int cnt_local_var = get_size((void**)context->variable_local_name);
-    int cnt_functions = get_size((void**)context->function_name);
+    int cnt_functions = get_size((void**)context->function_name_front);
     print_stringi(context->outputFileDescriptor, "add rsp, ", 8 * (cnt_local_var - old_cnt_local_var), "\n");
     for (int i = 0; i < cnt_local_var - old_cnt_local_var; i++) {
         context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
         context->variable_local_type = (struct Type**)pop_back((void**)context->variable_local_type);
     }
     for (int i = 0; i < cnt_functions - old_cnt_functions; i++) {
-        context->function_name = (const char**)pop_back((void**)context->function_name);
-        context->function_name_index = (int**)pop_back((void**)context->function_name_index);
+        context->function_name_front = (const char**)pop_back((void**)context->function_name_front);
+        context->function_name_back = (const char**)pop_back((void**)context->function_name_back);
         context->function_signature = (struct FunctionSignature**)pop_back((void**)context->function_signature);
     }
 }
@@ -193,30 +193,27 @@ void CompileWhile(struct Node *node, struct While *this, struct CPContext *conte
 }
 
 void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) {
-    char *identifier, *identifier_end;
-    int index;
+    char *identifier_front, *identifier_back, *identifier_end;
     if (this->struct_name) {
-        identifier = concat(this->struct_name, this->name);
-        identifier_end = concat("_funend", identifier);
-        index = -1;
+        identifier_front = concat(this->struct_name, this->name);
+        identifier_back = concat(this->struct_name, this->name);
     }
     else if (this->external) {
-        identifier = _strdup(this->name);
-        identifier_end = concat("_funend", this->name);
-        index = -1;
+        identifier_front = _strdup(this->name);
+        identifier_back = _strdup(this->name);
     }
     else {
-        identifier = concat("_fun", to_string(context->function_index));
-        identifier_end = concat("_funend", to_string(context->function_index));
-        index = context->function_index;
+        identifier_front = _strdup(this->name);
+        identifier_back = concat("_Z", to_string(context->function_index));
         context->function_index++;
     }
+    identifier_end = concat("_E", identifier_back);
 
     if (this->external) {
-        print_string3(context->outputFileDescriptor, "global ", identifier, "\n");
+        print_string3(context->outputFileDescriptor, "global ", identifier_back, "\n");
     }
     print_string3(context->outputFileDescriptor, "jmp ", identifier_end, "\n");
-    print_string2(context->outputFileDescriptor, identifier, ":\n");
+    print_string2(context->outputFileDescriptor, identifier_back, ":\n");
     print_string(context->outputFileDescriptor, "push rbp\n");
     print_string(context->outputFileDescriptor, "mov rbp, rsp\n");
 
@@ -233,15 +230,8 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     context->variable_argument_type = (struct Type**)_malloc(sizeof(struct Type*));
     context->variable_argument_type[0] = NULL;
 
-    int *index_ptr = (int*)_malloc(sizeof(int));
-    *index_ptr = index;
-    if (this->struct_name) {
-        context->function_name = (const char**)push_back((void**)context->function_name, _strdup(identifier));
-    }
-    else {
-        context->function_name = (const char**)push_back((void**)context->function_name, _strdup(this->name));
-    }
-    context->function_name_index = (int**)push_back((void**)context->function_name_index, index_ptr);
+    context->function_name_front = (const char**)push_back((void**)context->function_name_front, _strdup(identifier_front));
+    context->function_name_back = (const char**)push_back((void**)context->function_name_back, _strdup(identifier_back));
     context->function_signature = (struct FunctionSignature**)push_back((void**)context->function_signature, this->signature);
 
     if (this->struct_name) {
@@ -276,12 +266,13 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     print_string(context->outputFileDescriptor, "ret\n");
     print_string2(context->outputFileDescriptor, identifier_end, ":\n");
     
-    _free(identifier);
+    _free(identifier_front);
+    _free(identifier_back);
     _free(identifier_end);
 }
 
 void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContext *context) {
-    char *identifier;
+    const char *identifier;
     if (this->struct_name) {
         identifier = concat(this->struct_name, this->name);
     }
@@ -289,10 +280,8 @@ void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContex
         identifier = this->name;
     }
     print_string3(context->outputFileDescriptor, "extern ", identifier, "\n");
-    context->function_name = (const char**)push_back((void**)context->function_name, identifier);
-    int *index_ptr = (int*)_malloc(sizeof(int));
-    *index_ptr = -1;
-    context->function_name_index = (int**)push_back((void**)context->function_name_index, index_ptr);
+    context->function_name_front = (const char**)push_back((void**)context->function_name_front, (void*)identifier);
+    context->function_name_back = (const char**)push_back((void**)context->function_name_back, (void*)identifier);
     context->function_signature = (struct FunctionSignature**)push_back((void**)context->function_signature, this->signature);
 }
 
@@ -426,15 +415,8 @@ struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, s
         print_string(context->outputFileDescriptor, ", [rsp - 8]\n");
     }
     
-    int idx = findFunctionIndex(identifier, context);
-    if (idx == -1) {
-        print_string3(context->outputFileDescriptor, "call ", identifier, "\n");
-    }
-    else {
-        char *str = to_string(idx);
-        print_string3(context->outputFileDescriptor, "call _fun", str, "\n");
-        _free(str);
-    }
+    const char *identifier_back = findFunctionBack(identifier, context);
+    print_string3(context->outputFileDescriptor, "call ", identifier_back, "\n");
     _free(identifier);
     
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");

@@ -83,8 +83,8 @@ struct CPContext {
     struct Type **variable_local_type;
     const char **variable_argument_name;
     struct Type **variable_argument_type;
-    const char **function_name;
-    int **function_name_index;
+    const char **function_name_front;
+    const char **function_name_back;
     struct FunctionSignature **function_signature;
     struct Struct **structs;
     int function_index;
