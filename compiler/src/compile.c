@@ -195,7 +195,12 @@ void CompileWhile(struct Node *node, struct While *this, struct CPContext *conte
 void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) {
     char *identifier, *identifier_end;
     int index;
-    if (this->external) {
+    if (this->struct_name) {
+        identifier = concat(this->struct_name, this->name);
+        identifier_end = concat("_funend", identifier);
+        index = -1;
+    }
+    else if (this->external) {
         identifier = _strdup(this->name);
         identifier_end = concat("_funend", this->name);
         index = -1;
@@ -230,13 +235,23 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
 
     int *index_ptr = (int*)_malloc(sizeof(int));
     *index_ptr = index;
-    context->function_name = (const char**)push_back((void**)context->function_name, _strdup(this->name));
+    if (this->struct_name) {
+        context->function_name = (const char**)push_back((void**)context->function_name, _strdup(identifier));
+    }
+    else {
+        context->function_name = (const char**)push_back((void**)context->function_name, _strdup(this->name));
+    }
     context->function_name_index = (int**)push_back((void**)context->function_name_index, index_ptr);
     context->function_signature = (struct FunctionSignature**)push_back((void**)context->function_signature, this->signature);
 
+    if (this->struct_name) {
+        print_string3(context->outputFileDescriptor, "push ", regs[0], "\n");
+        context->variable_argument_name = (const char**)push_back((void**)context->variable_argument_name, (void*)_strdup("this"));
+        context->variable_argument_type = (struct Type**)push_back((void**)context->variable_argument_type, BuildType(_strdup(this->struct_name), 1));
+    }
     int sz = get_size((void**)this->signature->identifiers);
     for (int i = 0; i < sz; i++) {
-        print_string3(context->outputFileDescriptor, "push ", regs[i], "\n");
+        print_string3(context->outputFileDescriptor, "push ", regs[i + (this->struct_name != NULL)], "\n");
         context->variable_argument_name = (const char**)push_back((void**)context->variable_argument_name, (void*)this->signature->identifiers[i]);
         context->variable_argument_type = (struct Type**)push_back((void**)context->variable_argument_type, CopyType(this->signature->types[i]));
     }
@@ -260,11 +275,21 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     print_string(context->outputFileDescriptor, "leave\n");
     print_string(context->outputFileDescriptor, "ret\n");
     print_string2(context->outputFileDescriptor, identifier_end, ":\n");
+    
+    _free(identifier);
+    _free(identifier_end);
 }
 
 void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContext *context) {
-    print_string3(context->outputFileDescriptor, "extern ", this->name, "\n");
-    context->function_name = (const char**)push_back((void**)context->function_name, _strdup(this->name));
+    char *identifier;
+    if (this->struct_name) {
+        identifier = concat(this->struct_name, this->name);
+    }
+    else {
+        identifier = this->name;
+    }
+    print_string3(context->outputFileDescriptor, "extern ", identifier, "\n");
+    context->function_name = (const char**)push_back((void**)context->function_name, identifier);
     int *index_ptr = (int*)_malloc(sizeof(int));
     *index_ptr = -1;
     context->function_name_index = (int**)push_back((void**)context->function_name_index, index_ptr);
@@ -344,29 +369,6 @@ void CompileMovement(struct Node *node, struct Movement *this, struct CPContext 
     print_string(context->outputFileDescriptor, "mov [rax], rbx\n");
 }
 
-void CompileMovementString(struct Node *node, struct MovementString *this, struct CPContext *context) {
-    /* int idx = context->branch_index;
-    context->branch_index++;
-    print_stringi(context->outputFileDescriptor, "jmp _strbufend", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "_strbuf ", idx, " db ");
-    int sz = _strlen(this->value);
-    for (int i = 0; i < sz; i++) {
-        print_int(context->outputFileDescriptor, (int)this->value[i]);
-        if (i + 1 != sz) {
-            print_string(context->outputFileDescriptor, ",");
-        }
-        else{
-            print_string(context->outputFileDescriptor, "\n");
-        }
-    }
-    print_stringi(context->outputFileDescriptor, "_strbufend", idx, ":\n");
-    print_stringi(context->outputFileDescriptor, "mov rsi, _strbuf", idx, "\n");
-    int phase = findPhase(this->identifier, context);
-    print_stringi(context->outputFileDescriptor, "mov rdi, [rbp +", phase, "]\n");
-    print_stringi(context->outputFileDescriptor, "mov rcx, ", sz, "\n");
-    print_string(context->outputFileDescriptor, "rep movsb\n"); */
-}
-
 struct Type *CompileIdentifier(struct Node *node, struct Identifier *this, struct CPContext *context) {
     print_string(context->outputFileDescriptor, "mov rax, ");
     findIdentifier(this->identifier, context);
@@ -399,6 +401,20 @@ struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, s
     struct FunctionSignature *signature = findFunctionSignature(this->identifier, context);
     int sz = get_size((void**)this->arguments);
     if (sz != get_size((void**)signature->identifiers)) SemanticError("Incorrect number of arguments in function call", node);
+    
+    char *identifier;
+    if (this->caller) {
+        struct Type *_type = CompileNode(this->caller, context);
+        identifier = concat(_type->identifier, this->identifier);
+        _free(_type);
+        print_string(context->outputFileDescriptor, "mov ");
+        print_string(context->outputFileDescriptor, regs[0]);
+        print_string(context->outputFileDescriptor, ", [rsp - 8]\n");
+    }
+    else {
+        identifier = _strdup(this->identifier);
+    }
+
     for (int i = 0; i < sz; i++) {
         struct Type *_type = CompileNode(this->arguments[i], context);
         if (_strcmp(_type->identifier, signature->types[i]->identifier) || _type->degree != signature->types[i]->degree) {
@@ -406,18 +422,20 @@ struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, s
         }
         _free(_type);
         print_string(context->outputFileDescriptor, "mov ");
-        print_string(context->outputFileDescriptor, regs[i]);
+        print_string(context->outputFileDescriptor, regs[i + (this->caller != NULL)]);
         print_string(context->outputFileDescriptor, ", [rsp - 8]\n");
     }
-    int idx = findFunctionIndex(this->identifier, context);
+    
+    int idx = findFunctionIndex(identifier, context);
     if (idx == -1) {
-        print_string3(context->outputFileDescriptor, "call ", this->identifier, "\n");
+        print_string3(context->outputFileDescriptor, "call ", identifier, "\n");
     }
     else {
         char *str = to_string(idx);
         print_string3(context->outputFileDescriptor, "call _fun", str, "\n");
         _free(str);
     }
+    _free(identifier);
     
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
     
@@ -676,11 +694,6 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeMovement) {
         print_string(context->outputFileDescriptor, "movement\n");
         CompileMovement(node, (struct Movement*)node->node_ptr, context);
-        return BuildType("", 0);
-    }
-    else if (node->node_type == NodeMovementString) {
-        print_string(context->outputFileDescriptor, "movement string\n");
-        CompileMovementString(node, (struct MovementString*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeIdentifier) {

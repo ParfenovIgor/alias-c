@@ -15,7 +15,6 @@ enum TokenType {
     TokenReturn,
     TokenAs,
     TokenConst,
-    TokenCall,
     TokenAssign,
     TokenMove,
     TokenDot,

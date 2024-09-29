@@ -17,7 +17,6 @@ enum NodeType {
     NodeAs,
     NodeAssignment,
     NodeMovement,
-    NodeMovementString,
     NodeAssumption,
     NodeIdentifier,
     NodeInteger,
@@ -49,7 +48,6 @@ struct Return;
 struct As;
 struct Assignment;
 struct Movement;
-struct MovementString;
 struct Assumption;
 struct Identifier;
 struct Integer;
@@ -121,6 +119,7 @@ struct While {
 };
 
 struct FunctionDefinition {
+    const char *struct_name;
     const char *name;
     struct FunctionSignature *signature;
     struct Node *block;
@@ -128,6 +127,7 @@ struct FunctionDefinition {
 };
 
 struct Prototype {
+    const char *struct_name;
     const char *name;
     struct FunctionSignature *signature;
 };
@@ -169,11 +169,6 @@ struct Assignment {
 
 struct Movement {
     struct Node *dst, *src;
-};
-
-struct MovementString {
-    const char *identifier;
-    const char *value;
 };
 
 struct Identifier {

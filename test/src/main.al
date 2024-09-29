@@ -8,8 +8,8 @@ struct Astr {
     y <int, 0>
 }
 
-func foo(a <int, 0>) -> <int, 0> {
-    func boo(b <int, 0>) -> <int, 0> {
+func .foo(a <int, 0>) -> <int, 0> {
+    func .boo(b <int, 0>) -> <int, 0> {
         return b + 4
     }
     def _ <int, 0>;
@@ -19,7 +19,11 @@ func foo(a <int, 0>) -> <int, 0> {
     return b
 }
 
-func ^_start() -> <int, 0> {
+func Astr.foo(a <int, 0>) -> <int, 0> {
+    this->x& <- a * a
+}
+
+func ^._start() -> <int, 0> {
     def _ <int, 0>
 
     def pt <int, 1>
@@ -61,6 +65,9 @@ func ^_start() -> <int, 0> {
     // _ := .posix_fork();
     _ := .foo(1234);
     _ := ._puti(_)
+
+    _ := a.foo(123)
+    _ := ._puti(a->x)
 
     _ := .posix_exit(0)
 }
