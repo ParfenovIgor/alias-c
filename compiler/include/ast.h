@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../include/common.h"
-#include "../include/type.h"
-#include "../stdlib/include/stdbool.h"
+#include <common.h>
+#include <type.h>
+#include <stdbool.h>
 
 enum NodeType {
     NodeBlock,

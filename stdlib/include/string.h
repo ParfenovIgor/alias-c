@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../stdlib/include/stdbool.h"
-#include "../../stdlib/include/stdlib.h"
+#include <stdbool.h>
+#include <stdlib.h>
 
 bool _isalpha(char c);
 bool _isdigit(char c);

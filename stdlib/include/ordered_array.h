@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../stdlib/include/stdbool.h"
+#include <stdbool.h>
 
 typedef void* type_t;
 typedef int (*lessthan_predicate_t)(type_t, type_t);

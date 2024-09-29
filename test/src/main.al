@@ -1,7 +1,7 @@
-include {test/include/stdio.hal}
-include {test/include/stdlib.hal}
-include {altlib/include/posix.hal}
-include {altlib/include/algorithm.hal}
+include {include/stdio.hal}
+include {include/stdlib.hal}
+include {../altlib/include/posix.hal}
+include {../altlib/include/algorithm.hal}
 
 struct Astr {
     x <int, 0>
@@ -58,7 +58,7 @@ func ^_start() -> <int, 0> {
     def y <int, 0>; y := 48
     _ := ._puti(.al_min(x, y))
 
-    // _ := call posix_fork();
+    // _ := .posix_fork();
     _ := .foo(1234);
     _ := ._puti(_)
 

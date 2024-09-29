@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../include/common.h"
-#include "../stdlib/include/stdbool.h"
+#include <common.h>
+#include <stdbool.h>
 
 struct Settings {
     bool languageServer;

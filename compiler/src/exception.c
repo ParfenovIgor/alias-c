@@ -1,5 +1,5 @@
-#include "../include/exception.h"
-#include "../stdlib/include/posix.h"
+#include <exception.h>
+#include <posix.h>
 
 void LexerError(const char *value, int line_begin, int position_begin, int line_end, int position_end, const char *filename) {
     print_string(STDOUT, "Error\n");

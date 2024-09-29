@@ -1,5 +1,5 @@
-#include "../include/type.h"
-#include "../stdlib/include/stdlib.h"
+#include <type.h>
+#include <stdlib.h>
 
 struct Type *BuildType(const char *id, int deg) {
     struct Type *type = (struct Type*)_malloc(sizeof(struct Type));

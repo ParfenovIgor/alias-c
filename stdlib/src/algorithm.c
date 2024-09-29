@@ -1,4 +1,4 @@
-#include "../../stdlib/include/algorithm.h"
+#include <algorithm.h>
 
 int min(int a, int b) {
     if (a < b) return a;

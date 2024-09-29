@@ -1,4 +1,4 @@
-#include "../include/httpd.h"
+#include <httpd.h>
 
 #include <arpa/inet.h>
 #include <ctype.h>

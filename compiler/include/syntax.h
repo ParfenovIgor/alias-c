@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../include/token.h"
-#include "../include/ast.h"
+#include <token.h>
+#include <ast.h>
 
 struct Node *Syntax_ProcessBlock(struct TokenStream*, bool braces);
 struct Node *Syntax_ProcessExpression(struct TokenStream*);

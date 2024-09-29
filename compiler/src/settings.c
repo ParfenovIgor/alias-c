@@ -1,5 +1,5 @@
-#include "../include/settings.h"
-#include "../stdlib/include/stdlib.h"
+#include <settings.h>
+#include <stdlib.h>
 
 struct Settings *BuildSettings() {
     struct Settings *settings = (struct Settings*)_malloc(sizeof(struct Settings));

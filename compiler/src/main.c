@@ -1,11 +1,11 @@
-#include "../include/common.h"
-#include "../include/process.h"
-#include "../include/settings.h"
-#include "../include/languageserver.h"
-#include "../stdlib/include/posix.h"
-#include "../stdlib/include/string.h"
-#include "../stdlib/include/stdio.h"
-#include "../stdlib/include/heap.h"
+#include <common.h>
+#include <process.h>
+#include <settings.h>
+#include <languageserver.h>
+#include <posix.h>
+#include <string.h>
+#include <stdio.h>
+#include <heap.h>
 
 void help() {
     _puts("Syntax: calias [flags] file [flags]");

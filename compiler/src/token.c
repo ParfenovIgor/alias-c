@@ -1,6 +1,6 @@
-#include "../include/token.h"
-#include "../stdlib/include/stdlib.h"
-#include "../stdlib/include/memory.h"
+#include <token.h>
+#include <stdlib.h>
+#include <memory.h>
 
 struct TokenStream *TokenStream_New() {
     struct TokenStream *ts = (struct TokenStream*)_malloc(sizeof(struct TokenStream));

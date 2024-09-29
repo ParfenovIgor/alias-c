@@ -1,13 +1,13 @@
-#include "../include/lexer.h"
-#include "../include/syntax.h"
-#include "../include/validator.h"
-#include "../include/compile.h"
-#include "../include/exception.h"
-#include "../include/settings.h"
-#include "../include/process.h"
-#include "../stdlib/include/posix.h"
-#include "../stdlib/include/stdlib.h"
-#include "../stdlib/include/string.h"
+#include <lexer.h>
+#include <syntax.h>
+#include <validator.h>
+#include <compile.h>
+#include <exception.h>
+#include <settings.h>
+#include <process.h>
+#include <posix.h>
+#include <stdlib.h>
+#include <string.h>
 
 struct Node *Parse(const char *filename) {
     char *buffer = ReadFile(filename);

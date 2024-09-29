@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../include/ast.h"
+#include <ast.h>
 
 void Validate(struct Node*) {}
 

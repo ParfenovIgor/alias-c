@@ -1,5 +1,5 @@
-#include "../../stdlib/include/heap.h"
-#include "../../stdlib/include/posix.h"
+#include <heap.h>
+#include <posix.h>
 #include <sys/mman.h>
 
 #define HEAP_MAGIC 0x123890AB

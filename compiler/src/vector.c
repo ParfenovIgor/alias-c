@@ -1,6 +1,6 @@
-#include "../include/vector.h"
-#include "../stdlib/include/stdlib.h"
-#include "../stdlib/include/memory.h"
+#include <vector.h>
+#include <stdlib.h>
+#include <memory.h>
 
 void **push_back(void **a, void *x) {
     int sz = 0;

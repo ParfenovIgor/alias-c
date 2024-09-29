@@ -1,8 +1,8 @@
-#include "../include/lexer.h"
-#include "../include/exception.h"
-#include "../stdlib/include/algorithm.h"
-#include "../stdlib/include/stdlib.h"
-#include "../stdlib/include/string.h"
+#include <lexer.h>
+#include <exception.h>
+#include <algorithm.h>
+#include <stdlib.h>
+#include <string.h>
 
 bool CheckToken(const char *str, int len, const char *word, int i, bool oper) {
     if (!oper && i + _strlen(word) < len && 
@@ -459,12 +459,7 @@ const char *TokenColor(enum TokenType type,
 #include <sys/time.h>
 
 const char *Lexer_Highlight(const char *str) {
-    struct timeval tval_before, tval_after, tval_result;
-    gettimeofday(&tval_before, NULL);
     struct TokenStream *token_stream = Lexer_Process(str, "");
-    gettimeofday(&tval_after, NULL);
-    timersub(&tval_after, &tval_before, &tval_result);
-    fprintf(stderr, "Time elapsed: %ld.%06ld\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
     
     int buffer_size = 1000;
     char *output = _malloc(buffer_size);
