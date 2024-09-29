@@ -1,1 +1,1 @@
-proto _puti(n <int, 0>) -> <int, 0>
+proto ._puti(n <int, 0>) -> <int, 0>

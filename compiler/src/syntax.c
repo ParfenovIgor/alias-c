@@ -634,6 +634,17 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
             function_definition->external = true;
             TokenStream_NextToken(ts);
         }
+        if (TokenStream_GetToken(ts).type == TokenIdentifier) {
+            function_definition->struct_name = _strdup(TokenStream_GetToken(ts).value_string);
+            TokenStream_NextToken(ts);
+        }
+        else {
+            function_definition->struct_name = NULL;
+        }
+        if (TokenStream_GetToken(ts).type != TokenDot) {
+            SyntaxError(". exprected in function definition", TokenStream_GetToken(ts));
+        }
+        TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenIdentifier) {
             SyntaxError("Identifier exprected in function definition", TokenStream_GetToken(ts));
         }
@@ -663,6 +674,17 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->line_begin = TokenStream_GetToken(ts).line_begin;
         node->position_begin = TokenStream_GetToken(ts).position_begin;
         node->filename = _strdup(TokenStream_GetToken(ts).filename);
+        TokenStream_NextToken(ts);
+        if (TokenStream_GetToken(ts).type == TokenIdentifier) {
+            prototype->struct_name = _strdup(TokenStream_GetToken(ts).value_string);
+            TokenStream_NextToken(ts);
+        }
+        else {
+            prototype->struct_name = NULL;
+        }
+        if (TokenStream_GetToken(ts).type != TokenDot) {
+            SyntaxError(". exprected in function prototype", TokenStream_GetToken(ts));
+        }
         TokenStream_NextToken(ts);
         if (TokenStream_GetToken(ts).type != TokenIdentifier) {
             SyntaxError("Identifier exprected in function prototype", TokenStream_GetToken(ts));
