@@ -1,6 +1,6 @@
-#include "../../stdlib/include/ordered_array.h"
-#include "../../stdlib/include/memory.h"
-#include "../../stdlib/include/posix.h"
+#include <ordered_array.h>
+#include <memory.h>
+#include <posix.h>
 
 int standard_lessthan_predicate(type_t a, type_t b) {
     return (a < b) ? 1 : 0;

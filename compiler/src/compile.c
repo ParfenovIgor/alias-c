@@ -1,11 +1,11 @@
-#include "../include/ast.h"
-#include "../include/compile.h"
-#include "../include/settings.h"
-#include "../include/vector.h"
-#include "../include/exception.h"
-#include "../stdlib/include/posix.h"
-#include "../stdlib/include/stdlib.h"
-#include "../stdlib/include/string.h"
+#include <ast.h>
+#include <compile.h>
+#include <settings.h>
+#include <vector.h>
+#include <exception.h>
+#include <posix.h>
+#include <stdlib.h>
+#include <string.h>
 
 const char *regs[] = {
     "rdi",

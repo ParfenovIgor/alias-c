@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../stdlib/include/ordered_array.h"
+#include <ordered_array.h>
 
 typedef struct {
     int magic;

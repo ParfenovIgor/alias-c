@@ -1,5 +1,5 @@
-#include "../stdlib/include/heap.h"
-#include "../stdlib/include/stdlib.h"
+#include <heap.h>
+#include <stdlib.h>
 
 void heap_test() {
     _srand(123);

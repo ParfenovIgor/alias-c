@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../include/common.h"
-#include "../include/ast.h"
+#include <common.h>
+#include <ast.h>
 
 void **push_back(void **a, void *x);
 void **pop_back(void **a);

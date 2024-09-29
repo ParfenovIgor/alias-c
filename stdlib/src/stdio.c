@@ -1,7 +1,7 @@
-#include "../../stdlib/include/stdio.h"
-#include "../../stdlib/include/stdlib.h"
-#include "../../stdlib/include/string.h"
-#include "../../stdlib/include/posix.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <posix.h>
 
 int _puts(const char *str) {
     posix_write(STDOUT, str, _strlen(str));

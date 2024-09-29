@@ -1,7 +1,7 @@
-#include "../include/common.h"
-#include "../stdlib/include/posix.h"
-#include "../stdlib/include/stdlib.h"
-#include "../stdlib/include/string.h"
+#include <common.h>
+#include <posix.h>
+#include <stdlib.h>
+#include <string.h>
 
 char *to_string(int n) {
     if (n == 0) {

@@ -1,5 +1,5 @@
-#include "../../stdlib/include/stdlib.h"
-#include "../../stdlib/include/heap.h"
+#include <stdlib.h>
+#include <heap.h>
 
 heap_t *heap;
 
