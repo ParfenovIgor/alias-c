@@ -193,26 +193,6 @@ struct Dereference {
     struct Node *expression;
 };
 
-struct Addition {
-    struct Node *left, *right;
-};
-
-struct Subtraction {
-    struct Node *left, *right;
-};
-
-struct Multiplication {
-    struct Node *left, *right;
-};
-
-struct Division {
-    struct Node *left, *right;
-};
-
-struct Less {
-    struct Node *left, *right;
-};
-
-struct Equal {
+struct BinaryOperator {
     struct Node *left, *right;
 };
