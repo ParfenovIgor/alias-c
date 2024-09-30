@@ -498,7 +498,7 @@ struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContex
     return _type;
 }
 
-struct Type *CompileAddition(struct Node *node, struct Addition *this, struct CPContext *context) {
+struct Type *CompileAddition(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct Type *_type = CompileNode(this->left, context);
     if (_strcmp(_type->identifier, "int") || _type->degree != 0) SemanticError("Integer expected in addition", node);
     _free(_type);
@@ -520,7 +520,7 @@ struct Type *CompileAddition(struct Node *node, struct Addition *this, struct CP
     return BuildType("int", 0);
 }
 
-struct Type *CompileSubtraction(struct Node *node, struct Subtraction *this, struct CPContext *context) {
+struct Type *CompileSubtraction(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     CompileNode(this->left, context);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -533,7 +533,7 @@ struct Type *CompileSubtraction(struct Node *node, struct Subtraction *this, str
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
 }
 
-struct Type *CompileMultiplication(struct Node *node, struct Multiplication *this, struct CPContext *context) {
+struct Type *CompileMultiplication(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct Type *_type = CompileNode(this->left, context);
     if (_strcmp(_type->identifier, "int") || _type->degree != 0) SemanticError("Integer expected in multiplication", node);
     _free(_type);
@@ -556,7 +556,7 @@ struct Type *CompileMultiplication(struct Node *node, struct Multiplication *thi
     return BuildType("int", 0);
 }
 
-struct Type *CompileDivision(struct Node *node, struct Division *this, struct CPContext *context) {
+struct Type *CompileDivision(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     CompileNode(this->left, context);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -570,7 +570,7 @@ struct Type *CompileDivision(struct Node *node, struct Division *this, struct CP
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
 }
 
-struct Type *CompileLess(struct Node *node, struct Less *this, struct CPContext *context) {
+struct Type *CompileLess(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     CompileNode(this->left, context);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -590,7 +590,7 @@ struct Type *CompileLess(struct Node *node, struct Less *this, struct CPContext 
     print_stringi(context->outputFileDescriptor, "_setend", idx, ":\n");
 }
 
-struct Type *CompileEqual(struct Node *node, struct Equal *this, struct CPContext *context) {
+struct Type *CompileEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     CompileNode(this->left, context);
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -708,26 +708,26 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     }
     else if (node->node_type == NodeAddition) {
         print_string(context->outputFileDescriptor, "addition\n");
-        return CompileAddition(node, (struct Addition*)node->node_ptr, context);
+        return CompileAddition(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeSubtraction) {
         print_string(context->outputFileDescriptor, "subtraction\n");
-        return CompileSubtraction(node, (struct Subtraction*)node->node_ptr, context);
+        return CompileSubtraction(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeMultiplication) {
         print_string(context->outputFileDescriptor, "multiplication\n");
-        return CompileMultiplication(node, (struct Multiplication*)node->node_ptr, context);
+        return CompileMultiplication(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDivision) {
         print_string(context->outputFileDescriptor, "division\n");
-        return CompileDivision(node, (struct Division*)node->node_ptr, context);
+        return CompileDivision(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeLess) {
         print_string(context->outputFileDescriptor, "less\n");
-        return CompileLess(node, (struct Less*)node->node_ptr, context);
+        return CompileLess(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeEqual) {
         print_string(context->outputFileDescriptor, "equal\n");
-        return CompileEqual(node, (struct Equal*)node->node_ptr, context);
+        return CompileEqual(node, (struct BinaryOperator*)node->node_ptr, context);
     }
 }
