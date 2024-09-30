@@ -96,7 +96,37 @@ struct Struct *findStruct(const char *identifier, struct CPContext *context) {
             return context->structs[i];
         }
     }
-    return NULL;
+    print_string(STDOUT, "Error: struct not found\n");
+    posix_exit(1);
+}
+
+bool isBaseType(struct Type *type, struct CPContext *context) {
+    if (type->degree != 0) {
+        return true;
+    }
+    if (_strcmp(type->identifier, "int") == 0) {
+        return true;
+    }
+    if (_strcmp(type->identifier, "char") == 0) {
+        return true;
+    }
+    return false;
+}
+
+int typeSize(struct Type *type, struct CPContext *context) {
+    if (type->degree != 0) {
+        return 8;
+    }
+    if (_strcmp(type->identifier, "int") == 0) {
+        return 8;
+    }
+    if (_strcmp(type->identifier, "char") == 0) {
+        return 1;
+    }
+    else {
+        struct Struct *_struct = findStruct(type->identifier, context);
+        return get_size((void**)_struct->identifiers) * 8;
+    }
 }
 
 struct Type *CompileNode(struct Node *node, struct CPContext *context);
@@ -295,17 +325,19 @@ void CompileStructDefinition(struct Node *node, struct StructDefinition *this, s
     for (int i = 0; i < get_size((void**)this->identifiers); i++) {
         _struct->identifiers = (const char**)push_back((void**)_struct->identifiers, (void*)this->identifiers[i]);
         _struct->types = (struct Type**)push_back((void**)_struct->types, this->types[i]);
+        if (!isBaseType(this->types[i], context)) {
+            SemanticError("Base type expected", node);
+        }
     }
     context->structs = (struct Struct**)push_back((void**)context->structs, (void*)_struct);
 }
 
 void CompileDefinition(struct Node *node, struct Definition *this, struct CPContext *context) {
     context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, _strdup(this->identifier));
-    struct Type *type = (struct Type*)_malloc(sizeof(int));
-    type->identifier = _strdup(this->type->identifier);
-    type->degree = this->type->degree;
-    if (_strcmp(type->identifier, "int") && type->degree == 0) SemanticError("Only pointers to structures are supported", node);
-    context->variable_local_type = (struct Type**)push_back((void**)context->variable_local_type, type);
+    if (!isBaseType(this->type, context)) {
+        SemanticError("Base type expected", node);
+    }
+    context->variable_local_type = (struct Type**)push_back((void**)context->variable_local_type, CopyType(this->type));
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
 }
 
@@ -374,23 +406,12 @@ struct Type *CompileInteger(struct Node *node, struct Integer *this, struct CPCo
 }
 
 struct Type *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
-    int size;
-    if (_strcmp(this->type->identifier, "int") == 0 || this->type->degree != 0) {
-        size = 1;
-    }
-    else {
-        struct Struct *_struct = findStruct(this->type->identifier, context);
-        size = get_size((void**)_struct->identifiers);
-    }
-    print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", size * 8, "\n");
+    int size = typeSize(this->type, context);
+    print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", size, "\n");
     return BuildType("int", 0);
 }
 
 struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
-    struct FunctionSignature *signature = findFunctionSignature(this->identifier, context);
-    int sz = get_size((void**)this->arguments);
-    if (sz != get_size((void**)signature->identifiers)) SemanticError("Incorrect number of arguments in function call", node);
-    
     char *identifier;
     if (this->caller) {
         struct Type *_type = CompileNode(this->caller, context);
@@ -403,6 +424,10 @@ struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, s
     else {
         identifier = _strdup(this->identifier);
     }
+    
+    struct FunctionSignature *signature = findFunctionSignature(identifier, context);
+    int sz = get_size((void**)this->arguments);
+    if (sz != get_size((void**)signature->identifiers)) SemanticError("Incorrect number of arguments in function call", node);
 
     for (int i = 0; i < sz; i++) {
         struct Type *_type = CompileNode(this->arguments[i], context);
