@@ -50,6 +50,23 @@ func Pair.apply_foo(a <int, 0>, b <int, 0>) -> <int, 0> {
 func ^._start() -> <int, 0> {
     def _ <int, 0>
 
+    if (0) {
+        _ := ._puti(1)
+    }
+    else if (1) {
+        _ := ._puti(2)
+    }
+    else {
+        _ := ._puti(3)
+    }
+    
+    if (1) {
+        _ := ._puti(1)
+    }
+    else if (0) {
+        _ := ._puti(2)
+    }
+
     def pt <int, 1>
     pt := ._malloc(^<int, 0> * 20)
     pt <- 4
