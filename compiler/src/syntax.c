@@ -543,16 +543,40 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->position_end = TokenStream_GetToken(ts).position_end;
         TokenStream_NextToken(ts);
 
-        if (TokenStream_GetToken(ts).type == TokenElse) {
+        while (TokenStream_GetToken(ts).type == TokenElse) {
             TokenStream_NextToken(ts);
-            if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
-                SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
+
+            if (TokenStream_GetToken(ts).type == TokenIf) {
+                TokenStream_NextToken(ts);
+                if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
+                    SyntaxError("( expected in if condition", TokenStream_GetToken(ts));
+                }
+                TokenStream_NextToken(ts);
+                struct Node *_expression = Syntax_ProcessExpression(ts);
+                if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
+                    SyntaxError(") expected in if condition", TokenStream_GetToken(ts));
+                }
+                TokenStream_NextToken(ts);
+                if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
+                    SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
+                }
+                struct Node *_block = Syntax_ProcessBlock(ts, true);
+                this->condition_list = (struct Node**)push_back((void**)this->condition_list, _expression);
+                this->block_list = (struct Node**)push_back((void**)this->block_list, _block);
+                node->line_end = TokenStream_GetToken(ts).line_end;
+                node->position_end = TokenStream_GetToken(ts).position_end;
+                TokenStream_NextToken(ts);
             }
-            struct Node *_block = Syntax_ProcessBlock(ts, true);
-            this->else_block = _block;
-            node->line_end = TokenStream_GetToken(ts).line_end;
-            node->position_end = TokenStream_GetToken(ts).position_end;
-            TokenStream_NextToken(ts);
+            else {
+                if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
+                    SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
+                }
+                struct Node *_block = Syntax_ProcessBlock(ts, true);
+                this->else_block = _block;
+                node->line_end = TokenStream_GetToken(ts).line_end;
+                node->position_end = TokenStream_GetToken(ts).position_end;
+                TokenStream_NextToken(ts);
+            }
         }
 
         return node;

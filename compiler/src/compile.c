@@ -196,30 +196,39 @@ void CompileAsm(struct Node *node, struct Asm *this, struct CPContext *context) 
 }
 
 void CompileIf(struct Node *node, struct If *this, struct CPContext *context) {
-    CompileNode(this->condition_list[0], context);
+    int sz = get_size((void*)this->condition_list);
     int idx = context->branch_index;
-    context->branch_index++;
-    print_string(context->outputFileDescriptor, "cmp qword [rsp - 8], 0\n");
-    print_stringi(context->outputFileDescriptor, "je _if_else", idx, "\n");
-    CompileNode(this->block_list[0], context);
-    print_stringi(context->outputFileDescriptor, "jmp _if_end", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "_if_else", idx, ":\n");
+    context->branch_index += sz + 1;
+    int last = idx + sz;
+    if (this->else_block) {
+        context->branch_index++;
+        last++;
+    }
+    for (int i = 0; i < sz; i++) {
+        print_stringi(context->outputFileDescriptor, "_L", idx + i, ":\n");
+        CompileNode(this->condition_list[i], context);
+        print_string(context->outputFileDescriptor, "cmp qword [rsp - 8], 0\n");
+        print_stringi(context->outputFileDescriptor, "je _L", idx + i + 1, "\n");
+        CompileNode(this->block_list[i], context);
+        print_stringi(context->outputFileDescriptor, "jmp _L", last, "\n");
+    }
+    print_stringi(context->outputFileDescriptor, "_L", idx + sz, ":\n");
     if (this->else_block) {
         CompileNode(this->else_block, context);
+        print_stringi(context->outputFileDescriptor, "_L", idx + sz + 1, ":\n");
     }
-    print_stringi(context->outputFileDescriptor, "_if_end", idx, ":\n");
 }
 
 void CompileWhile(struct Node *node, struct While *this, struct CPContext *context) {
     int idx = context->branch_index;
-    context->branch_index++;
-    print_stringi(context->outputFileDescriptor, "_while", idx, ":\n");
+    context->branch_index += 2;
+    print_stringi(context->outputFileDescriptor, "_L", idx, ":\n");
     CompileNode(this->condition, context);
     print_string(context->outputFileDescriptor, "cmp qword [rsp - 8], 0\n");
-    print_stringi(context->outputFileDescriptor, "je _while_end", idx, "\n");
+    print_stringi(context->outputFileDescriptor, "je _L", idx + 1, "\n");
     CompileNode(this->block, context);
-    print_stringi(context->outputFileDescriptor, "jmp _while", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "_while_end", idx, ":\n");
+    print_stringi(context->outputFileDescriptor, "jmp _L", idx, "\n");
+    print_stringi(context->outputFileDescriptor, "_L", idx + 1, ":\n");
 }
 
 void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) {
@@ -606,13 +615,13 @@ struct Type *CompileLess(struct Node *node, struct BinaryOperator *this, struct 
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
-    context->branch_index++;
-    print_stringi(context->outputFileDescriptor, "jl _set1_", idx, "\n");
+    context->branch_index += 2;
+    print_stringi(context->outputFileDescriptor, "jl _L", idx, "\n");
     print_string(context->outputFileDescriptor, "mov qword [rsp - 8], 0\n");
-    print_stringi(context->outputFileDescriptor, "jmp _setend", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "_set1_", idx, ":\n");
+    print_stringi(context->outputFileDescriptor, "jmp _L", idx + 1, "\n");
+    print_stringi(context->outputFileDescriptor, "_L", idx, ":\n");
     print_string(context->outputFileDescriptor, "mov qword [rsp - 8], 1\n");
-    print_stringi(context->outputFileDescriptor, "_setend", idx, ":\n");
+    print_stringi(context->outputFileDescriptor, "_L", idx + 1, ":\n");
 }
 
 struct Type *CompileEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -626,13 +635,13 @@ struct Type *CompileEqual(struct Node *node, struct BinaryOperator *this, struct
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
-    context->branch_index++;
-    print_stringi(context->outputFileDescriptor, "jz _set1_", idx, "\n");
+    context->branch_index += 2;
+    print_stringi(context->outputFileDescriptor, "jz _L", idx, "\n");
     print_string(context->outputFileDescriptor, "mov qword [rsp - 8], 0\n");
-    print_stringi(context->outputFileDescriptor, "jmp _setend", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "_set1_", idx, ":\n");
+    print_stringi(context->outputFileDescriptor, "jmp _L", idx + 1, "\n");
+    print_stringi(context->outputFileDescriptor, "_L", idx, ":\n");
     print_string(context->outputFileDescriptor, "mov qword [rsp - 8], 1\n");
-    print_stringi(context->outputFileDescriptor, "_setend", idx, ":\n");
+    print_stringi(context->outputFileDescriptor, "_L", idx + 1, ":\n");
 }
 
 struct Type *CompileNode(struct Node *node, struct CPContext *context) {
