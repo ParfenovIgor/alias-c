@@ -67,6 +67,19 @@ func ^._start() -> <int, 0> {
         _ := ._puti(2)
     }
 
+    def c <char, 0>
+    c := 'a' + '\n'
+    _ := ._puti('a' as <int, 0>)
+    def d <char, 1>
+    d := ._malloc(^<char, 0> * 100) as <char, 1>
+    d[0]& <- 'H'
+    d[1]& <- 'e'
+    d[2]& <- 'l'
+    d[3]& <- 'l'
+    d[4]& <- 'o'
+    d[5]& <- '\0'
+    _ := ._puts(d)
+
     def pt <int, 1>
     pt := ._malloc(^<int, 0> * 20)
     pt <- 4
@@ -107,6 +120,18 @@ func ^._start() -> <int, 0> {
     _ := p.apply_foo(11, 12)
     _ := ._puti(p->p1->x)
     _ := ._puti(p->p2->x)
+
+    a := ._malloc(^<Point, 0> * 10) as <Point, 1>
+    i := 0
+    while (i < 10) {
+        _ := a[i]&.foo(i)
+        i := i + 1
+    }
+    i := 0
+    while (i < 10) {
+        _ := ._puti(a[i]&->x)
+        i := i + 1
+    }
 
     def x <int, 0>; x := 32
     def y <int, 0>; y := 48

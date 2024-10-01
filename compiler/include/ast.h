@@ -20,6 +20,7 @@ enum NodeType {
     NodeAssumption,
     NodeIdentifier,
     NodeInteger,
+    NodeChar,
     NodeSizeof,
     NodeAlloc,
     NodeFree,
@@ -176,6 +177,10 @@ struct Identifier {
 };
 
 struct Integer {
+    int value;
+};
+
+struct Char {
     int value;
 };
 
