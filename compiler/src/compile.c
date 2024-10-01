@@ -113,6 +113,20 @@ bool isBaseType(struct Type *type, struct CPContext *context) {
     return false;
 }
 
+bool isIntType(struct Type *type, struct CPContext *context) {
+    if (type->degree != 0) {
+        return false;
+    }
+    if (_strcmp(type->identifier, "int") == 0) {
+        return true;
+    }
+    if (_strcmp(type->identifier, "char") == 0) {
+        return true;
+    }
+    return false;
+}
+
+
 int typeSize(struct Type *type, struct CPContext *context) {
     if (type->degree != 0) {
         return 8;
@@ -409,6 +423,11 @@ struct Type *CompileIdentifier(struct Node *node, struct Identifier *this, struc
     return BuildType(type->identifier, type->degree);
 }
 
+struct Type *CompileChar(struct Node *node, struct Char *this, struct CPContext *context) {
+    print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
+    return BuildType("char", 0);
+}
+
 struct Type *CompileInteger(struct Node *node, struct Integer *this, struct CPContext *context) {
     print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
     return BuildType("int", 0);
@@ -504,20 +523,22 @@ struct Type *CompileGetField(struct Node *node, struct GetField *this, struct CP
 
 struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContext *context) {
     struct Type *_type = CompileNode(this->left, context);
-    if (_type->degree != 1) SemanticError("Pointer expected", node);
+    if (_type->degree != 1) SemanticError("Pointer expected in indexation", node);
 
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
     context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
 
     struct Type *_type2 = CompileNode(this->right, context);
-    if (_strcmp(_type2->identifier, "int") || _type2->degree != 0) SemanticError("Integer expected", node);
+    if (_strcmp(_type2->identifier, "int") || _type2->degree != 0) SemanticError("Integer expected in indexation", node);
     _free(_type2);
     
     print_string(context->outputFileDescriptor, "add rsp, 8\n");
     context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 16]\n");
-    print_string(context->outputFileDescriptor, "mov rbx, 8\n");
+    _type->degree--;
+    print_stringi(context->outputFileDescriptor, "mov rbx, ", typeSize(_type, context), "\n");
+    _type->degree++;
     print_string(context->outputFileDescriptor, "mul rbx\n");
     print_string(context->outputFileDescriptor, "add rax, [rsp - 8]\n");
     if (!this->address) {
@@ -532,56 +553,43 @@ struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContex
     return _type;
 }
 
-struct Type *CompileAddition(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    struct Type *_type = CompileNode(this->left, context);
-    if (_strcmp(_type->identifier, "int") || _type->degree != 0) SemanticError("Integer expected in addition", node);
-    _free(_type);
+struct Type *CompileArithmetic(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct Type *_type1 = CompileNode(this->left, context);
+    if (!isIntType(_type1, context)) SemanticError("Integer expected in addition", this->left);
 
     print_string(context->outputFileDescriptor, "sub rsp, 8\n");
     const char *identifier = "__junk";
     context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
 
-    _type = CompileNode(this->right, context);
-    if (_strcmp(_type->identifier, "int") || _type->degree != 0) SemanticError("Integer expected in addition", node);
-    _free(_type);
+    struct Type *_type2 = CompileNode(this->right, context);
+    if (!isIntType(_type2, context)) SemanticError("Integer expected in addition", this->right);
+
+    if (_strcmp(_type1->identifier, _type2->identifier)) SemanticError("Equal types expected in addition", node);
+    _free(_type1);
 
     print_string(context->outputFileDescriptor, "add rsp, 8\n");
     context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+
+    return _type2;
+}
+
+struct Type *CompileAddition(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct Type *_type = CompileArithmetic(node, this, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "add rax, [rsp - 16]\n");
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
-
-    return BuildType("int", 0);
+    return _type;
 }
 
 struct Type *CompileSubtraction(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    CompileNode(this->left, context);
-    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
-    const char *identifier = "__junk";
-    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
-    CompileNode(this->right, context);
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
-    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    struct Type *_type = CompileArithmetic(node, this, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "sub rax, [rsp - 16]\n");
     print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
 }
 
 struct Type *CompileMultiplication(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    struct Type *_type = CompileNode(this->left, context);
-    if (_strcmp(_type->identifier, "int") || _type->degree != 0) SemanticError("Integer expected in multiplication", node);
-    _free(_type);
-
-    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
-    const char *identifier = "__junk";
-    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
-    
-    _type = CompileNode(this->right, context);
-    if (_strcmp(_type->identifier, "int") || _type->degree != 0) SemanticError("Integer expected in multiplication", node);
-    _free(_type);
-
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
-    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    struct Type *_type = CompileArithmetic(node, this, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "mov rdx, [rsp - 16]\n");
     print_string(context->outputFileDescriptor, "mul rdx\n");
@@ -591,13 +599,7 @@ struct Type *CompileMultiplication(struct Node *node, struct BinaryOperator *thi
 }
 
 struct Type *CompileDivision(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    CompileNode(this->left, context);
-    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
-    const char *identifier = "__junk";
-    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
-    CompileNode(this->right, context);
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
-    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    struct Type *_type = CompileArithmetic(node, this, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "mov rdx, 0\n");
     print_string(context->outputFileDescriptor, "div qword [rsp - 16]\n");
@@ -605,13 +607,7 @@ struct Type *CompileDivision(struct Node *node, struct BinaryOperator *this, str
 }
 
 struct Type *CompileLess(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    CompileNode(this->left, context);
-    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
-    const char *identifier = "__junk";
-    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
-    CompileNode(this->right, context);
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
-    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    struct Type *_type = CompileArithmetic(node, this, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
@@ -625,13 +621,7 @@ struct Type *CompileLess(struct Node *node, struct BinaryOperator *this, struct 
 }
 
 struct Type *CompileEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    CompileNode(this->left, context);
-    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
-    const char *identifier = "__junk";
-    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
-    CompileNode(this->right, context);
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
-    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    struct Type *_type = CompileArithmetic(node, this, context);
     print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
     print_string(context->outputFileDescriptor, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
@@ -715,6 +705,10 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeIdentifier) {
         print_string(context->outputFileDescriptor, "identifier\n");
         return CompileIdentifier(node, (struct Identifier*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeChar) {
+        print_string(context->outputFileDescriptor, "char\n");
+        return CompileChar(node, (struct Char*)node->node_ptr, context);
     }
     else if (node->node_type == NodeInteger) {
         print_string(context->outputFileDescriptor, "integer\n");

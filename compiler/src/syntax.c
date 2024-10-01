@@ -310,6 +310,16 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
 struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
     struct Node *node = init_node(ts);
 
+    if (TokenStream_GetToken(ts).type == TokenChar) {
+        struct Char *this = (struct Char*)_malloc(sizeof(struct Char));
+        node->node_ptr = this;
+        node->node_type = NodeChar;
+        this->value = TokenStream_GetToken(ts).value_int;
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
+    }
     if (TokenStream_GetToken(ts).type == TokenInteger) {
         struct Integer *this = (struct Integer*)_malloc(sizeof(struct Integer));
         node->node_ptr = this;
