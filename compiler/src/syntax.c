@@ -14,6 +14,19 @@ struct Node *init_node(struct TokenStream *ts) {
     return node;
 }
 
+void check_next(struct TokenStream *ts, enum TokenType type, const char *error) {
+    if (TokenStream_GetToken(ts).type != type) {
+        SyntaxError(error, TokenStream_GetToken(ts));
+    }
+}
+
+void pass_next(struct TokenStream *ts, enum TokenType type, const char *error) {
+    if (TokenStream_GetToken(ts).type != type) {
+        SyntaxError(error, TokenStream_GetToken(ts));
+    }
+    TokenStream_NextToken(ts);
+}
+
 struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
     struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
     struct Block *this = (struct Block*)_malloc(sizeof(struct Block));
@@ -350,15 +363,10 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
             this->arguments[0] = NULL;
             node->node_ptr = this;
             node->node_type = NodeFunctionCall;
-            if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-                SyntaxError("Identifier expected in function call", TokenStream_GetToken(ts));
-            }
+            check_next(ts, TokenIdentifier, "Identifier expected in function call");
             this->identifier = _strdup(TokenStream_GetToken(ts).value_string);
             TokenStream_NextToken(ts);
-            if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-                SyntaxError("( expected in function call", TokenStream_GetToken(ts));
-            }
-            TokenStream_NextToken(ts);
+            pass_next(ts, TokenParenthesisOpen, "( expected in function call");
             while (true) {
                 if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
                     break;
@@ -367,10 +375,7 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
                 if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
                     break;
                 }
-                if (TokenStream_GetToken(ts).type != TokenComma) {
-                    SyntaxError(", expected in function call", TokenStream_GetToken(ts));
-                }
-                TokenStream_NextToken(ts);
+                pass_next(ts, TokenComma, ", expected in function call");
             }
             node->line_end = TokenStream_GetToken(ts).line_end;
             node->position_end = TokenStream_GetToken(ts).position_end;
@@ -391,9 +396,7 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
             node->node_ptr = this;
             node->node_type = NodeGetField;
             this->left = prv_node;
-            if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-                SyntaxError("Identifier expected in get struct field expression", TokenStream_GetToken(ts));
-            }
+            check_next(ts, TokenIdentifier, "Identifier expected in get struct field expression");
             this->field = _strdup(TokenStream_GetToken(ts).value_string);
             node->line_end = TokenStream_GetToken(ts).line_end;
             node->position_end = TokenStream_GetToken(ts).position_end;
@@ -420,12 +423,9 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
             node->node_type = NodeIndex;
             this->left = prv_node;
             this->right = Syntax_ProcessExpression(ts);
-            if (TokenStream_GetToken(ts).type != TokenBracketClose) {
-                SyntaxError("] expected in index expression", TokenStream_GetToken(ts));
-            }
             node->line_end = TokenStream_GetToken(ts).line_end;
             node->position_end = TokenStream_GetToken(ts).position_end;
-            TokenStream_NextToken(ts);
+            pass_next(ts, TokenBracketClose, "] expected in index expression");
             if (TokenStream_GetToken(ts).type == TokenAddress) {
                 this->address = true;
                 TokenStream_NextToken(ts);
@@ -470,9 +470,7 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
             TokenStream_NextToken(ts);
             break;
         }
-        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-            SyntaxError("Identifier expected in argument list", TokenStream_GetToken(ts));
-        }
+        check_next(ts, TokenIdentifier, "Identifier expected in argument list");
         this->identifiers = (const char**)push_back((void**)this->identifiers, _strdup(TokenStream_GetToken(ts).value_string));
         TokenStream_NextToken(ts);
         struct Type *type = Syntax_ProcessType(ts);
@@ -483,15 +481,9 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
             TokenStream_NextToken(ts);
             break;
         }
-        if (TokenStream_GetToken(ts).type != TokenComma) {
-            SyntaxError(", expected in argument list", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
+        pass_next(ts, TokenComma, ", expected in argument list");
     }
-    if (TokenStream_GetToken(ts).type != TokenGetField) {
-        SyntaxError("-> expected in function definition", TokenStream_GetToken(ts));
-    }
-    TokenStream_NextToken(ts);
+    pass_next(ts, TokenGetField, "-> expected in function definition");
     this->return_type = Syntax_ProcessType(ts);
     return this;
 }
@@ -524,18 +516,10 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->node_ptr = this;
         node->node_type = NodeIf;
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-            SyntaxError("( expected in if condition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
+        pass_next(ts, TokenParenthesisOpen, "( expected in if condition");
         struct Node *_expression = Syntax_ProcessExpression(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
-            SyntaxError(") expected in if condition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
-            SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
-        }
+        pass_next(ts, TokenParenthesisClose, ") expected in if condition");
+        check_next(ts, TokenBraceOpen, "{ expected in if block");
         struct Node *_block = Syntax_ProcessBlock(ts, true);
         this->condition_list = (struct Node**)push_back((void**)this->condition_list, _expression);
         this->block_list = (struct Node**)push_back((void**)this->block_list, _block);
@@ -548,18 +532,10 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
 
             if (TokenStream_GetToken(ts).type == TokenIf) {
                 TokenStream_NextToken(ts);
-                if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-                    SyntaxError("( expected in if condition", TokenStream_GetToken(ts));
-                }
-                TokenStream_NextToken(ts);
+                pass_next(ts, TokenParenthesisOpen, "( expected in if condition");
                 struct Node *_expression = Syntax_ProcessExpression(ts);
-                if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
-                    SyntaxError(") expected in if condition", TokenStream_GetToken(ts));
-                }
-                TokenStream_NextToken(ts);
-                if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
-                    SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
-                }
+                pass_next(ts, TokenParenthesisClose, ") expected in if condition");
+                check_next(ts, TokenBraceOpen, "{ expected in if block");
                 struct Node *_block = Syntax_ProcessBlock(ts, true);
                 this->condition_list = (struct Node**)push_back((void**)this->condition_list, _expression);
                 this->block_list = (struct Node**)push_back((void**)this->block_list, _block);
@@ -568,9 +544,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
                 TokenStream_NextToken(ts);
             }
             else {
-                if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
-                    SyntaxError("{ expected in if block", TokenStream_GetToken(ts));
-                }
+                check_next(ts, TokenBraceOpen, "{ expected in if block");
                 struct Node *_block = Syntax_ProcessBlock(ts, true);
                 this->else_block = _block;
                 node->line_end = TokenStream_GetToken(ts).line_end;
@@ -587,18 +561,10 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->node_ptr = this;
         node->node_type = NodeWhile;
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-            SyntaxError("( expected in while condition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
+        pass_next(ts, TokenParenthesisOpen, "( expected in while condition");
         struct Node *_expression = Syntax_ProcessExpression(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisClose) {
-            SyntaxError(") expected in while condition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
-            SyntaxError("{ expected in while block", TokenStream_GetToken(ts));
-        }
+        pass_next(ts, TokenParenthesisClose, ") expected in while condition");
+        check_next(ts, TokenBraceOpen, "{ expected in while block");
         struct Node *_block = Syntax_ProcessBlock(ts, true);
         this->condition = _expression;
         this->block = _block;
@@ -626,24 +592,14 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         else {
             this->struct_name = NULL;
         }
-        if (TokenStream_GetToken(ts).type != TokenDot) {
-            SyntaxError(". exprected in function definition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-            SyntaxError("Identifier exprected in function definition", TokenStream_GetToken(ts));
-        }
+        pass_next(ts, TokenDot, ". exprected in function definition");
+        check_next(ts, TokenIdentifier, "Identifier exprected in function definition");
         this->name = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-            SyntaxError("( expected in function definition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
+        pass_next(ts, TokenParenthesisOpen, "( expected in function definition");
         this->signature = Syntax_ProcessFunctionSignature(ts);
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
-            SyntaxError("{ expected in function block", TokenStream_GetToken(ts));
-        }
+        check_next(ts, TokenBraceOpen, "{ expected in function block");
         this->block = Syntax_ProcessBlock(ts, true);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
@@ -664,19 +620,11 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         else {
             this->struct_name = NULL;
         }
-        if (TokenStream_GetToken(ts).type != TokenDot) {
-            SyntaxError(". exprected in function prototype", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-            SyntaxError("Identifier exprected in function prototype", TokenStream_GetToken(ts));
-        }
+        pass_next(ts, TokenDot, ". exprected in function prototype");
+        check_next(ts, TokenIdentifier, "Identifier exprected in function prototype");
         this->name = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenParenthesisOpen) {
-            SyntaxError("( expected in function prototype", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
+        pass_next(ts, TokenParenthesisOpen, "( expected in function prototype");
         this->signature = Syntax_ProcessFunctionSignature(ts);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
@@ -694,22 +642,15 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         this->types = (struct Type**)_malloc(sizeof(struct Type*));
         this->types[0] = NULL;
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-            SyntaxError("Struct name expected in struct definition", TokenStream_GetToken(ts));
-        }
+        check_next(ts, TokenIdentifier, "Struct name expected in struct definition");
         this->name = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenBraceOpen) {
-            SyntaxError("{ expected in struct definition", TokenStream_GetToken(ts));
-        }
-        TokenStream_NextToken(ts);
+        pass_next(ts, TokenBraceOpen, "{ expected in struct definition");
         while (true) {
             if (TokenStream_GetToken(ts).type == TokenBraceClose) {
                 break;
             }
-            if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-                SyntaxError("Identifier expected in struct definition", TokenStream_GetToken(ts));
-            }
+            check_next(ts, TokenIdentifier, "Identifier expected in struct definition");
             this->identifiers = (const char**)push_back((void**)this->identifiers, (void*)TokenStream_GetToken(ts).value_string);
             TokenStream_NextToken(ts);
             this->types = (struct Type**)push_back((void**)this->types, Syntax_ProcessType(ts));
@@ -727,9 +668,7 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         node->node_ptr = this;
         node->node_type = NodeDefinition;
         TokenStream_NextToken(ts);
-        if (TokenStream_GetToken(ts).type != TokenIdentifier) {
-            SyntaxError("Identifier expected in definition statement", TokenStream_GetToken(ts));
-        }
+        check_next(ts, TokenIdentifier, "Identifier expected in definition statement");
         this->identifier = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
         this->type = Syntax_ProcessType(ts);
