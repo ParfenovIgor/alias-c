@@ -39,6 +39,7 @@ enum TokenType {
     TokenLess,
     TokenGreater,
     TokenEqual,
+    TokenChar,
     TokenString,
     TokenInteger,
     TokenIdentifier,
