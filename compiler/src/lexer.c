@@ -40,6 +40,62 @@ int get_int_value(const char *str, int l, int r) {
     return res;
 }
 
+bool check_char(char format, char *out) {
+    if (format == '0') {
+        *out = 0x0;
+        return true;
+    }
+    if (format == 'a') {
+        *out = 0x7;
+        return true;
+    }
+    if (format == 'b') {
+        *out = 0x8;
+        return true;
+    }
+    if (format == 'e') {
+        *out = 0x1B;
+        return true;
+    }
+    if (format == 'f') {
+        *out = 0xC;
+        return true;
+    }
+    if (format == 'n') {
+        *out = 0xA;
+        return true;
+    }
+    if (format == 'r') {
+        *out = 0xD;
+        return true;
+    }
+    if (format == 't') {
+        *out = 0x9;
+        return true;
+    }
+    if (format == 'v') {
+        *out = 0xB;
+        return true;
+    }
+    if (format == '\\') {
+        *out = 0x5C;
+        return true;
+    }
+    if (format == '\'') {
+        *out = 0x27;
+        return true;
+    }
+    if (format == '\"') {
+        *out = 0x22;
+        return true;
+    }
+    if (format == '?') {
+        *out = 0x3F;
+        return true;
+    }
+    return false;
+}
+
 bool AppendToken(const char *str, int len, int *i, const char *token_str, TokenType token_type, bool oper, int line, int *position, const char *filename, struct TokenStream *token_stream) {
     if (!oper && *i + _strlen(token_str) < len && 
         (_isdigit(str[*i + _strlen(token_str)]) || 
@@ -205,75 +261,56 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
         else if (AppendToken(str, N, &i, "<", TokenLess, true, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, ">", TokenGreater, true, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "=", TokenEqual, true, line, &position, filename, token_stream)) {}
+        else if (CheckToken(str, N, "\'", i, true)) {
+            i++;
+            int line_begin = line;
+            int position_begin = position;
+            position++;
+
+            char ch;
+            if (str[i] == '\\' && i + 1 < N && check_char(str[i + 1], &ch)) {
+                i += 2;
+                position += 2;
+            }
+            else {
+                ch = str[i];
+                if (str[i] == '\n') {
+                    position = -1;
+                    line++;
+                }
+                i++;
+                position++;
+            }
+
+            if (!(i < N && str[i] == '\'')) {
+                LexerError("\' expected after char", line_begin, position_begin, line, position, filename);
+            }
+            struct Token token = Token_Build(TokenChar, line_begin, position_begin, line, position, filename);
+            token.value_int = ch;
+            TokenStream_PushBack(token_stream, token);
+            position++;
+            i++;
+        }
         else if (CheckToken(str, N, "\"", i, true)) {
             i++;
             int line_begin = line;
             int position_begin = position;
             position++;
-            char *buffer = (char*)_malloc(1);
-            buffer[0] = '\0';
+            char *buffer = (char*)_malloc(1024);
+            int buf_len = 0;;
             while (i < N && str[i] != '\"') {
                 if (str[i] == '\\' && i + 1 < N) {
-                    bool found = false;
-                    if (str[i + 1] == '0') {
-                        buffer = string_push_back(buffer, (char)0x0);
-                        found = true;
-                    }
-                    if (str[i + 1] == 'a') {
-                        buffer = string_push_back(buffer, (char)0x7);
-                        found = true;
-                    }
-                    if (str[i + 1] == 'b') {
-                        buffer = string_push_back(buffer, (char)0x8);
-                        found = true;
-                    }
-                    if (str[i + 1] == 'e') {
-                        buffer = string_push_back(buffer, (char)0x1B);
-                        found = true;
-                    }
-                    if (str[i + 1] == 'f') {
-                        buffer = string_push_back(buffer, (char)0xC);
-                        found = true;
-                    }
-                    if (str[i + 1] == 'n') {
-                        buffer = string_push_back(buffer, (char)0xA);
-                        found = true;
-                    }
-                    if (str[i + 1] == 'r') {
-                        buffer = string_push_back(buffer, (char)0xD);
-                        found = true;
-                    }
-                    if (str[i + 1] == 't') {
-                        buffer = string_push_back(buffer, (char)0x9);
-                        found = true;
-                    }
-                    if (str[i + 1] == 'v') {
-                        buffer = string_push_back(buffer, (char)0xB);
-                        found = true;
-                    }
-                    if (str[i + 1] == '\\') {
-                        buffer = string_push_back(buffer, (char)0x5C);
-                        found = true;
-                    }
-                    if (str[i + 1] == '\'') {
-                        buffer = string_push_back(buffer, (char)0x27);
-                        found = true;
-                    }
-                    if (str[i + 1] == '\"') {
-                        buffer = string_push_back(buffer, (char)0x22);
-                        found = true;
-                    }
-                    if (str[i + 1] == '?') {
-                        buffer = string_push_back(buffer, (char)0x3F);
-                        found = true;
-                    }
-                    if (found) {
+                    char ch;
+                    if (check_char(str[i + 1], &ch)) {
+                        buffer[buf_len] = ch;
+                        buf_len++;
                         i += 2;
                         position += 2;
                         continue;
                     }
                 }
-                buffer = string_push_back(buffer, str[i]);
+                buffer[buf_len] = str[i];
+                buf_len++;
                 if (str[i] == '\n') {
                     position = -1;
                     line++;
@@ -284,9 +321,10 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
             if (i == N) {
                 LexerError("\" expected after string", line_begin, position_begin, line, position, filename);
             }
-            buffer = string_push_back(buffer, (char)0x0);
+            buffer[buf_len] = '\0';
             struct Token token = Token_Build(TokenString, line_begin, position_begin, line, position, filename);
             token.value_string = buffer;
+            token.value_int = buf_len;
             TokenStream_PushBack(token_stream, token);
             position++;
             i++;
@@ -415,6 +453,7 @@ const char *TokenColor(enum TokenType type,
         Color_Black,        // TokenLess,
         Color_Black,        // TokenGreater,
         Color_Black,        // TokenEqual,
+        Color_DarkCyan,     // TokenChar,
         Color_Red,          // TokenString,
         Color_DarkGreen,    // TokenInteger,
         Color_DarkYellow,   // TokenIdentifier,
