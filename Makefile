@@ -4,7 +4,7 @@ ASFLAGS=-f elf64
 CFLAGS=-g -fno-stack-protector
 LDFLAGS=-z noexecstack
 
-.PHONY: stdlib
+.PHONY: compiler stdlib altlib test clean
 
 compiler: stdlib
 	$(MAKE) -C compiler BUILD_DIR=$(BUILD_DIR)

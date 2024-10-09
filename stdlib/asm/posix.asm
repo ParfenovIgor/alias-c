@@ -4,6 +4,7 @@ global posix_open
 global posix_close
 global posix_mmap
 global posix_munmap
+global posix_pipe
 global posix_fork
 global posix_execve
 global posix_exit
@@ -38,6 +39,11 @@ posix_mmap:
 
 posix_munmap:
     mov rax, 0x0b
+    syscall
+    ret
+
+posix_pipe:
+    mov rax, 0x16
     syscall
     ret
 

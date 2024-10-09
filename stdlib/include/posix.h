@@ -20,6 +20,7 @@ int posix_open(const char *filename, int flags, int mode);
 int posix_close(int fd);
 void *posix_mmap(void *start, int length, int prot, int flags, int fd, int offset);
 int posix_munmap(void *start, int length);
+int posix_pipe(int *fildes);
 int posix_fork();
 int posix_execve(const char *filename, const char *const *argv, const char *const *envp);
 void posix_exit(int error_code);

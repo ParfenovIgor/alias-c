@@ -115,13 +115,8 @@ const char *substr(const char *a, int n) {
     return b;
 }
 
-char *ReadFile(const char *filename) {
+char *read_file_descriptor(int fd) {
     const int block = 1000;
-    int fd = posix_open(filename, 2, 0);
-    if (fd <= 0) {
-        return NULL;
-    }
-
     char *contents = (char*)_malloc(sizeof(char));
     contents[0] = '\0';
     int n_blocks = 0;
@@ -138,8 +133,27 @@ char *ReadFile(const char *filename) {
         contents = new_contents;
         n_blocks++;
     }
-
-    int t = posix_close(fd);
-    
     return contents;
+}
+
+char *read_file(const char *filename) {
+    int fd = posix_open(filename, O_RDONLY, 0);
+    if (fd <= 0) {
+        return NULL;
+    }
+    char *contents = read_file_descriptor(fd);
+    posix_close(fd);
+    return contents;
+}
+
+int write_file_descriptor(int fd, const char *data) {
+    int len = _strlen(data);
+    return posix_write(fd, data, len);
+}
+
+int write_file(const char *filename, const char *data) {
+    int fd = posix_open(filename, O_CREAT | O_WRONLY, 0644);
+    int res = write_file_descriptor(fd, data);
+    posix_close(fd);
+    return res;
 }

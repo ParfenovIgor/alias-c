@@ -52,6 +52,9 @@ func ^._start() -> <int, 0> {
 
     def str <char, 1>
     str := "abacaba"
+    _ := ._puts(str)
+    str[3]& <- 'x'
+    _ := ._puts(str)
 
     if (0) {
         _ := ._puti(1)

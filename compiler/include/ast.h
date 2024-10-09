@@ -91,7 +91,9 @@ struct CPContext {
     struct Struct **structs;
     int function_index;
     int branch_index;
-    int outputFileDescriptor;
+    int string_index;
+    int fd_data;
+    int fd_text;
 };
 
 struct Node {

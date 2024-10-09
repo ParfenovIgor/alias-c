@@ -62,7 +62,7 @@ void findIdentifier(const char *identifier, struct CPContext *context) {
     int cnt_args = get_size((void**)context->variable_argument_name);
     int idx = findInLocal(identifier, context);
     if (idx != -1) {
-        print_stringi(context->outputFileDescriptor, "[rbp + ", -(idx + 1 + cnt_args) * 8, "]");
+        print_stringi(context->fd_text, "[rbp + ", -(idx + 1 + cnt_args) * 8, "]");
     }
     else {
         idx = findInArguments(identifier, context);
@@ -70,7 +70,7 @@ void findIdentifier(const char *identifier, struct CPContext *context) {
             print_string(STDOUT, "Error: identifier not found\n");
             posix_exit(1);
         }
-        print_stringi(context->outputFileDescriptor, "[rbp + ", -(idx + 1) * 8, "]");
+        print_stringi(context->fd_text, "[rbp + ", -(idx + 1) * 8, "]");
     }
 }
 
@@ -146,16 +146,6 @@ int typeSize(struct Type *type, struct CPContext *context) {
 struct Type *CompileNode(struct Node *node, struct CPContext *context);
 
 void Compile(struct Node *node, struct Settings *settings) {
-    print_string(settings->outputFileDescriptor, "; ");
-    print_string(settings->outputFileDescriptor, node->filename);
-    print_string(settings->outputFileDescriptor, " ");
-    print_int   (settings->outputFileDescriptor, node->line_begin + 1);
-    print_string(settings->outputFileDescriptor, ":");
-    print_int   (settings->outputFileDescriptor, node->position_begin + 1);
-    print_string(settings->outputFileDescriptor, " -> program\n");
-
-    print_string(settings->outputFileDescriptor, "section .text\n");
-
     struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
     context->variable_local_name = (const char**)_malloc(sizeof(const char*));
     context->variable_local_name[0] = NULL;
@@ -175,11 +165,41 @@ void Compile(struct Node *node, struct Settings *settings) {
     context->structs[0] = NULL;
     context->function_index = 0;
     context->branch_index = 0;
-    context->outputFileDescriptor = settings->outputFileDescriptor;
+    context->string_index = 0;
+    
+    int fd[2];
+    posix_pipe(fd);
+    context->fd_data = fd[1];
+    int fd_data_out = fd[0];
+    posix_pipe(fd);
+    context->fd_text = fd[1];
+    int fd_text_out = fd[0];
+
+    print_string(context->fd_data, "section .data\n");
+    
+    print_string(context->fd_text, "section .text\n");
+    print_string(context->fd_text, "; ");
+    print_string(context->fd_text, node->filename);
+    print_string(context->fd_text, " ");
+    print_int   (context->fd_text, node->line_begin + 1);
+    print_string(context->fd_text, ":");
+    print_int   (context->fd_text, node->position_begin + 1);
+    print_string(context->fd_text, " -> program\n");
 
     CompileNode(node, context);
-    print_string(settings->outputFileDescriptor, "leave\n");
-    print_string(settings->outputFileDescriptor, "ret\n");
+    print_string(context->fd_text, "leave\n");
+    print_string(context->fd_text, "ret\n");
+
+    posix_close(context->fd_data);
+    posix_close(context->fd_text);
+    char *str_data = read_file_descriptor(fd_data_out);
+    char *str_text = read_file_descriptor(fd_text_out);
+    posix_close(fd_data_out);
+    posix_close(fd_text_out);
+    char *program = concat(str_data, str_text);
+    _free(str_data);
+    _free(str_text);
+    write_file(settings->compileOutputFilename, program);
 }
 
 void CompileBlock(struct Node *node, struct Block *this, struct CPContext *context) {
@@ -192,7 +212,7 @@ void CompileBlock(struct Node *node, struct Block *this, struct CPContext *conte
     }
     int cnt_local_var = get_size((void**)context->variable_local_name);
     int cnt_functions = get_size((void**)context->function_name_front);
-    print_stringi(context->outputFileDescriptor, "add rsp, ", 8 * (cnt_local_var - old_cnt_local_var), "\n");
+    print_stringi(context->fd_text, "add rsp, ", 8 * (cnt_local_var - old_cnt_local_var), "\n");
     for (int i = 0; i < cnt_local_var - old_cnt_local_var; i++) {
         context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
         context->variable_local_type = (struct Type**)pop_back((void**)context->variable_local_type);
@@ -214,30 +234,30 @@ void CompileIf(struct Node *node, struct If *this, struct CPContext *context) {
         last++;
     }
     for (int i = 0; i < sz; i++) {
-        print_stringi(context->outputFileDescriptor, "_L", idx + i, ":\n");
+        print_stringi(context->fd_text, "_L", idx + i, ":\n");
         CompileNode(this->condition_list[i], context);
-        print_string(context->outputFileDescriptor, "cmp qword [rsp - 8], 0\n");
-        print_stringi(context->outputFileDescriptor, "je _L", idx + i + 1, "\n");
+        print_string(context->fd_text, "cmp qword [rsp - 8], 0\n");
+        print_stringi(context->fd_text, "je _L", idx + i + 1, "\n");
         CompileNode(this->block_list[i], context);
-        print_stringi(context->outputFileDescriptor, "jmp _L", last, "\n");
+        print_stringi(context->fd_text, "jmp _L", last, "\n");
     }
-    print_stringi(context->outputFileDescriptor, "_L", idx + sz, ":\n");
+    print_stringi(context->fd_text, "_L", idx + sz, ":\n");
     if (this->else_block) {
         CompileNode(this->else_block, context);
-        print_stringi(context->outputFileDescriptor, "_L", idx + sz + 1, ":\n");
+        print_stringi(context->fd_text, "_L", idx + sz + 1, ":\n");
     }
 }
 
 void CompileWhile(struct Node *node, struct While *this, struct CPContext *context) {
     int idx = context->branch_index;
     context->branch_index += 2;
-    print_stringi(context->outputFileDescriptor, "_L", idx, ":\n");
+    print_stringi(context->fd_text, "_L", idx, ":\n");
     CompileNode(this->condition, context);
-    print_string(context->outputFileDescriptor, "cmp qword [rsp - 8], 0\n");
-    print_stringi(context->outputFileDescriptor, "je _L", idx + 1, "\n");
+    print_string(context->fd_text, "cmp qword [rsp - 8], 0\n");
+    print_stringi(context->fd_text, "je _L", idx + 1, "\n");
     CompileNode(this->block, context);
-    print_stringi(context->outputFileDescriptor, "jmp _L", idx, "\n");
-    print_stringi(context->outputFileDescriptor, "_L", idx + 1, ":\n");
+    print_stringi(context->fd_text, "jmp _L", idx, "\n");
+    print_stringi(context->fd_text, "_L", idx + 1, ":\n");
 }
 
 void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) {
@@ -258,12 +278,12 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     identifier_end = concat("_E", identifier_back);
 
     if (this->external) {
-        print_string3(context->outputFileDescriptor, "global ", identifier_back, "\n");
+        print_string3(context->fd_text, "global ", identifier_back, "\n");
     }
-    print_string3(context->outputFileDescriptor, "jmp ", identifier_end, "\n");
-    print_string2(context->outputFileDescriptor, identifier_back, ":\n");
-    print_string(context->outputFileDescriptor, "push rbp\n");
-    print_string(context->outputFileDescriptor, "mov rbp, rsp\n");
+    print_string3(context->fd_text, "jmp ", identifier_end, "\n");
+    print_string2(context->fd_text, identifier_back, ":\n");
+    print_string(context->fd_text, "push rbp\n");
+    print_string(context->fd_text, "mov rbp, rsp\n");
 
     const char **variable_local_name_tmp = context->variable_local_name;
     struct Type **variable_local_type_tmp = context->variable_local_type;
@@ -283,19 +303,19 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     context->function_signature = (struct FunctionSignature**)push_back((void**)context->function_signature, this->signature);
 
     if (this->struct_name) {
-        print_string3(context->outputFileDescriptor, "push ", regs[0], "\n");
+        print_string3(context->fd_text, "push ", regs[0], "\n");
         context->variable_argument_name = (const char**)push_back((void**)context->variable_argument_name, (void*)_strdup("this"));
         context->variable_argument_type = (struct Type**)push_back((void**)context->variable_argument_type, BuildType(_strdup(this->struct_name), 1));
     }
     int sz = get_size((void**)this->signature->identifiers);
     for (int i = 0; i < sz; i++) {
-        print_string3(context->outputFileDescriptor, "push ", regs[i + (this->struct_name != NULL)], "\n");
+        print_string3(context->fd_text, "push ", regs[i + (this->struct_name != NULL)], "\n");
         context->variable_argument_name = (const char**)push_back((void**)context->variable_argument_name, (void*)this->signature->identifiers[i]);
         context->variable_argument_type = (struct Type**)push_back((void**)context->variable_argument_type, CopyType(this->signature->types[i]));
     }
     CompileNode(this->block, context);
     
-    print_stringi(context->outputFileDescriptor, "add rsp, ", sz * 8, "\n");
+    print_stringi(context->fd_text, "add rsp, ", sz * 8, "\n");
     for (int i = 0; i < sz; i++) {
         _free((void*)context->variable_argument_name[i]);
         _free((void*)context->variable_argument_type[i]);
@@ -310,9 +330,9 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     context->variable_argument_name = variable_argument_name_tmp;
     context->variable_argument_type = variable_argument_type_tmp;
 
-    print_string(context->outputFileDescriptor, "leave\n");
-    print_string(context->outputFileDescriptor, "ret\n");
-    print_string2(context->outputFileDescriptor, identifier_end, ":\n");
+    print_string(context->fd_text, "leave\n");
+    print_string(context->fd_text, "ret\n");
+    print_string2(context->fd_text, identifier_end, ":\n");
     
     _free(identifier_front);
     _free(identifier_back);
@@ -327,7 +347,7 @@ void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContex
     else {
         identifier = this->name;
     }
-    print_string3(context->outputFileDescriptor, "extern ", identifier, "\n");
+    print_string3(context->fd_text, "extern ", identifier, "\n");
     context->function_name_front = (const char**)push_back((void**)context->function_name_front, (void*)identifier);
     context->function_name_back = (const char**)push_back((void**)context->function_name_back, (void*)identifier);
     context->function_signature = (struct FunctionSignature**)push_back((void**)context->function_signature, this->signature);
@@ -356,12 +376,12 @@ void CompileDefinition(struct Node *node, struct Definition *this, struct CPCont
         SemanticError("Base type expected", node);
     }
     context->variable_local_type = (struct Type**)push_back((void**)context->variable_local_type, CopyType(this->type));
-    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
+    print_string(context->fd_text, "sub rsp, 8\n");
 }
 
 void CompileReturn(struct Node *node, struct Return *this, struct CPContext *context) {
     CompileNode(this->expression, context);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
 }
 
 struct Type *CompileAs(struct Node *node, struct As *this, struct CPContext *context) {
@@ -380,17 +400,17 @@ void CompileAssignment(struct Node *node, struct Assignment *this, struct CPCont
     if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree) SemanticError("Assignment of not equal types", node);
     _free(_type2);
 
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "mov ");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "mov ");
     findIdentifier(_identifier->identifier, context);
-    print_string(context->outputFileDescriptor, ", rax\n");
+    print_string(context->fd_text, ", rax\n");
 }
 
 void CompileMovement(struct Node *node, struct Movement *this, struct CPContext *context) {
     struct Type *_type1 = CompileNode(this->dst, context);
     if (_type1->degree == 0) SemanticError("Pointer expected in movement", node);
 
-    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
+    print_string(context->fd_text, "sub rsp, 8\n");
     const char *identifier = "__junk";
     context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
 
@@ -398,44 +418,63 @@ void CompileMovement(struct Node *node, struct Movement *this, struct CPContext 
     if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree + 1) {
         SemanticError("Movement of inappropriate types", node);
     }
+
+    print_string(context->fd_text, "add rsp, 8\n");
+    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "mov rbx, [rsp - 16]\n");
+    if (!_strcmp(_type1->identifier, "char")) {
+        print_string(context->fd_text, "mov [rax], bl\n");
+    }
+    else {
+        print_string(context->fd_text, "mov [rax], rbx\n");
+    }
+    
     _free(_type1);
     _free(_type2);
-
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
-    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "mov rbx, [rsp - 16]\n");
-    print_string(context->outputFileDescriptor, "mov [rax], rbx\n");
 }
 
 struct Type *CompileIdentifier(struct Node *node, struct Identifier *this, struct CPContext *context) {
-    print_string(context->outputFileDescriptor, "mov rax, ");
+    print_string(context->fd_text, "mov rax, ");
     findIdentifier(this->identifier, context);
-    print_string(context->outputFileDescriptor, "\n");
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
+    print_string(context->fd_text, "\n");
+    print_string(context->fd_text, "mov [rsp - 8], rax\n");
 
     struct Type *type = findType(this->identifier, context);
     return BuildType(type->identifier, type->degree);
 }
 
 struct Type *CompileInteger(struct Node *node, struct Integer *this, struct CPContext *context) {
-    print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
+    print_stringi(context->fd_text, "mov qword [rsp - 8], ", this->value, "\n");
     return BuildType("int", 0);
 }
 
 struct Type *CompileChar(struct Node *node, struct Char *this, struct CPContext *context) {
-    print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
+    print_stringi(context->fd_text, "mov qword [rsp - 8], ", this->value, "\n");
     return BuildType("char", 0);
 }
 
 struct Type *CompileString(struct Node *node, struct String *this, struct CPContext *context) {
-    // print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
+    int idx = context->string_index;
+    context->string_index++;
+    print_stringi(context->fd_data, "_S", idx, ":\n");
+    print_string(context->fd_data, "db ");
+    for (int i = 0; i < _strlen(this->value); i++) {
+        print_int(context->fd_data, this->value[i]);
+        if (i + 1 < _strlen(this->value)) {
+            print_string(context->fd_data, ", ");
+        }
+        else {
+            print_string(context->fd_data, "\n");
+        }
+    }
+    print_stringi(context->fd_text, "mov qword [rsp - 8], _S", idx, "\n");
     return BuildType("char", 1);
 }
 
 struct Type *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
     int size = typeSize(this->type, context);
-    print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", size, "\n");
+    print_stringi(context->fd_text, "mov qword [rsp - 8], ", size, "\n");
     return BuildType("int", 0);
 }
 
@@ -445,9 +484,9 @@ struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, s
         struct Type *_type = CompileNode(this->caller, context);
         identifier = concat(_type->identifier, this->identifier);
         _free(_type);
-        print_string(context->outputFileDescriptor, "mov ");
-        print_string(context->outputFileDescriptor, regs[0]);
-        print_string(context->outputFileDescriptor, ", [rsp - 8]\n");
+        print_string(context->fd_text, "mov ");
+        print_string(context->fd_text, regs[0]);
+        print_string(context->fd_text, ", [rsp - 8]\n");
     }
     else {
         identifier = _strdup(this->identifier);
@@ -463,16 +502,16 @@ struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, s
             SemanticError("Passing to function value of incorrect type", node);
         }
         _free(_type);
-        print_string(context->outputFileDescriptor, "mov ");
-        print_string(context->outputFileDescriptor, regs[i + (this->caller != NULL)]);
-        print_string(context->outputFileDescriptor, ", [rsp - 8]\n");
+        print_string(context->fd_text, "mov ");
+        print_string(context->fd_text, regs[i + (this->caller != NULL)]);
+        print_string(context->fd_text, ", [rsp - 8]\n");
     }
     
     const char *identifier_back = findFunctionBack(identifier, context);
-    print_string3(context->outputFileDescriptor, "call ", identifier_back, "\n");
+    print_string3(context->fd_text, "call ", identifier_back, "\n");
     _free(identifier);
     
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
+    print_string(context->fd_text, "mov [rsp - 8], rax\n");
     
     return CopyType(signature->return_type);
 }
@@ -482,9 +521,9 @@ struct Type *CompileDereference(struct Node *node, struct Dereference *this, str
     if (_type->degree == 0) SemanticError("Dereference of not pointer value", node);
     _type->degree--;
 
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "mov rbx, [rax]\n");
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "mov rbx, [rax]\n");
+    print_string(context->fd_text, "mov [rsp - 8], rbx\n");
 
     return _type;
 }
@@ -507,14 +546,14 @@ struct Type *CompileGetField(struct Node *node, struct GetField *this, struct CP
     if (index == -1) SemanticError("Structure doesn't have corresponding field", node);
     
     _type = CopyType(_struct->types[index]);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
     if (!this->address) {    
-        print_stringi(context->outputFileDescriptor, "mov rbx, [rax + ", index * 8, "]\n");
-        print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+        print_stringi(context->fd_text, "mov rbx, [rax + ", index * 8, "]\n");
+        print_string(context->fd_text, "mov [rsp - 8], rbx\n");
     }
     else {
-        print_stringi(context->outputFileDescriptor, "lea rbx, [rax + ", index * 8, "]\n");
-        print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+        print_stringi(context->fd_text, "lea rbx, [rax + ", index * 8, "]\n");
+        print_string(context->fd_text, "mov [rsp - 8], rbx\n");
         _type->degree++;
     }
 
@@ -525,7 +564,7 @@ struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContex
     struct Type *_type = CompileNode(this->left, context);
     if (_type->degree != 1) SemanticError("Pointer expected in indexation", node);
 
-    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
+    print_string(context->fd_text, "sub rsp, 8\n");
     const char *identifier = "__junk";
     context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
 
@@ -533,22 +572,22 @@ struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContex
     if (_strcmp(_type2->identifier, "int") || _type2->degree != 0) SemanticError("Integer expected in indexation", node);
     _free(_type2);
     
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
+    print_string(context->fd_text, "add rsp, 8\n");
     context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 16]\n");
+    print_string(context->fd_text, "mov rax, [rsp - 16]\n");
     _type->degree--;
-    print_stringi(context->outputFileDescriptor, "mov rbx, ", typeSize(_type, context), "\n");
+    print_stringi(context->fd_text, "mov rbx, ", typeSize(_type, context), "\n");
     _type->degree++;
-    print_string(context->outputFileDescriptor, "mul rbx\n");
-    print_string(context->outputFileDescriptor, "add rax, [rsp - 8]\n");
+    print_string(context->fd_text, "mul rbx\n");
+    print_string(context->fd_text, "add rax, [rsp - 8]\n");
     if (!this->address) {
-        print_string(context->outputFileDescriptor, "mov rbx, [rax]\n");
-        print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+        print_string(context->fd_text, "mov rbx, [rax]\n");
+        print_string(context->fd_text, "mov [rsp - 8], rbx\n");
         _type->degree--;
     }
     else {
-        print_string(context->outputFileDescriptor, "lea rbx, [rax]\n");
-        print_string(context->outputFileDescriptor, "mov [rsp - 8], rbx\n");
+        print_string(context->fd_text, "lea rbx, [rax]\n");
+        print_string(context->fd_text, "mov [rsp - 8], rbx\n");
     }
     return _type;
 }
@@ -557,7 +596,7 @@ struct Type *CompileArithmetic(struct Node *node, struct BinaryOperator *this, s
     struct Type *_type1 = CompileNode(this->left, context);
     if (!isIntType(_type1, context)) SemanticError("Integer expected in addition", this->left);
 
-    print_string(context->outputFileDescriptor, "sub rsp, 8\n");
+    print_string(context->fd_text, "sub rsp, 8\n");
     const char *identifier = "__junk";
     context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
 
@@ -567,7 +606,7 @@ struct Type *CompileArithmetic(struct Node *node, struct BinaryOperator *this, s
     if (_strcmp(_type1->identifier, _type2->identifier)) SemanticError("Equal types expected in addition", node);
     _free(_type1);
 
-    print_string(context->outputFileDescriptor, "add rsp, 8\n");
+    print_string(context->fd_text, "add rsp, 8\n");
     context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
 
     return _type2;
@@ -575,186 +614,186 @@ struct Type *CompileArithmetic(struct Node *node, struct BinaryOperator *this, s
 
 struct Type *CompileAddition(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct Type *_type = CompileArithmetic(node, this, context);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "add rax, [rsp - 16]\n");
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "add rax, [rsp - 16]\n");
+    print_string(context->fd_text, "mov [rsp - 8], rax\n");
     return _type;
 }
 
 struct Type *CompileSubtraction(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct Type *_type = CompileArithmetic(node, this, context);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "sub rax, [rsp - 16]\n");
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "sub rax, [rsp - 16]\n");
+    print_string(context->fd_text, "mov [rsp - 8], rax\n");
 }
 
 struct Type *CompileMultiplication(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct Type *_type = CompileArithmetic(node, this, context);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "mov rdx, [rsp - 16]\n");
-    print_string(context->outputFileDescriptor, "mul rdx\n");
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "mov rdx, [rsp - 16]\n");
+    print_string(context->fd_text, "mul rdx\n");
+    print_string(context->fd_text, "mov [rsp - 8], rax\n");
 
     return BuildType("int", 0);
 }
 
 struct Type *CompileDivision(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct Type *_type = CompileArithmetic(node, this, context);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "mov rdx, 0\n");
-    print_string(context->outputFileDescriptor, "div qword [rsp - 16]\n");
-    print_string(context->outputFileDescriptor, "mov [rsp - 8], rax\n");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "mov rdx, 0\n");
+    print_string(context->fd_text, "div qword [rsp - 16]\n");
+    print_string(context->fd_text, "mov [rsp - 8], rax\n");
 }
 
 struct Type *CompileLess(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct Type *_type = CompileArithmetic(node, this, context);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "sub rax, [rsp - 16]\n");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
     context->branch_index += 2;
-    print_stringi(context->outputFileDescriptor, "jl _L", idx, "\n");
-    print_string(context->outputFileDescriptor, "mov qword [rsp - 8], 0\n");
-    print_stringi(context->outputFileDescriptor, "jmp _L", idx + 1, "\n");
-    print_stringi(context->outputFileDescriptor, "_L", idx, ":\n");
-    print_string(context->outputFileDescriptor, "mov qword [rsp - 8], 1\n");
-    print_stringi(context->outputFileDescriptor, "_L", idx + 1, ":\n");
+    print_stringi(context->fd_text, "jl _L", idx, "\n");
+    print_string(context->fd_text, "mov qword [rsp - 8], 0\n");
+    print_stringi(context->fd_text, "jmp _L", idx + 1, "\n");
+    print_stringi(context->fd_text, "_L", idx, ":\n");
+    print_string(context->fd_text, "mov qword [rsp - 8], 1\n");
+    print_stringi(context->fd_text, "_L", idx + 1, ":\n");
 }
 
 struct Type *CompileEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct Type *_type = CompileArithmetic(node, this, context);
-    print_string(context->outputFileDescriptor, "mov rax, [rsp - 8]\n");
-    print_string(context->outputFileDescriptor, "sub rax, [rsp - 16]\n");
+    print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
     context->branch_index += 2;
-    print_stringi(context->outputFileDescriptor, "jz _L", idx, "\n");
-    print_string(context->outputFileDescriptor, "mov qword [rsp - 8], 0\n");
-    print_stringi(context->outputFileDescriptor, "jmp _L", idx + 1, "\n");
-    print_stringi(context->outputFileDescriptor, "_L", idx, ":\n");
-    print_string(context->outputFileDescriptor, "mov qword [rsp - 8], 1\n");
-    print_stringi(context->outputFileDescriptor, "_L", idx + 1, ":\n");
+    print_stringi(context->fd_text, "jz _L", idx, "\n");
+    print_string(context->fd_text, "mov qword [rsp - 8], 0\n");
+    print_stringi(context->fd_text, "jmp _L", idx + 1, "\n");
+    print_stringi(context->fd_text, "_L", idx, ":\n");
+    print_string(context->fd_text, "mov qword [rsp - 8], 1\n");
+    print_stringi(context->fd_text, "_L", idx + 1, ":\n");
 }
 
 struct Type *CompileNode(struct Node *node, struct CPContext *context) {
-    print_string(context->outputFileDescriptor, "; ");
-    print_string(context->outputFileDescriptor, node->filename);
-    print_string(context->outputFileDescriptor, " ");
-    print_int   (context->outputFileDescriptor, node->line_begin + 1);
-    print_string(context->outputFileDescriptor, ":");
-    print_int   (context->outputFileDescriptor, node->position_begin + 1);
-    print_string(context->outputFileDescriptor, " -> ");
+    print_string(context->fd_text, "; ");
+    print_string(context->fd_text, node->filename);
+    print_string(context->fd_text, " ");
+    print_int   (context->fd_text, node->line_begin + 1);
+    print_string(context->fd_text, ":");
+    print_int   (context->fd_text, node->position_begin + 1);
+    print_string(context->fd_text, " -> ");
 
     if (node->node_type == NodeBlock) {
-        print_string(context->outputFileDescriptor, "block\n");
+        print_string(context->fd_text, "block\n");
         CompileBlock(node, (struct Block*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeIf) {
-        print_string(context->outputFileDescriptor, "if\n");
+        print_string(context->fd_text, "if\n");
         CompileIf(node, (struct If*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeWhile) {
-        print_string(context->outputFileDescriptor, "while\n");
+        print_string(context->fd_text, "while\n");
         CompileWhile(node, (struct While*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeFunctionDefinition) {
-        print_string(context->outputFileDescriptor, "function definition\n");
+        print_string(context->fd_text, "function definition\n");
         CompileFunctionDefinition(node, (struct FunctionDefinition*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodePrototype) {
-        print_string(context->outputFileDescriptor, "prototype\n");
+        print_string(context->fd_text, "prototype\n");
         CompilePrototype(node, (struct Prototype*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeStructDefinition) {
-        print_string(context->outputFileDescriptor, "struct definition\n");
+        print_string(context->fd_text, "struct definition\n");
         CompileStructDefinition(node, (struct StructDefinition*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeDefinition) {
-        print_string(context->outputFileDescriptor, "definition\n");
+        print_string(context->fd_text, "definition\n");
         CompileDefinition(node, (struct Definition*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeReturn) {
-        print_string(context->outputFileDescriptor, "return\n");
+        print_string(context->fd_text, "return\n");
         CompileReturn(node, (struct Return*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeAs) {
-        print_string(context->outputFileDescriptor, "as\n");
+        print_string(context->fd_text, "as\n");
         return CompileAs(node, (struct As*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAssignment) {
-        print_string(context->outputFileDescriptor, "assignment\n");
+        print_string(context->fd_text, "assignment\n");
         CompileAssignment(node, (struct Assignment*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeMovement) {
-        print_string(context->outputFileDescriptor, "movement\n");
+        print_string(context->fd_text, "movement\n");
         CompileMovement(node, (struct Movement*)node->node_ptr, context);
         return BuildType("", 0);
     }
     else if (node->node_type == NodeIdentifier) {
-        print_string(context->outputFileDescriptor, "identifier\n");
+        print_string(context->fd_text, "identifier\n");
         return CompileIdentifier(node, (struct Identifier*)node->node_ptr, context);
     }
     else if (node->node_type == NodeInteger) {
-        print_string(context->outputFileDescriptor, "integer\n");
+        print_string(context->fd_text, "integer\n");
         return CompileInteger(node, (struct Integer*)node->node_ptr, context);
     }
     else if (node->node_type == NodeChar) {
-        print_string(context->outputFileDescriptor, "char\n");
+        print_string(context->fd_text, "char\n");
         return CompileChar(node, (struct Char*)node->node_ptr, context);
     }
     else if (node->node_type == NodeString) {
-        print_string(context->outputFileDescriptor, "string\n");
+        print_string(context->fd_text, "string\n");
         return CompileString(node, (struct String*)node->node_ptr, context);
     }
     else if (node->node_type == NodeSizeof) {
-        print_string(context->outputFileDescriptor, "sizeof\n");
+        print_string(context->fd_text, "sizeof\n");
         return CompileSizeof(node, (struct Sizeof*)node->node_ptr, context);
     }
     else if (node->node_type == NodeFunctionCall) {
-        print_string(context->outputFileDescriptor, "function call\n");
+        print_string(context->fd_text, "function call\n");
         return CompileFunctionCall(node, (struct FunctionCall*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDereference) {
-        print_string(context->outputFileDescriptor, "dereference\n");
+        print_string(context->fd_text, "dereference\n");
         return CompileDereference(node, (struct Dereference*)node->node_ptr, context);
     }
     else if (node->node_type == NodeIndex) {
-        print_string(context->outputFileDescriptor, "index\n");
+        print_string(context->fd_text, "index\n");
         return CompileIndex(node, (struct Index*)node->node_ptr, context);
     }
     else if (node->node_type == NodeGetField) {
-        print_string(context->outputFileDescriptor, "get field\n");
+        print_string(context->fd_text, "get field\n");
         return CompileGetField(node, (struct GetField*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAddition) {
-        print_string(context->outputFileDescriptor, "addition\n");
+        print_string(context->fd_text, "addition\n");
         return CompileAddition(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeSubtraction) {
-        print_string(context->outputFileDescriptor, "subtraction\n");
+        print_string(context->fd_text, "subtraction\n");
         return CompileSubtraction(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeMultiplication) {
-        print_string(context->outputFileDescriptor, "multiplication\n");
+        print_string(context->fd_text, "multiplication\n");
         return CompileMultiplication(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDivision) {
-        print_string(context->outputFileDescriptor, "division\n");
+        print_string(context->fd_text, "division\n");
         return CompileDivision(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeLess) {
-        print_string(context->outputFileDescriptor, "less\n");
+        print_string(context->fd_text, "less\n");
         return CompileLess(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeEqual) {
-        print_string(context->outputFileDescriptor, "equal\n");
+        print_string(context->fd_text, "equal\n");
         return CompileEqual(node, (struct BinaryOperator*)node->node_ptr, context);
     }
 }
