@@ -1,6 +1,5 @@
 #include <lexer.h>
 #include <syntax.h>
-#include <validator.h>
 #include <compile.h>
 #include <exception.h>
 #include <settings.h>
@@ -10,7 +9,7 @@
 #include <string.h>
 
 struct Node *Parse(const char *filename) {
-    char *buffer = ReadFile(filename);
+    char *buffer = read_file(filename);
     if (!buffer) {
         print_string(STDOUT, "Could not open file ");
         print_string(STDOUT, filename);
@@ -54,15 +53,11 @@ int Process(struct Settings *settings) {
 
     // generate AST
     struct Node *node = Parse(settings->inputFilename);
-    Validate(node);
-    if (settings->states) {
-        PrintStatesLog();
-    }
 
     if (settings->compile || settings->assemble || settings->link) {
         // choose the filename of the result of compilation
         char *compile_out_filename;
-        if (!settings->assemble && !settings->link && settings->outputFilename) {
+        if (settings->compile && settings->outputFilename) {
             compile_out_filename = _strdup(settings->outputFilename);
         }
         else {
@@ -71,16 +66,15 @@ int Process(struct Settings *settings) {
 
         // open file and call the compiler
         posix_unlink(compile_out_filename);
-        settings->outputFileDescriptor = posix_open(compile_out_filename, 0001 | 0100, 0400 | 0200);
-        _free(compile_out_filename);
+        settings->compileOutputFilename = compile_out_filename; // posix_open(compile_out_filename, 0001 | 0100, 0400 | 0200);
         Compile(node, settings);
-        posix_close(settings->outputFileDescriptor);
+        _free(compile_out_filename);
 
         if (settings->assemble || settings->link) {
             // choose the filename of the result of assembly
             char *assemble_in_filename, *assemble_out_filename;
             assemble_in_filename = concat(filename, ".asm");
-            if (!settings->link && settings->outputFilename) {
+            if (settings->assemble && settings->outputFilename) {
                 assemble_out_filename = _strdup(settings->outputFilename);
             }
             else {
