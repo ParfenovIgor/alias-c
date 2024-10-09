@@ -6,7 +6,6 @@
 
 enum NodeType {
     NodeBlock,
-    NodeAsm,
     NodeIf,
     NodeWhile,
     NodeFunctionDefinition,
@@ -21,6 +20,7 @@ enum NodeType {
     NodeIdentifier,
     NodeInteger,
     NodeChar,
+    NodeString,
     NodeSizeof,
     NodeAlloc,
     NodeFree,
@@ -38,7 +38,6 @@ enum NodeType {
 
 struct Node;
 struct Block;
-struct Asm;
 struct If;
 struct While;
 struct FunctionDefinition;
@@ -52,6 +51,8 @@ struct Movement;
 struct Assumption;
 struct Identifier;
 struct Integer;
+struct Char;
+struct String;
 struct Sizeof;
 struct Alloc;
 struct Free;
@@ -102,10 +103,6 @@ struct Node {
 
 struct Block {
     struct Node **statement_list;
-};
-
-struct Asm {
-    const char *code;
 };
 
 struct If {
@@ -182,6 +179,10 @@ struct Integer {
 
 struct Char {
     int value;
+};
+
+struct String {
+    const char *value;
 };
 
 struct Sizeof {

@@ -136,82 +136,7 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
             position += 2;
             i = min(i + 2, N);
         }
-        else if (CheckToken(str, N, "asm", i, false)) {
-            int line_begin = line;
-            int position_begin = position;
-            i += 3;
-            position += 3;
-            while (i < N && str[i] != '{') {
-                if (str[i] == '\n') {
-                    position = -1;
-                    line++;
-                }
-                i++;
-                position++;
-            }
-            if (i == N) {
-                LexerError("{ expected after asm", line_begin, position_begin, line, position, filename);
-            }
-            position++;
-            i++;
-            char *code = (char*)_malloc(1);
-            code[0] = '\0';
-            while (i < N && str[i] != '}') {
-                code = string_push_back(code, str[i]);
-                if (str[i] == '\n') {
-                    position = -1;
-                    line++;
-                }
-                i++;
-                position++;
-            }
-            if (i == N) {
-                LexerError("} expected after asm", line_begin, position_begin, line, position, filename);
-            }
-            struct Token token = Token_Build(TokenAsm, line_begin, position_begin, line, position, filename);
-            token.value_string = code;
-            TokenStream_PushBack(token_stream, token);
-            position++;
-            i++;
-        }
-        else if (CheckToken(str, N, "include", i, false)) {
-            int line_begin = line;
-            int position_begin = position;
-            i += 7;
-            position += 7;
-            while (i < N && str[i] != '{') {
-                if (str[i] == '\n') {
-                    position = -1;
-                    line++;
-                }
-                i++;
-                position++;
-            }
-            if (i == N) {
-                LexerError("{ expected after include", line_begin, position_begin, line, position, filename);
-            }
-            position++;
-            i++;
-            char *code = (char*)_malloc(1);
-            code[0] = '\0';
-            while (i < N && str[i] != '}') {
-                code = string_push_back(code, str[i]);
-                if (str[i] == '\n') {
-                    position = -1;
-                    line++;
-                }
-                i++;
-                position++;
-            }
-            if (i == N) {
-                LexerError("} expected after include", line_begin, position_begin, line, position, filename);
-            }
-            struct Token token = Token_Build(TokenInclude, line_begin, position_begin, line, position, filename);
-            token.value_string = code;
-            TokenStream_PushBack(token_stream, token);
-            position++;
-            i++;
-        }
+        else if (AppendToken(str, N, &i, "include", TokenInclude, false, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "if", TokenIf, false, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "else", TokenElse, false, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "while", TokenWhile, false, line, &position, filename, token_stream)) {}
@@ -261,6 +186,16 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
         else if (AppendToken(str, N, &i, "<", TokenLess, true, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, ">", TokenGreater, true, line, &position, filename, token_stream)) {}
         else if (AppendToken(str, N, &i, "=", TokenEqual, true, line, &position, filename, token_stream)) {}
+        else if (_isdigit(str[i])) {
+            int l = i;
+            i++;
+            while (i + 1 <= N && _isdigit(str[i])) i++;
+            int r = i - 1;
+            struct Token token = Token_Build(TokenInteger, line, position, line, position + r - l, filename);
+            token.value_int = get_int_value(str, l, r);
+            TokenStream_PushBack(token_stream, token);
+            position += r - l + 1;
+        }
         else if (CheckToken(str, N, "\'", i, true)) {
             i++;
             int line_begin = line;
@@ -297,7 +232,7 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
             int position_begin = position;
             position++;
             char *buffer = (char*)_malloc(1024);
-            int buf_len = 0;;
+            int buf_len = 0;
             while (i < N && str[i] != '\"') {
                 if (str[i] == '\\' && i + 1 < N) {
                     char ch;
@@ -328,16 +263,6 @@ struct TokenStream *Lexer_Process(const char *str, const char *filename) {
             TokenStream_PushBack(token_stream, token);
             position++;
             i++;
-        }
-        else if (_isdigit(str[i])) {
-            int l = i;
-            i++;
-            while (i + 1 <= N && _isdigit(str[i])) i++;
-            int r = i - 1;
-            struct Token token = Token_Build(TokenInteger, line, position, line, position + r - l, filename);
-            token.value_int = get_int_value(str, l, r);
-            TokenStream_PushBack(token_stream, token);
-            position += r - l + 1;
         }
         else if (_isalpha(str[i])) {
             int l = i;
@@ -417,7 +342,6 @@ const char *TokenColor(enum TokenType type,
     int *parenthesis_level,
     int *bracket_level) {
     enum Color colors[] = {
-        Color_Blue,         // TokenAsm,
         Color_DarkGreen,    // TokenInclude,
         Color_Blue,         // TokenIf,
         Color_Blue,         // TokenElse,
@@ -453,9 +377,9 @@ const char *TokenColor(enum TokenType type,
         Color_Black,        // TokenLess,
         Color_Black,        // TokenGreater,
         Color_Black,        // TokenEqual,
+        Color_DarkGreen,    // TokenInteger,
         Color_DarkCyan,     // TokenChar,
         Color_Red,          // TokenString,
-        Color_DarkGreen,    // TokenInteger,
         Color_DarkYellow,   // TokenIdentifier,
         Color_White,        // TokenEof,
     };

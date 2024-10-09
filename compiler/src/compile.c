@@ -204,11 +204,6 @@ void CompileBlock(struct Node *node, struct Block *this, struct CPContext *conte
     }
 }
 
-void CompileAsm(struct Node *node, struct Asm *this, struct CPContext *context) {
-    print_string(context->outputFileDescriptor, this->code);
-    print_string(context->outputFileDescriptor, "\n");
-}
-
 void CompileIf(struct Node *node, struct If *this, struct CPContext *context) {
     int sz = get_size((void*)this->condition_list);
     int idx = context->branch_index;
@@ -423,14 +418,19 @@ struct Type *CompileIdentifier(struct Node *node, struct Identifier *this, struc
     return BuildType(type->identifier, type->degree);
 }
 
+struct Type *CompileInteger(struct Node *node, struct Integer *this, struct CPContext *context) {
+    print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
+    return BuildType("int", 0);
+}
+
 struct Type *CompileChar(struct Node *node, struct Char *this, struct CPContext *context) {
     print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
     return BuildType("char", 0);
 }
 
-struct Type *CompileInteger(struct Node *node, struct Integer *this, struct CPContext *context) {
-    print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
-    return BuildType("int", 0);
+struct Type *CompileString(struct Node *node, struct String *this, struct CPContext *context) {
+    // print_stringi(context->outputFileDescriptor, "mov qword [rsp - 8], ", this->value, "\n");
+    return BuildType("char", 1);
 }
 
 struct Type *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
@@ -648,11 +648,6 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
         CompileBlock(node, (struct Block*)node->node_ptr, context);
         return BuildType("", 0);
     }
-    else if (node->node_type == NodeAsm) {
-        print_string(context->outputFileDescriptor, "asm\n");
-        CompileAsm(node, (struct Asm*)node->node_ptr, context);
-        return BuildType("", 0);
-    }
     else if (node->node_type == NodeIf) {
         print_string(context->outputFileDescriptor, "if\n");
         CompileIf(node, (struct If*)node->node_ptr, context);
@@ -706,13 +701,17 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
         print_string(context->outputFileDescriptor, "identifier\n");
         return CompileIdentifier(node, (struct Identifier*)node->node_ptr, context);
     }
+    else if (node->node_type == NodeInteger) {
+        print_string(context->outputFileDescriptor, "integer\n");
+        return CompileInteger(node, (struct Integer*)node->node_ptr, context);
+    }
     else if (node->node_type == NodeChar) {
         print_string(context->outputFileDescriptor, "char\n");
         return CompileChar(node, (struct Char*)node->node_ptr, context);
     }
-    else if (node->node_type == NodeInteger) {
-        print_string(context->outputFileDescriptor, "integer\n");
-        return CompileInteger(node, (struct Integer*)node->node_ptr, context);
+    else if (node->node_type == NodeString) {
+        print_string(context->outputFileDescriptor, "string\n");
+        return CompileString(node, (struct String*)node->node_ptr, context);
     }
     else if (node->node_type == NodeSizeof) {
         print_string(context->outputFileDescriptor, "sizeof\n");

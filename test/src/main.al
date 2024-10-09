@@ -1,7 +1,7 @@
-include {include/stdio.hal}
-include {include/stdlib.hal}
-include {../altlib/include/posix.hal}
-include {../altlib/include/algorithm.hal}
+include "include/stdio.hal"
+include "include/stdlib.hal"
+include "../altlib/include/posix.hal"
+include "../altlib/include/algorithm.hal"
 
 struct Point {
     x <int, 0>
@@ -49,6 +49,9 @@ func Pair.apply_foo(a <int, 0>, b <int, 0>) -> <int, 0> {
 
 func ^._start() -> <int, 0> {
     def _ <int, 0>
+
+    def str <char, 1>
+    str := "abacaba"
 
     if (0) {
         _ := ._puti(1)

@@ -3,7 +3,6 @@
 typedef int TokenType;
 
 enum TokenType {
-    TokenAsm,
     TokenInclude,
     TokenIf,
     TokenElse,
@@ -39,9 +38,9 @@ enum TokenType {
     TokenLess,
     TokenGreater,
     TokenEqual,
+    TokenInteger,
     TokenChar,
     TokenString,
-    TokenInteger,
     TokenIdentifier,
     TokenEof,
 };
