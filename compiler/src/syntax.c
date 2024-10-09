@@ -46,7 +46,10 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
             continue;
         }
         if (TokenStream_GetToken(ts).type == TokenInclude) {
+            TokenStream_NextToken(ts);
+            check_next(ts, TokenString, "String literal expected in include");
             const char *filename = TokenStream_GetToken(ts).value_string;
+            TokenStream_NextToken(ts);
             int fd = posix_open(filename, 0, 0);
             if (fd <= 0) {
                 const char *buffer = concat("Could not open file ", filename);
@@ -65,7 +68,6 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
             _free(inc_block->statement_list);
             _free(inc_block);
             _free(_node);
-            TokenStream_NextToken(ts);
             continue;
         }
         this->statement_list = (struct Node**)push_back((void**)this->statement_list, Syntax_ProcessStatement(ts));
@@ -310,6 +312,16 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
 struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
     struct Node *node = init_node(ts);
 
+    if (TokenStream_GetToken(ts).type == TokenInteger) {
+        struct Integer *this = (struct Integer*)_malloc(sizeof(struct Integer));
+        node->node_ptr = this;
+        node->node_type = NodeInteger;
+        this->value = TokenStream_GetToken(ts).value_int;
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
+    }
     if (TokenStream_GetToken(ts).type == TokenChar) {
         struct Char *this = (struct Char*)_malloc(sizeof(struct Char));
         node->node_ptr = this;
@@ -320,11 +332,11 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         TokenStream_NextToken(ts);
         return node;
     }
-    if (TokenStream_GetToken(ts).type == TokenInteger) {
-        struct Integer *this = (struct Integer*)_malloc(sizeof(struct Integer));
+    if (TokenStream_GetToken(ts).type == TokenString) {
+        struct String *this = (struct String*)_malloc(sizeof(struct String));
         node->node_ptr = this;
-        node->node_type = NodeInteger;
-        this->value = TokenStream_GetToken(ts).value_int;
+        node->node_type = NodeString;
+        this->value = _strdup(TokenStream_GetToken(ts).value_string);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
         TokenStream_NextToken(ts);
@@ -501,17 +513,6 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
 struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
     if (TokenStream_GetToken(ts).type == TokenBraceOpen) {
         struct Node *node = Syntax_ProcessBlock(ts, true);
-        TokenStream_NextToken(ts);
-        return node;
-    }
-    if (TokenStream_GetToken(ts).type == TokenAsm) {
-        struct Node *node = init_node(ts);
-        struct Asm *this = (struct Asm*)_malloc(sizeof(struct Asm));
-        node->node_ptr = this;
-        node->node_type = NodeAsm;
-        node->line_end = TokenStream_GetToken(ts).line_end;
-        node->position_end = TokenStream_GetToken(ts).position_end;
-        this->code = _strdup(TokenStream_GetToken(ts).value_string);
         TokenStream_NextToken(ts);
         return node;
     }
