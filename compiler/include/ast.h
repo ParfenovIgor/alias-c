@@ -21,6 +21,7 @@ enum NodeType {
     NodeInteger,
     NodeChar,
     NodeString,
+    NodeArray,
     NodeSizeof,
     NodeAlloc,
     NodeFree,
@@ -53,6 +54,7 @@ struct Identifier;
 struct Integer;
 struct Char;
 struct String;
+struct Array;
 struct Sizeof;
 struct Alloc;
 struct Free;
@@ -91,9 +93,11 @@ struct CPContext {
     struct Struct **structs;
     int function_index;
     int branch_index;
-    int string_index;
-    int fd_data;
+    int data_index;
+    int bss_index;
     int fd_text;
+    int fd_data;
+    int fd_bss;
 };
 
 struct Node {
@@ -185,6 +189,10 @@ struct Char {
 
 struct String {
     const char *value;
+};
+
+struct Array {
+    struct Node **values;
 };
 
 struct Sizeof {

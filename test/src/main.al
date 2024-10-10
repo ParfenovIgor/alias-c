@@ -47,6 +47,16 @@ func Pair.apply_foo(a <int, 0>, b <int, 0>) -> <int, 0> {
     _ := this->p2.foo(b)
 }
 
+func .putstrs(size <int, 0>, strs <char, 2>) -> <int, 0> {
+    def _ <int, 0>
+    def i <int, 0>
+    i := 0
+    while (i < size) {
+        _ := ._puts(strs[i]);
+        i := i + 1
+    }
+}
+
 func ^._start() -> <int, 0> {
     def _ <int, 0>
 
@@ -55,6 +65,17 @@ func ^._start() -> <int, 0> {
     _ := ._puts(str)
     str[3]& <- 'x'
     _ := ._puts(str)
+
+    def bcd <int, 1>
+    bcd := [1, 2, 6, 3]
+    _ := ._puti(bcd[0])
+    _ := ._puti(bcd[1])
+    _ := ._puti(bcd[2])
+    _ := ._puti(bcd[3])
+
+    def strs <char, 2>
+    strs := ["Hello", " world\n"]
+    _ := .putstrs(2, strs);
 
     if (0) {
         _ := ._puti(1)
