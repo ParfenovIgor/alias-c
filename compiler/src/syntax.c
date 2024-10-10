@@ -342,6 +342,24 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         TokenStream_NextToken(ts);
         return node;
     }
+    if (TokenStream_GetToken(ts).type == TokenBracketOpen) {
+        struct Array *this = (struct Array*)_malloc(sizeof(struct Array));
+        node->node_ptr = this;
+        node->node_type = NodeArray;
+        this->values = (struct Node**)_malloc(sizeof(struct Node*));
+        this->values[0] = NULL;
+        TokenStream_NextToken(ts);
+        while (TokenStream_GetToken(ts).type != TokenBracketClose) {
+            this->values = (struct Node**)push_back((void**)this->values, Syntax_ProcessExpression(ts));
+            if (TokenStream_GetToken(ts).type == TokenComma) {
+                TokenStream_NextToken(ts);
+            }
+        }
+        node->line_end = TokenStream_GetToken(ts).line_end;
+        node->position_end = TokenStream_GetToken(ts).position_end;
+        TokenStream_NextToken(ts);
+        return node;
+    }
     if (TokenStream_GetToken(ts).type == TokenCaret) {
         struct Sizeof *this = (struct Sizeof*)_malloc(sizeof(struct Sizeof));
         node->node_ptr = this;

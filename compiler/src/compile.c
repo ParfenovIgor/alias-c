@@ -126,6 +126,9 @@ bool isIntType(struct Type *type, struct CPContext *context) {
     return false;
 }
 
+bool typesEqual(struct Type *type1, struct Type *type2) {
+    return (!_strcmp(type1->identifier, type2->identifier) && type1->degree == type2->degree);
+}
 
 int typeSize(struct Type *type, struct CPContext *context) {
     if (type->degree != 0) {
@@ -165,16 +168,24 @@ void Compile(struct Node *node, struct Settings *settings) {
     context->structs[0] = NULL;
     context->function_index = 0;
     context->branch_index = 0;
-    context->string_index = 0;
+    context->data_index = 0;
+    context->bss_index = 0;
     
     int fd[2];
-    posix_pipe(fd);
-    context->fd_data = fd[1];
-    int fd_data_out = fd[0];
+
     posix_pipe(fd);
     context->fd_text = fd[1];
     int fd_text_out = fd[0];
 
+    posix_pipe(fd);
+    context->fd_data = fd[1];
+    int fd_data_out = fd[0];
+
+    posix_pipe(fd);
+    context->fd_bss = fd[1];
+    int fd_bss_out = fd[0];
+
+    print_string(context->fd_bss, "section .bss\n");
     print_string(context->fd_data, "section .data\n");
     
     print_string(context->fd_text, "section .text\n");
@@ -190,14 +201,21 @@ void Compile(struct Node *node, struct Settings *settings) {
     print_string(context->fd_text, "leave\n");
     print_string(context->fd_text, "ret\n");
 
-    posix_close(context->fd_data);
+
     posix_close(context->fd_text);
+    posix_close(context->fd_data);
+    posix_close(context->fd_bss);
+    char *str_bss = read_file_descriptor(fd_bss_out);
     char *str_data = read_file_descriptor(fd_data_out);
     char *str_text = read_file_descriptor(fd_text_out);
-    posix_close(fd_data_out);
     posix_close(fd_text_out);
-    char *program = concat(str_data, str_text);
+    posix_close(fd_data_out);
+    posix_close(fd_bss_out);
+    char *tmp = concat(str_bss, str_data);
+    _free(str_bss);
     _free(str_data);
+    char *program = concat(tmp, str_text);
+    _free(tmp);
     _free(str_text);
     write_file(settings->compileOutputFilename, program);
 }
@@ -455,21 +473,48 @@ struct Type *CompileChar(struct Node *node, struct Char *this, struct CPContext 
 }
 
 struct Type *CompileString(struct Node *node, struct String *this, struct CPContext *context) {
-    int idx = context->string_index;
-    context->string_index++;
+    int idx = context->data_index;
+    context->data_index++;
     print_stringi(context->fd_data, "_S", idx, ":\n");
     print_string(context->fd_data, "db ");
     for (int i = 0; i < _strlen(this->value); i++) {
         print_int(context->fd_data, this->value[i]);
-        if (i + 1 < _strlen(this->value)) {
-            print_string(context->fd_data, ", ");
-        }
-        else {
-            print_string(context->fd_data, "\n");
-        }
+        print_string(context->fd_data, ", ");
     }
+    print_string(context->fd_data, "0\n");
     print_stringi(context->fd_text, "mov qword [rsp - 8], _S", idx, "\n");
     return BuildType("char", 1);
+}
+
+struct Type *CompileArray(struct Node *node, struct Array *this, struct CPContext *context) {
+    int size = get_size((void**)this->values);
+    if (size == 0) {
+        SemanticError("Array has to be non-empty", node);
+    }
+    int idx = context->bss_index;
+    context->bss_index++;
+    struct Type *_type = NULL;
+    print_stringi(context->fd_bss, "_B", idx, ":\n");
+    print_stringi(context->fd_bss, "resb ", size * 8, "\n");
+    for (int i = 0; i < size; i++) {
+        struct Type *_type2 = CompileNode(this->values[i], context);
+        if (i == 0) {
+            _type = _type2;
+            if (!(_type)) {
+                SemanticError("Base type expected", node);
+            }
+        }
+        if (!typesEqual(_type, _type2)) {
+            SemanticError("Array elements have to have same type", node);
+        }
+        if (i != 0) _free(_type2);
+        print_stringi(context->fd_text, "mov rax, _B", idx, "\n");
+        print_string(context->fd_text, "mov rbx, [rsp - 8]\n");
+        print_stringi(context->fd_text, "mov [rax + ", i * 8, "], rbx\n");
+    }
+    print_stringi(context->fd_text, "mov qword [rsp - 8], _B", idx, "\n");
+    _type->degree++;
+    return _type;
 }
 
 struct Type *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
@@ -562,7 +607,7 @@ struct Type *CompileGetField(struct Node *node, struct GetField *this, struct CP
 
 struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContext *context) {
     struct Type *_type = CompileNode(this->left, context);
-    if (_type->degree != 1) SemanticError("Pointer expected in indexation", node);
+    if (_type->degree == 0) SemanticError("Pointer expected in indexation", node);
 
     print_string(context->fd_text, "sub rsp, 8\n");
     const char *identifier = "__junk";
@@ -751,6 +796,10 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeString) {
         print_string(context->fd_text, "string\n");
         return CompileString(node, (struct String*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeArray) {
+        print_string(context->fd_text, "array\n");
+        return CompileArray(node, (struct Array*)node->node_ptr, context);
     }
     else if (node->node_type == NodeSizeof) {
         print_string(context->fd_text, "sizeof\n");
