@@ -17,9 +17,9 @@ const char *regs[] = {
 };
 
 int findInLocal(const char *identifier, struct CPContext *context) {
-    int sz = get_size((void**)context->variable_local_name);
+    int sz = vsize(&context->variable_local_name);
     for (int i = sz - 1; i >= 0; i--) {
-        if (_strcmp(context->variable_local_name[i], identifier) == 0) {
+        if (_strcmp(context->variable_local_name.ptr[i], identifier) == 0) {
             return i;
         }
     }
@@ -27,9 +27,9 @@ int findInLocal(const char *identifier, struct CPContext *context) {
 }
 
 int findInArguments(const char *identifier, struct CPContext *context) {
-    int sz = get_size((void**)context->variable_argument_name);
+    int sz = vsize(&context->variable_argument_name);
     for (int i = 0; i < sz; i++) {
-        if (_strcmp(context->variable_argument_name[i], identifier) == 0) {
+        if (_strcmp(context->variable_argument_name.ptr[i], identifier) == 0) {
             return i;
         }
     }
@@ -37,10 +37,10 @@ int findInArguments(const char *identifier, struct CPContext *context) {
 }
 
 const char *findFunctionBack(const char *identifier, struct CPContext *context) {
-    int sz = get_size((void**)context->function_name_front);
+    int sz = vsize(&context->function_name_front);
     for (int i = sz - 1; i >= 0; i--) {
-        if (_strcmp(context->function_name_front[i], identifier) == 0) {
-            return context->function_name_back[i];
+        if (_strcmp(context->function_name_front.ptr[i], identifier) == 0) {
+            return context->function_name_back.ptr[i];
         }
     }
     print_string(STDOUT, "Error: function identifier not found\n");
@@ -48,10 +48,10 @@ const char *findFunctionBack(const char *identifier, struct CPContext *context) 
 }
 
 struct FunctionSignature *findFunctionSignature(const char *identifier, struct CPContext *context) {
-    int sz = get_size((void**)context->function_name_front);
+    int sz = vsize(&context->function_name_front);
     for (int i = sz - 1; i >= 0; i--) {
-        if (_strcmp(context->function_name_front[i], identifier) == 0) {
-            return context->function_signature[i];
+        if (_strcmp(context->function_name_front.ptr[i], identifier) == 0) {
+            return context->function_signature.ptr[i];
         }
     }
     print_string(STDOUT, "Error: function identifier not found\n");
@@ -59,7 +59,7 @@ struct FunctionSignature *findFunctionSignature(const char *identifier, struct C
 }
 
 void findIdentifier(const char *identifier, struct CPContext *context) {
-    int cnt_args = get_size((void**)context->variable_argument_name);
+    int cnt_args = vsize(&context->variable_argument_name);
     int idx = findInLocal(identifier, context);
     if (idx != -1) {
         print_stringi(context->fd_text, "[rbp + ", -(idx + 1 + cnt_args) * 8, "]");
@@ -77,7 +77,7 @@ void findIdentifier(const char *identifier, struct CPContext *context) {
 struct Type *findType(const char *identifier, struct CPContext *context) {
     int idx = findInLocal(identifier, context);
     if (idx != -1) {
-        return context->variable_local_type[idx];
+        return context->variable_local_type.ptr[idx];
     }
     else {
         idx = findInArguments(identifier, context);
@@ -85,15 +85,16 @@ struct Type *findType(const char *identifier, struct CPContext *context) {
             print_string(STDOUT, "Error: identifier not found\n");
             posix_exit(1);
         }
-        return context->variable_argument_type[idx];
+        return context->variable_argument_type.ptr[idx];
     }
 }
 
 struct Struct *findStruct(const char *identifier, struct CPContext *context) {
-    int sz = get_size((void**)context->structs);
+    int sz = vsize(&context->structs);
     for (int i = 0; i < sz; i++) {
-        if (_strcmp(context->structs[i]->name, identifier) == 0) {
-            return context->structs[i];
+        struct Struct *_struct = context->structs.ptr[i];
+        if (_strcmp(_struct->name, identifier) == 0) {
+            return context->structs.ptr[i];
         }
     }
     print_string(STDOUT, "Error: struct not found\n");
@@ -142,7 +143,7 @@ int typeSize(struct Type *type, struct CPContext *context) {
     }
     else {
         struct Struct *_struct = findStruct(type->identifier, context);
-        return get_size((void**)_struct->identifiers) * 8;
+        return vsize(&_struct->identifiers) * 8;
     }
 }
 
@@ -150,22 +151,14 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context);
 
 void Compile(struct Node *node, struct Settings *settings) {
     struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
-    context->variable_local_name = (const char**)_malloc(sizeof(const char*));
-    context->variable_local_name[0] = NULL;
-    context->variable_local_type = (struct Type**)_malloc(sizeof(struct Type*));
-    context->variable_local_type[0] = NULL;
-    context->variable_argument_name = (const char**)_malloc(sizeof(const char*));
-    context->variable_argument_name[0] = NULL;
-    context->variable_argument_type = (struct Type**)_malloc(sizeof(struct Type*));
-    context->variable_argument_type[0] = NULL;
-    context->function_name_front = (const char**)_malloc(sizeof(const char*));
-    context->function_name_front[0] = NULL;
-    context->function_name_back = (const char**)_malloc(sizeof(const char*));
-    context->function_name_back[0] = NULL;
-    context->function_signature = (struct FunctionSignature**)_malloc(sizeof(struct FunctionSignature*));
-    context->function_signature[0] = NULL;
-    context->structs = (struct Struct**)_malloc(sizeof(struct Struct*));
-    context->structs[0] = NULL;
+    context->variable_local_name = vnew();
+    context->variable_local_type = vnew();
+    context->variable_argument_name = vnew();
+    context->variable_argument_type = vnew();
+    context->function_name_front = vnew();
+    context->function_name_back = vnew();
+    context->function_signature = vnew();
+    context->structs = vnew();
     context->function_index = 0;
     context->branch_index = 0;
     context->data_index = 0;
@@ -221,29 +214,27 @@ void Compile(struct Node *node, struct Settings *settings) {
 }
 
 void CompileBlock(struct Node *node, struct Block *this, struct CPContext *context) {
-    struct Node **statement = this->statement_list;
-    int old_cnt_local_var = get_size((void**)context->variable_local_name);
-    int old_cnt_functions = get_size((void**)context->function_name_front);
-    while (*statement != NULL) {
-        CompileNode(*statement, context);
-        statement++;
+    int old_cnt_local_var = vsize(&context->variable_local_name);
+    int old_cnt_functions = vsize(&context->function_name_front);
+    for (int i = 0; i < vsize(&this->statement_list); i++) {
+        CompileNode(this->statement_list.ptr[i], context);
     }
-    int cnt_local_var = get_size((void**)context->variable_local_name);
-    int cnt_functions = get_size((void**)context->function_name_front);
+    int cnt_local_var = vsize(&context->variable_local_name);
+    int cnt_functions = vsize(&context->function_name_front);
     print_stringi(context->fd_text, "add rsp, ", 8 * (cnt_local_var - old_cnt_local_var), "\n");
     for (int i = 0; i < cnt_local_var - old_cnt_local_var; i++) {
-        context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
-        context->variable_local_type = (struct Type**)pop_back((void**)context->variable_local_type);
+        vpop_back(&context->variable_local_name);
+        vpop_back(&context->variable_local_type);
     }
     for (int i = 0; i < cnt_functions - old_cnt_functions; i++) {
-        context->function_name_front = (const char**)pop_back((void**)context->function_name_front);
-        context->function_name_back = (const char**)pop_back((void**)context->function_name_back);
-        context->function_signature = (struct FunctionSignature**)pop_back((void**)context->function_signature);
+        vpop_back(&context->function_name_front);
+        vpop_back(&context->function_name_back);
+        vpop_back(&context->function_signature);
     }
 }
 
 void CompileIf(struct Node *node, struct If *this, struct CPContext *context) {
-    int sz = get_size((void*)this->condition_list);
+    int sz = vsize(&this->condition_list);
     int idx = context->branch_index;
     context->branch_index += sz + 1;
     int last = idx + sz;
@@ -253,10 +244,10 @@ void CompileIf(struct Node *node, struct If *this, struct CPContext *context) {
     }
     for (int i = 0; i < sz; i++) {
         print_stringi(context->fd_text, "_L", idx + i, ":\n");
-        CompileNode(this->condition_list[i], context);
+        CompileNode(this->condition_list.ptr[i], context);
         print_string(context->fd_text, "cmp qword [rsp - 8], 0\n");
         print_stringi(context->fd_text, "je _L", idx + i + 1, "\n");
-        CompileNode(this->block_list[i], context);
+        CompileNode(this->block_list.ptr[i], context);
         print_stringi(context->fd_text, "jmp _L", last, "\n");
     }
     print_stringi(context->fd_text, "_L", idx + sz, ":\n");
@@ -303,45 +294,41 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     print_string(context->fd_text, "push rbp\n");
     print_string(context->fd_text, "mov rbp, rsp\n");
 
-    const char **variable_local_name_tmp = context->variable_local_name;
-    struct Type **variable_local_type_tmp = context->variable_local_type;
-    const char **variable_argument_name_tmp = context->variable_argument_name;
-    struct Type **variable_argument_type_tmp = context->variable_argument_type;
-    context->variable_local_name = (const char**)_malloc(sizeof(const char*));
-    context->variable_local_name[0] = NULL;
-    context->variable_local_type = (struct Type**)_malloc(sizeof(struct Type*));
-    context->variable_local_type[0] = NULL;
-    context->variable_argument_name = (const char**)_malloc(sizeof(const char*));
-    context->variable_argument_name[0] = NULL;
-    context->variable_argument_type = (struct Type**)_malloc(sizeof(struct Type*));
-    context->variable_argument_type[0] = NULL;
+    struct Vector variable_local_name_tmp = context->variable_local_name;
+    struct Vector variable_local_type_tmp = context->variable_local_type;
+    struct Vector variable_argument_name_tmp = context->variable_argument_name;
+    struct Vector variable_argument_type_tmp = context->variable_argument_type;
+    context->variable_local_name = vnew();
+    context->variable_local_type = vnew();
+    context->variable_argument_name = vnew();
+    context->variable_argument_type = vnew();
 
-    context->function_name_front = (const char**)push_back((void**)context->function_name_front, _strdup(identifier_front));
-    context->function_name_back = (const char**)push_back((void**)context->function_name_back, _strdup(identifier_back));
-    context->function_signature = (struct FunctionSignature**)push_back((void**)context->function_signature, this->signature);
+    vpush_back(&context->function_name_front, _strdup(identifier_front));
+    vpush_back(&context->function_name_back, _strdup(identifier_back));
+    vpush_back(&context->function_signature, this->signature);
 
     if (this->struct_name) {
         print_string3(context->fd_text, "push ", regs[0], "\n");
-        context->variable_argument_name = (const char**)push_back((void**)context->variable_argument_name, (void*)_strdup("this"));
-        context->variable_argument_type = (struct Type**)push_back((void**)context->variable_argument_type, BuildType(_strdup(this->struct_name), 1));
+        vpush_back(&context->variable_argument_name, (void*)_strdup("this"));
+        vpush_back(&context->variable_argument_type, BuildType(_strdup(this->struct_name), 1));
     }
-    int sz = get_size((void**)this->signature->identifiers);
+    int sz = vsize(&this->signature->identifiers);
     for (int i = 0; i < sz; i++) {
         print_string3(context->fd_text, "push ", regs[i + (this->struct_name != NULL)], "\n");
-        context->variable_argument_name = (const char**)push_back((void**)context->variable_argument_name, (void*)this->signature->identifiers[i]);
-        context->variable_argument_type = (struct Type**)push_back((void**)context->variable_argument_type, CopyType(this->signature->types[i]));
+        vpush_back(&context->variable_argument_name, (void*)this->signature->identifiers.ptr[i]);
+        vpush_back(&context->variable_argument_type, CopyType(this->signature->types.ptr[i]));
     }
     CompileNode(this->block, context);
     
     print_stringi(context->fd_text, "add rsp, ", sz * 8, "\n");
     for (int i = 0; i < sz; i++) {
-        _free((void*)context->variable_argument_name[i]);
-        _free((void*)context->variable_argument_type[i]);
+        _free(context->variable_argument_name.ptr[i]);
+        _free(context->variable_argument_type.ptr[i]);
     }
-    _free((void*)context->variable_local_name);
-    _free((void*)context->variable_local_type);
-    _free((void*)context->variable_argument_name);
-    _free((void*)context->variable_argument_type);
+    vdrop(&context->variable_local_name);
+    vdrop(&context->variable_local_type);
+    vdrop(&context->variable_argument_name);
+    vdrop(&context->variable_argument_type);
 
     context->variable_local_name = variable_local_name_tmp;
     context->variable_local_type = variable_local_type_tmp;
@@ -366,34 +353,33 @@ void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContex
         identifier = this->name;
     }
     print_string3(context->fd_text, "extern ", identifier, "\n");
-    context->function_name_front = (const char**)push_back((void**)context->function_name_front, (void*)identifier);
-    context->function_name_back = (const char**)push_back((void**)context->function_name_back, (void*)identifier);
-    context->function_signature = (struct FunctionSignature**)push_back((void**)context->function_signature, this->signature);
+    vpush_back(&context->function_name_front, (void*)identifier);
+    vpush_back(&context->function_name_back, (void*)identifier);
+    vpush_back(&context->function_signature, this->signature);
 }
 
 void CompileStructDefinition(struct Node *node, struct StructDefinition *this, struct CPContext *context) {
     struct Struct *_struct = (struct Struct*)_malloc(sizeof(struct Struct));
     _struct->name = this->name;
-    _struct->identifiers = (const char**)_malloc(sizeof(const char*));
-    _struct->identifiers[0] = NULL;
-    _struct->types = (struct Type**)_malloc(sizeof(struct Type*));
-    _struct->types[0] = NULL;
-    for (int i = 0; i < get_size((void**)this->identifiers); i++) {
-        _struct->identifiers = (const char**)push_back((void**)_struct->identifiers, (void*)this->identifiers[i]);
-        _struct->types = (struct Type**)push_back((void**)_struct->types, this->types[i]);
-        if (!isBaseType(this->types[i], context)) {
+    _struct->identifiers = vnew();
+    _struct->types = vnew();
+    int sz = vsize(&this->identifiers);
+    for (int i = 0; i < sz; i++) {
+        vpush_back(&_struct->identifiers, this->identifiers.ptr[i]);
+        vpush_back(&_struct->types, this->types.ptr[i]);
+        if (!isBaseType(this->types.ptr[i], context)) {
             SemanticError("Base type expected", node);
         }
     }
-    context->structs = (struct Struct**)push_back((void**)context->structs, (void*)_struct);
+    vpush_back(&context->structs, (void*)_struct);
 }
 
 void CompileDefinition(struct Node *node, struct Definition *this, struct CPContext *context) {
-    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, _strdup(this->identifier));
+    vpush_back(&context->variable_local_name, _strdup(this->identifier));
     if (!isBaseType(this->type, context)) {
         SemanticError("Base type expected", node);
     }
-    context->variable_local_type = (struct Type**)push_back((void**)context->variable_local_type, CopyType(this->type));
+    vpush_back(&context->variable_local_type, CopyType(this->type));
     print_string(context->fd_text, "sub rsp, 8\n");
 }
 
@@ -432,7 +418,7 @@ void CompileMovement(struct Node *node, struct Movement *this, struct CPContext 
 
     print_string(context->fd_text, "sub rsp, 8\n");
     const char *identifier = "__junk";
-    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
+    vpush_back(&context->variable_local_name, (void*)identifier);
 
     struct Type *_type2 = CompileNode(this->src, context);
     if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree + 1) {
@@ -440,7 +426,7 @@ void CompileMovement(struct Node *node, struct Movement *this, struct CPContext 
     }
 
     print_string(context->fd_text, "add rsp, 8\n");
-    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    vpop_back(&context->variable_local_name);
     print_string(context->fd_text, "mov rax, [rsp - 8]\n");
     print_string(context->fd_text, "mov rbx, [rsp - 16]\n");
     if (!_strcmp(_type1->identifier, "char")) {
@@ -489,7 +475,7 @@ struct Type *CompileString(struct Node *node, struct String *this, struct CPCont
 }
 
 struct Type *CompileArray(struct Node *node, struct Array *this, struct CPContext *context) {
-    int size = get_size((void**)this->values);
+    int size = vsize(&this->values);
     if (size == 0) {
         SemanticError("Array has to be non-empty", node);
     }
@@ -499,7 +485,7 @@ struct Type *CompileArray(struct Node *node, struct Array *this, struct CPContex
     print_stringi(context->fd_bss, "_B", idx, ":\n");
     print_stringi(context->fd_bss, "resb ", size * 8, "\n");
     for (int i = 0; i < size; i++) {
-        struct Type *_type2 = CompileNode(this->values[i], context);
+        struct Type *_type2 = CompileNode(this->values.ptr[i], context);
         if (i == 0) {
             _type = _type2;
             if (!(_type)) {
@@ -540,12 +526,12 @@ struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, s
     }
     
     struct FunctionSignature *signature = findFunctionSignature(identifier, context);
-    int sz = get_size((void**)this->arguments);
-    if (sz != get_size((void**)signature->identifiers)) SemanticError("Incorrect number of arguments in function call", node);
+    int sz = vsize(&this->arguments);
+    if (sz != vsize(&signature->identifiers)) SemanticError("Incorrect number of arguments in function call", node);
 
     for (int i = 0; i < sz; i++) {
-        struct Type *_type = CompileNode(this->arguments[i], context);
-        if (_strcmp(_type->identifier, signature->types[i]->identifier) || _type->degree != signature->types[i]->degree) {
+        struct Type *_type = CompileNode(this->arguments.ptr[i], context);
+        if (!typesEqual(_type, signature->types.ptr[i])){
             SemanticError("Passing to function value of incorrect type", node);
         }
         _free(_type);
@@ -583,16 +569,16 @@ struct Type *CompileGetField(struct Node *node, struct GetField *this, struct CP
     _free(_type);
 
     int index = -1;
-    int sz = get_size((void**)_struct->identifiers);
+    int sz = vsize(&_struct->identifiers);
     for (int i = 0; i < sz; i++) {
-        if (_strcmp(this->field, _struct->identifiers[i]) == 0) {
+        if (_strcmp(this->field, _struct->identifiers.ptr[i]) == 0) {
             index = i;
             break;
         }
     }
     if (index == -1) SemanticError("Structure doesn't have corresponding field", node);
     
-    _type = CopyType(_struct->types[index]);
+    _type = CopyType(_struct->types.ptr[index]);
     print_string(context->fd_text, "mov rax, [rsp - 8]\n");
     if (!this->address) {    
         print_stringi(context->fd_text, "mov rbx, [rax + ", index * 8, "]\n");
@@ -613,14 +599,14 @@ struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContex
 
     print_string(context->fd_text, "sub rsp, 8\n");
     const char *identifier = "__junk";
-    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
+    vpush_back(&context->variable_local_name, (void*)identifier);
 
     struct Type *_type2 = CompileNode(this->right, context);
     if (_strcmp(_type2->identifier, "int") || _type2->degree != 0) SemanticError("Integer expected in indexation", node);
     _free(_type2);
     
     print_string(context->fd_text, "add rsp, 8\n");
-    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    vpop_back(&context->variable_local_name);
     print_string(context->fd_text, "mov rax, [rsp - 16]\n");
     _type->degree--;
     print_stringi(context->fd_text, "mov rbx, ", typeSize(_type, context), "\n");
@@ -645,7 +631,7 @@ struct Type *CompileArithmetic(struct Node *node, struct BinaryOperator *this, s
 
     print_string(context->fd_text, "sub rsp, 8\n");
     const char *identifier = "__junk";
-    context->variable_local_name = (const char**)push_back((void**)context->variable_local_name, (void*)identifier);
+    vpush_back(&context->variable_local_name, (void*)identifier);
 
     struct Type *_type2 = CompileNode(this->right, context);
     if (!isIntType(_type2, context)) SemanticError("Integer expected in addition", this->right);
@@ -654,7 +640,7 @@ struct Type *CompileArithmetic(struct Node *node, struct BinaryOperator *this, s
     _free(_type1);
 
     print_string(context->fd_text, "add rsp, 8\n");
-    context->variable_local_name = (const char**)pop_back((void**)context->variable_local_name);
+    vpop_back(&context->variable_local_name);
 
     return _type2;
 }
