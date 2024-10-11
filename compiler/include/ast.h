@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common.h>
+#include <vector.h>
 #include <type.h>
 #include <stdbool.h>
 
@@ -71,26 +72,26 @@ struct Equal;
 
 
 struct FunctionSignature {
-    const char **identifiers;
-    struct Type **types;
+    struct Vector identifiers;
+    struct Vector types;
     struct Type *return_type;
 };
 
 struct Struct {
     const char *name;
-    const char **identifiers;
-    struct Type **types;
+    struct Vector identifiers;
+    struct Vector types;
 };
 
 struct CPContext {
-    const char **variable_local_name;
-    struct Type **variable_local_type;
-    const char **variable_argument_name;
-    struct Type **variable_argument_type;
-    const char **function_name_front;
-    const char **function_name_back;
-    struct FunctionSignature **function_signature;
-    struct Struct **structs;
+    struct Vector variable_local_name;
+    struct Vector variable_local_type;
+    struct Vector variable_argument_name;
+    struct Vector variable_argument_type;
+    struct Vector function_name_front;
+    struct Vector function_name_back;
+    struct Vector function_signature;
+    struct Vector structs;
     int function_index;
     int branch_index;
     int data_index;
@@ -108,12 +109,12 @@ struct Node {
 };
 
 struct Block {
-    struct Node **statement_list;
+    struct Vector statement_list;
 };
 
 struct If {
-    struct Node **condition_list;
-    struct Node **block_list;
+    struct Vector condition_list;
+    struct Vector block_list;
     struct Node *else_block;
 };
 
@@ -138,8 +139,8 @@ struct Prototype {
 
 struct StructDefinition {
     const char *name;
-    const char **identifiers;
-    struct Type **types;
+    struct Vector identifiers;
+    struct Vector types;
 };
 
 struct Definition {
@@ -192,7 +193,7 @@ struct String {
 };
 
 struct Array {
-    struct Node **values;
+    struct Vector values;
 };
 
 struct Sizeof {
@@ -201,7 +202,7 @@ struct Sizeof {
 
 struct FunctionCall {
     const char *identifier;
-    struct Node **arguments;
+    struct Vector arguments;
     struct Node *caller;
 };
 

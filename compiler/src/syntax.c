@@ -31,8 +31,7 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
     struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
     struct Block *this = (struct Block*)_malloc(sizeof(struct Block));
     node->node_ptr = this;
-    this->statement_list = (struct Node**)_malloc(sizeof(struct Node*));
-    this->statement_list[0] = NULL;
+    this->statement_list = vnew();
     node->node_type = NodeBlock;
     node->line_begin = TokenStream_GetToken(ts).line_begin;
     node->position_begin = TokenStream_GetToken(ts).position_begin;
@@ -60,17 +59,15 @@ struct Node *Syntax_ProcessBlock(struct TokenStream *ts, bool braces) {
             }
             struct Node *_node = Parse(filename);
             struct Block *inc_block = (struct Block*)_node->node_ptr;
-            struct Node **ptr = inc_block->statement_list;
-            while (*ptr != NULL) {
-                this->statement_list = (struct Node**)push_back((void**)this->statement_list, *ptr);
-                ptr++;
+            for (int i = 0; i < vsize(&inc_block->statement_list); i++) {
+                vpush_back(&this->statement_list, inc_block->statement_list.ptr[i]);
             }
-            _free(inc_block->statement_list);
+            vdrop(&inc_block->statement_list);
             _free(inc_block);
             _free(_node);
             continue;
         }
-        this->statement_list = (struct Node**)push_back((void**)this->statement_list, Syntax_ProcessStatement(ts));
+        vpush_back(&this->statement_list, Syntax_ProcessStatement(ts));
     }
     if (braces && TokenStream_GetToken(ts).type != TokenBraceClose) {
         SyntaxError("} expected after block", TokenStream_GetToken(ts));
@@ -346,11 +343,10 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
         struct Array *this = (struct Array*)_malloc(sizeof(struct Array));
         node->node_ptr = this;
         node->node_type = NodeArray;
-        this->values = (struct Node**)_malloc(sizeof(struct Node*));
-        this->values[0] = NULL;
+        this->values = vnew();
         TokenStream_NextToken(ts);
         while (TokenStream_GetToken(ts).type != TokenBracketClose) {
-            this->values = (struct Node**)push_back((void**)this->values, Syntax_ProcessExpression(ts));
+            vpush_back(&this->values, Syntax_ProcessExpression(ts));
             if (TokenStream_GetToken(ts).type == TokenComma) {
                 TokenStream_NextToken(ts);
             }
@@ -399,10 +395,9 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
             TokenStream_NextToken(ts);
 
             struct FunctionCall *this = (struct FunctionCall*)_malloc(sizeof(struct FunctionCall));
-            this->arguments = (struct Node**)_malloc(sizeof(struct Node*));
-            this->arguments[0] = NULL;
             node->node_ptr = this;
             node->node_type = NodeFunctionCall;
+            this->arguments = vnew();
             check_next(ts, TokenIdentifier, "Identifier expected in function call");
             this->identifier = _strdup(TokenStream_GetToken(ts).value_string);
             TokenStream_NextToken(ts);
@@ -411,7 +406,7 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
                 if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
                     break;
                 }
-                this->arguments = (struct Node**)push_back((void**)this->arguments, Syntax_ProcessExpression(ts));
+                vpush_back(&this->arguments, Syntax_ProcessExpression(ts));
                 if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
                     break;
                 }
@@ -500,10 +495,8 @@ struct Node *Syntax_ProcessPrimary(struct TokenStream *ts) {
 
 struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts) {
     struct FunctionSignature *this = (struct FunctionSignature*)_malloc(sizeof(struct FunctionSignature));
-    this->identifiers = (const char**)_malloc(sizeof(const char*));
-    this->identifiers[0] = NULL;
-    this->types = (struct Type**)_malloc(sizeof(struct Type*));
-    this->types[0] = NULL;
+    this->identifiers = vnew();
+    this->types = vnew();
 
     while (true) {
         if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
@@ -511,11 +504,10 @@ struct FunctionSignature *Syntax_ProcessFunctionSignature(struct TokenStream *ts
             break;
         }
         check_next(ts, TokenIdentifier, "Identifier expected in argument list");
-        this->identifiers = (const char**)push_back((void**)this->identifiers, _strdup(TokenStream_GetToken(ts).value_string));
+        vpush_back(&this->identifiers, _strdup(TokenStream_GetToken(ts).value_string));
         TokenStream_NextToken(ts);
-        struct Type *type = Syntax_ProcessType(ts);
+        vpush_back(&this->types, Syntax_ProcessType(ts));
         TokenStream_NextToken(ts);
-        this->types = (struct Type**)push_back((void**)this->types, type);
         bool *is_const = (bool*)_malloc(sizeof(bool));
         if (TokenStream_GetToken(ts).type == TokenParenthesisClose) {
             TokenStream_NextToken(ts);
@@ -537,10 +529,8 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
     if (TokenStream_GetToken(ts).type == TokenIf) {
         struct Node *node = init_node(ts);
         struct If *this = (struct If*)_malloc(sizeof(struct If));
-        this->condition_list = (struct Node**)_malloc(sizeof(struct Node*));
-        this->condition_list[0] = NULL;
-        this->block_list = (struct Node**)_malloc(sizeof(struct Node*));
-        this->block_list[0] = NULL;
+        this->condition_list = vnew();
+        this->block_list = vnew();
         this->else_block = NULL;
         node->node_ptr = this;
         node->node_type = NodeIf;
@@ -550,8 +540,8 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         pass_next(ts, TokenParenthesisClose, ") expected in if condition");
         check_next(ts, TokenBraceOpen, "{ expected in if block");
         struct Node *_block = Syntax_ProcessBlock(ts, true);
-        this->condition_list = (struct Node**)push_back((void**)this->condition_list, _expression);
-        this->block_list = (struct Node**)push_back((void**)this->block_list, _block);
+        vpush_back(&this->condition_list, _expression);
+        vpush_back(&this->block_list, _block);
         node->line_end = TokenStream_GetToken(ts).line_end;
         node->position_end = TokenStream_GetToken(ts).position_end;
         TokenStream_NextToken(ts);
@@ -566,8 +556,8 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
                 pass_next(ts, TokenParenthesisClose, ") expected in if condition");
                 check_next(ts, TokenBraceOpen, "{ expected in if block");
                 struct Node *_block = Syntax_ProcessBlock(ts, true);
-                this->condition_list = (struct Node**)push_back((void**)this->condition_list, _expression);
-                this->block_list = (struct Node**)push_back((void**)this->block_list, _block);
+                vpush_back(&this->condition_list, _expression);
+                vpush_back(&this->block_list, _block);
                 node->line_end = TokenStream_GetToken(ts).line_end;
                 node->position_end = TokenStream_GetToken(ts).position_end;
                 TokenStream_NextToken(ts);
@@ -666,10 +656,8 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
         struct StructDefinition *this = (struct StructDefinition*)_malloc(sizeof(struct StructDefinition));
         node->node_ptr = this;
         node->node_type = NodeStructDefinition;
-        this->identifiers = (const char**)_malloc(sizeof(const char*));
-        this->identifiers[0] = NULL;
-        this->types = (struct Type**)_malloc(sizeof(struct Type*));
-        this->types[0] = NULL;
+        this->identifiers = vnew();
+        this->types = vnew();
         TokenStream_NextToken(ts);
         check_next(ts, TokenIdentifier, "Struct name expected in struct definition");
         this->name = _strdup(TokenStream_GetToken(ts).value_string);
@@ -680,9 +668,9 @@ struct Node *Syntax_ProcessStatement(struct TokenStream *ts) {
                 break;
             }
             check_next(ts, TokenIdentifier, "Identifier expected in struct definition");
-            this->identifiers = (const char**)push_back((void**)this->identifiers, (void*)TokenStream_GetToken(ts).value_string);
+            vpush_back(&this->identifiers, (void*)TokenStream_GetToken(ts).value_string);
             TokenStream_NextToken(ts);
-            this->types = (struct Type**)push_back((void**)this->types, Syntax_ProcessType(ts));
+            vpush_back(&this->types, Syntax_ProcessType(ts));
             TokenStream_NextToken(ts);
         }
         node->line_end = TokenStream_GetToken(ts).line_end;

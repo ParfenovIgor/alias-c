@@ -50,6 +50,10 @@ struct Vector vnew() {
     return v;
 }
 
+void vdrop(struct Vector *v) {
+    _free(v->ptr);
+}
+
 void vpush_back(struct Vector *v, void *x) {
     if (v->size + 1 > v->reserved) {
         int new_reserved = v->reserved * 2;

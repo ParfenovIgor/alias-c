@@ -1,7 +1,6 @@
 #pragma once
 
 #include <common.h>
-#include <ast.h>
 
 void **push_back(void **a, void *x);
 void **pop_back(void **a);
@@ -15,6 +14,7 @@ struct Vector {
 };
 
 struct Vector vnew();
+void vdrop(struct Vector*);
 void vpush_back(struct Vector *v, void *x);
 void vpop_back(struct Vector *v);
 void *vback(struct Vector *v);
