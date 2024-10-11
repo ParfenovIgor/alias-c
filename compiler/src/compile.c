@@ -400,6 +400,8 @@ void CompileDefinition(struct Node *node, struct Definition *this, struct CPCont
 void CompileReturn(struct Node *node, struct Return *this, struct CPContext *context) {
     CompileNode(this->expression, context);
     print_string(context->fd_text, "mov rax, [rsp - 8]\n");
+    print_string(context->fd_text, "leave\n");
+    print_string(context->fd_text, "ret\n");
 }
 
 struct Type *CompileAs(struct Node *node, struct As *this, struct CPContext *context) {
