@@ -129,16 +129,16 @@ int operation_priority(enum TokenType *operation) {
     return 5;
 }
 
-struct Node *process_operation(struct Node ***primaries, enum TokenType ***operations, struct TokenStream *ts) {
+struct Node *process_operation(struct Vector *primaries, struct Vector *operations, struct TokenStream *ts) {
     struct Node *root = (struct Node*)_malloc(sizeof(struct Node));
     root->node_ptr = NULL;
-    enum TokenType *token = (enum TokenType*)get_back((void**)*operations);
-    int sz = get_size((void**)*primaries);
+    enum TokenType *token = vback(operations);
+    int sz = vsize(primaries);
     if (sz < 2) {
         SyntaxError("Incorrect structure of the expression", TokenStream_GetToken(ts));
     }
-    struct Node *left = (*primaries)[sz - 2];
-    struct Node *right = (*primaries)[sz - 1];
+    struct Node *left = primaries->ptr[sz - 2];
+    struct Node *right = primaries->ptr[sz - 1];
     root->line_begin = left->line_begin;
     root->position_begin = left->position_begin;
     root->line_end = right->line_end;
@@ -162,19 +162,17 @@ struct Node *process_operation(struct Node ***primaries, enum TokenType ***opera
         posix_exit(3);
     }
 
-    *primaries = (struct Node**)pop_back((void**)*primaries);
-    *primaries = (struct Node**)pop_back((void**)*primaries);
-    *primaries = (struct Node**)push_back((void**)*primaries, root);
+    vpop_back(primaries);
+    vpop_back(primaries);
+    vpush_back(primaries, root);
     _free(token);
-    *operations = (enum TokenType**)pop_back((void**)*operations);
+    vpop_back(operations);
     return root;
 }
 
 struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
-    struct Node **primaries = (struct Node**)_malloc(sizeof(struct Node*));
-    primaries[0] = NULL;
-    enum TokenType **operations = (enum TokenType**)_malloc(sizeof(enum TokenType*));
-    operations[0] = NULL;
+    struct Vector primaries = vnew();
+    struct Vector operations = vnew();
     int ParenthesisLevel = 0;
     
     enum State {
@@ -189,7 +187,7 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
         struct Token token = TokenStream_GetToken(ts);
         enum TokenType *token_type = (enum TokenType*)_malloc(sizeof(enum TokenType));
         *token_type = token.type;
-        operations = (enum TokenType**)push_back((void**)operations, token_type);
+        vpush_back(&operations, token_type);
         TokenStream_NextToken(ts);
         ParenthesisLevel++;
         CurrentState = State_ParenthesisOpen;
@@ -198,12 +196,12 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
         struct Token token = TokenStream_GetToken(ts);
         enum TokenType *token_type = (enum TokenType*)_malloc(sizeof(enum TokenType));
         *token_type = token.type;
-        operations = (enum TokenType**)push_back((void**)operations, token_type);
+        vpush_back(&operations, token_type);
         TokenStream_NextToken(ts);
         CurrentState = State_UnaryOperation;
     }
     else {
-        primaries = (struct Node**)push_back((void**)primaries, Syntax_ProcessPrimary(ts));
+        vpush_back(&primaries, Syntax_ProcessPrimary(ts));
         CurrentState = State_Identifier;
     }
     
@@ -222,7 +220,7 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
             struct Token token = TokenStream_GetToken(ts);
             enum TokenType *token_type = (enum TokenType*)_malloc(sizeof(enum TokenType));
             *token_type = token.type;
-            operations = (enum TokenType**)push_back((void**)operations, token_type);
+            vpush_back(&operations, token_type);
             TokenStream_NextToken(ts);
             ParenthesisLevel++;
             CurrentState = State_ParenthesisOpen;
@@ -232,14 +230,14 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
                 CurrentState != State_ParenthesisOpen) {
                 SyntaxError("Unexpected ) in expression", TokenStream_GetToken(ts));
             }
-            while (*operations != NULL && *((enum TokenType*)get_back((void**)operations)) != TokenParenthesisOpen) {
+            while (vsize(&operations) != NULL && *((enum TokenType*)vback(&operations)) != TokenParenthesisOpen) {
                 process_operation(&primaries, &operations, ts);
             }
-            if (*operations == NULL || *((enum TokenType*)get_back((void*)operations)) != TokenParenthesisOpen) {
+            if (vsize(&operations) == NULL || *((enum TokenType*)vback(&operations)) != TokenParenthesisOpen) {
                 SyntaxError("Unexpected ) in expression", TokenStream_GetToken(ts));
             }
-            _free(get_back((void*)operations));
-            operations = (enum TokenType**)pop_back((void**)operations);
+            _free(vback(&operations));
+            vpop_back(&operations);
             TokenStream_NextToken(ts);
             ParenthesisLevel--;
             CurrentState = State_ParenthesisClose;
@@ -252,14 +250,14 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
             }
             else {
                 struct Token token = TokenStream_GetToken(ts);
-                while (*operations != NULL &&
-                    operation_priority((enum TokenType*)get_back((void**)operations)) <= 
-                        operation_priority((enum TokenType*)&token.type)) {
+                while (vsize(&operations) &&
+                    operation_priority((enum TokenType*)vback(&operations)) <= 
+                    operation_priority((enum TokenType*)&token.type)) {
                     process_operation(&primaries, &operations, ts);
                 }
                 enum TokenType *token_type = (enum TokenType*)_malloc(sizeof(enum TokenType));
                 *token_type = token.type;
-                operations = (enum TokenType**)push_back((void**)operations, token_type);
+                vpush_back(&operations, token_type);
                 TokenStream_NextToken(ts);
                 CurrentState = State_BinaryOperation;
             }
@@ -270,22 +268,22 @@ struct Node *Syntax_ProcessExpression(struct TokenStream *ts) {
                 CurrentState != State_ParenthesisOpen) {
                 SyntaxError("Unexpected identifier in expression", TokenStream_GetToken(ts));
             }
-            primaries = (struct Node**)push_back((void**)primaries, Syntax_ProcessPrimary(ts));
+            vpush_back(&primaries, Syntax_ProcessPrimary(ts));
             CurrentState = State_Identifier;
         }
     }
 
-    while ((*operations) != NULL) {
+    while (vsize(&operations)) {
         process_operation(&primaries, &operations, ts);
     }
 
-    if (get_size((void**)primaries) != 1) {
+    if (vsize(&primaries) != 1) {
         SyntaxError("Incorrect expression", TokenStream_GetToken(ts));
     }
 
-    struct Node *res = primaries[0];
-    _free(primaries);
-    _free(operations);
+    struct Node *res = primaries.ptr[0];
+    vdrop(&primaries);
+    vdrop(&operations);
 
     if (TokenStream_GetToken(ts).type == TokenAs) {
         struct Node *node = (struct Node*)_malloc(sizeof(struct Node));

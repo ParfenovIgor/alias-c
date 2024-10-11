@@ -1,12 +1,5 @@
 #pragma once
 
-#include <common.h>
-
-void **push_back(void **a, void *x);
-void **pop_back(void **a);
-void *get_back(void **a);
-int get_size(void **a);
-
 struct Vector {
     void **ptr;
     int size;
