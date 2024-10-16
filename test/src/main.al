@@ -19,7 +19,7 @@ func .foo(a <int, 0>) -> <int, 0> {
     return b
 }
 
-func Point.foo(a <int, 0>) -> <int, 0> {
+func Point.foo(this <Point, 1>, a <int, 0>) -> <int, 0> {
     this->x& <- a * a
 }
 
@@ -29,6 +29,7 @@ struct Pair {
 }
 
 func Pair.init(
+    this <Pair, 1>,
     a <int, 0>,
     b <int, 0>,
     c <int, 0>,
@@ -41,7 +42,7 @@ func Pair.init(
     this->p2->y& <- d
 }
 
-func Pair.apply_foo(a <int, 0>, b <int, 0>) -> <int, 0> {
+func Pair.apply_foo(this <Pair, 1>, a <int, 0>, b <int, 0>) -> <int, 0> {
     def _ <int, 0>
     _ := this->p1.foo(a)
     _ := this->p2.foo(b)
