@@ -67,4 +67,18 @@ void print_int(int fd, int n) {
     _free(str);
 }
 
-unsigned long pos = 0;
+int print_string_to_string(char *dest, const char *src) {
+    int i;
+    for (i = 0; src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    return i;
+}
+
+int print_int_to_string(char *dest, int n) {
+    char *str = to_string(n);
+    print_string_to_string(dest, str);
+    int res = _strlen(str);
+    _free(str);
+    return res;
+}
