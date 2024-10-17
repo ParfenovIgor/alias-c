@@ -421,39 +421,54 @@ const char *TokenColor(enum TokenType type,
 
 const char *Lexer_Highlight(const char *str) {
     struct TokenStream *token_stream = Lexer_Process(str, "");
-    
-    int buffer_size = 1000;
-    char *output = _malloc(buffer_size);
-    int pos = 0;
 
-    output[pos] = '['; pos++;
+    int cnt_tokens, buffer_len = 0;
+    for (cnt_tokens = 0; token_stream->stream[cnt_tokens].type != TokenEof; cnt_tokens++);
+    char **buffers = _malloc(sizeof(char*) * cnt_tokens);
     int brace_level = 0;
     int parenthesis_level = 0;
     int bracket_level = 0;
-
-    for (int i = 0; token_stream->stream[i].type != TokenEof; i++) {
-        int cnt = sprintf(output + pos,
-            "{\"lb\":%d,\"pb\":%d,\"le\":%d,\"pe\":%d,\"cl\":\"%s\"},",
-            token_stream->stream[i].line_begin,
-            token_stream->stream[i].position_begin,
-            token_stream->stream[i].line_end,
-            token_stream->stream[i].position_end,
+    
+    for (int i = 0; i < cnt_tokens; i++) {
+        const int buffer_size = 128;
+        buffers[i] = _malloc(sizeof(char) * buffer_size);
+        char *str = buffers[i];
+        int pos = 0;
+        pos += print_string_to_string(str + pos, "{\"lb\":");
+        pos += print_int_to_string(str + pos, token_stream->stream[i].line_begin);
+        pos += print_string_to_string(str + pos, ",\"pb\":");
+        pos += print_int_to_string(str + pos, token_stream->stream[i].position_begin);
+        pos += print_string_to_string(str + pos, ",\"le\":");
+        pos += print_int_to_string(str + pos, token_stream->stream[i].line_end);
+        pos += print_string_to_string(str + pos, ",\"pe\":");
+        pos += print_int_to_string(str + pos, token_stream->stream[i].position_end);
+        pos += print_string_to_string(str + pos, ",\"cl\":\"");
+        pos += print_string_to_string(str + pos,
             TokenColor(token_stream->stream[i].type,
-                &brace_level,
-                &parenthesis_level,
-                &bracket_level));
-        pos += cnt;
-        if (pos + 100 >= buffer_size) {
-            char *tmp = _malloc(buffer_size * 2);
-            _strncpy(tmp, output, pos);
-            buffer_size *= 2;
-            _free(output);
-            output = tmp;
+            &brace_level,
+            &parenthesis_level,
+            &bracket_level));
+        pos += print_string_to_string(str + pos, "\"}");
+        str[pos] = '\0';
+        buffer_len += pos;
+    }
+
+    buffer_len += cnt_tokens + 3;
+    char *buffer = _malloc(sizeof(char) * buffer_len);
+    buffer[0] = '[';
+    int pos = 1;
+    for (int i = 0; i < cnt_tokens; i++) {
+        _strcpy(buffer + pos, buffers[i]);
+        pos += _strlen(buffers[i]);
+        _free(buffers[i]);
+        if (i + 1 < cnt_tokens) {
+            buffer[pos] = ',';
+            pos++;
         }
     }
-    if (pos != 1) pos--;
-    output[pos] = ']'; pos++;
-    output[pos] = '\0';
+    buffer[pos] = ']';
+    pos++;
+    buffer[pos] = '\0';
 
-    return output;
+    return buffer;
 }
