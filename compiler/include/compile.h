@@ -3,4 +3,4 @@
 #include <ast.h>
 #include <settings.h>
 
-void Compile(struct Node*, struct Settings *settings);
+void compile_process(struct Node*, struct Settings *settings);

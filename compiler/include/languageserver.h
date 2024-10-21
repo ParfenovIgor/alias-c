@@ -1,3 +1,3 @@
 #pragma once
 
-void LanguageServer();
+void language_server();

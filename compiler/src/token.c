@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <memory.h>
 
-struct TokenStream *TokenStream_New() {
+struct TokenStream *tokenstream_new() {
     struct TokenStream *ts = (struct TokenStream*)_malloc(sizeof(struct TokenStream));
     ts->stream = _malloc(sizeof(struct Token));
     ts->size = 0;
@@ -11,7 +11,7 @@ struct TokenStream *TokenStream_New() {
     return ts;
 }
 
-void TokenStream_PushBack(struct TokenStream *this, struct Token token) {
+void tokenstream_push(struct TokenStream *this, struct Token token) {
     if (this->size + 1 > this->reserved) {
         int new_reserved = this->reserved * 2;
         struct Token *new_ptr = _malloc(new_reserved * sizeof(struct Token));
@@ -24,15 +24,15 @@ void TokenStream_PushBack(struct TokenStream *this, struct Token token) {
     this->size++;
 }
 
-struct Token TokenStream_GetToken(struct TokenStream *this) {
+struct Token tokenstream_get(struct TokenStream *this) {
     return this->stream[this->pos];
 }
 
-void TokenStream_NextToken(struct TokenStream *this) {
+void tokenstream_next(struct TokenStream *this) {
     this->pos++;
 }
 
-struct Token Token_Build(TokenType _type, int _line_begin, int _position_begin, int _line_end, int _position_end, const char *_filename) {
+struct Token token_build(TokenType _type, int _line_begin, int _position_begin, int _line_end, int _position_end, const char *_filename) {
     struct Token token;
     token.type = _type;
     token.line_begin = _line_begin;

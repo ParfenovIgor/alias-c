@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include <posix.h>
 
 bool _isalpha(char c) {
@@ -153,7 +154,7 @@ int write_file_descriptor(int fd, const char *data) {
 
 int write_file(const char *filename, const char *data) {
     int fd = posix_open(filename, O_CREAT | O_WRONLY, 0644);
-    int res = write_file_descriptor(fd, data);
+    int res = _fputs(fd, data);
     posix_close(fd);
     return res;
 }

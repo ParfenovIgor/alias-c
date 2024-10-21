@@ -14,7 +14,7 @@ void vdrop(struct Vector *v) {
     _free(v->ptr);
 }
 
-void vpush_back(struct Vector *v, void *x) {
+void vpush(struct Vector *v, void *x) {
     if (v->size + 1 > v->reserved) {
         int new_reserved = v->reserved * 2;
         void **new_ptr = _malloc(new_reserved * sizeof(void*));
@@ -27,7 +27,7 @@ void vpush_back(struct Vector *v, void *x) {
     v->size++;
 }
 
-void vpop_back(struct Vector *v) {
+void vpop(struct Vector *v) {
     v->size--;
 }
 

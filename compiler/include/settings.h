@@ -1,18 +1,14 @@
 #pragma once
 
-#include <common.h>
 #include <stdbool.h>
 
 struct Settings {
-    bool languageServer;
+    bool language_server;
     bool states;
     bool compile;
     bool assemble;
     bool link;
-    bool topMain;
-    const char *inputFilename;
-    const char *outputFilename;
-    const char *compileOutputFilename;
+    const char *filename_input;
+    const char *filename_output;
+    const char *filename_compile_output;
 };
-
-struct Settings *BuildSettings();

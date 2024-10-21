@@ -6,23 +6,24 @@
 #include <process.h>
 #include <posix.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
-struct Node *Parse(const char *filename) {
+struct Node *process_parse(const char *filename) {
     char *buffer = read_file(filename);
     if (!buffer) {
-        print_string(STDOUT, "Could not open file ");
-        print_string(STDOUT, filename);
-        print_string(STDOUT, "\n");
+        _fputs(STDOUT, "Could not open file ");
+        _fputs(STDOUT, filename);
+        _fputs(STDOUT, "\n");
         posix_exit(1);
     }
-    struct TokenStream *token_stream = Lexer_Process(buffer, filename);
-    struct Node *node = Syntax_Process(token_stream);
+    struct TokenStream *token_stream = lexer_process(buffer, filename);
+    struct Node *node = syntax_process(token_stream);
 
     return node;
 }
 
-void Assemble(const char *input, const char *output) {
+void process_assemble(const char *input, const char *output) {
     int pid = posix_fork();
     if (pid == 0) {
         const char *nasm = "/usr/bin/nasm";
@@ -32,7 +33,7 @@ void Assemble(const char *input, const char *output) {
     posix_wait4(pid, 0, 0, 0);
 }
 
-void Link(const char *input, const char *output) {
+void process_link(const char *input, const char *output) {
     int pid = posix_fork();
     if (pid == 0) {
         const char *gcc = "/usr/bin/ld";
@@ -42,23 +43,23 @@ void Link(const char *input, const char *output) {
     posix_wait4(pid, 0, 0, 0);
 }
 
-int Process(struct Settings *settings) {
+int process(struct Settings *settings) {
     // remove the .al extension from the input filename
-    char *filename = _strdup(settings->inputFilename);
+    char *filename = _strdup(settings->filename_input);
     if (_strlen(filename) < 3 || _strcmp(filename + _strlen(filename) - 3, ".al") != 0) {
-        print_string(STDOUT, "The filename has to end with .al\n");
+        _fputs(STDOUT, "The filename has to end with .al\n");
         posix_exit(1);
     }
     filename[_strlen(filename) - 3] = '\0';
 
     // generate AST
-    struct Node *node = Parse(settings->inputFilename);
+    struct Node *node = process_parse(settings->filename_input);
 
     if (settings->compile || settings->assemble || settings->link) {
         // choose the filename of the result of compilation
         char *compile_out_filename;
-        if (settings->compile && settings->outputFilename) {
-            compile_out_filename = _strdup(settings->outputFilename);
+        if (settings->compile && settings->filename_output) {
+            compile_out_filename = _strdup(settings->filename_output);
         }
         else {
             compile_out_filename = concat(filename, ".asm");
@@ -66,16 +67,16 @@ int Process(struct Settings *settings) {
 
         // open file and call the compiler
         posix_unlink(compile_out_filename);
-        settings->compileOutputFilename = compile_out_filename; // posix_open(compile_out_filename, 0001 | 0100, 0400 | 0200);
-        Compile(node, settings);
+        settings->filename_compile_output = compile_out_filename; // posix_open(compile_out_filename, 0001 | 0100, 0400 | 0200);
+        compile_process(node, settings);
         _free(compile_out_filename);
 
         if (settings->assemble || settings->link) {
             // choose the filename of the result of assembly
             char *assemble_in_filename, *assemble_out_filename;
             assemble_in_filename = concat(filename, ".asm");
-            if (settings->assemble && settings->outputFilename) {
-                assemble_out_filename = _strdup(settings->outputFilename);
+            if (settings->assemble && settings->filename_output) {
+                assemble_out_filename = _strdup(settings->filename_output);
             }
             else {
                 assemble_out_filename = concat(filename, ".o");
@@ -83,7 +84,7 @@ int Process(struct Settings *settings) {
 
             // call the NASM assembler
             posix_unlink(assemble_out_filename);
-            Assemble(assemble_in_filename, assemble_out_filename);
+            process_assemble(assemble_in_filename, assemble_out_filename);
             posix_unlink(assemble_in_filename);
             _free(assemble_in_filename);
             _free(assemble_out_filename);
@@ -92,8 +93,8 @@ int Process(struct Settings *settings) {
                 // choose the filename of the result of linking
                 char *link_in_filename, *link_out_filename;
                 link_in_filename = concat(filename, ".o");
-                if (!settings->link && settings->outputFilename) {
-                    link_out_filename = _strdup(settings->outputFilename);
+                if (!settings->link && settings->filename_output) {
+                    link_out_filename = _strdup(settings->filename_output);
                 }
                 else {
                     link_out_filename = _strdup(filename);
@@ -101,7 +102,7 @@ int Process(struct Settings *settings) {
 
                 // call the ld linker
                 posix_unlink(link_out_filename);
-                Link(link_in_filename, link_out_filename);
+                process_link(link_in_filename, link_out_filename);
                 posix_unlink(link_in_filename);
                 _free(link_in_filename);
                 _free(link_out_filename);
