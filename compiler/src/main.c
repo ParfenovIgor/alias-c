@@ -1,11 +1,8 @@
-#include <common.h>
 #include <process.h>
 #include <settings.h>
 #include <languageserver.h>
-#include <posix.h>
 #include <string.h>
 #include <stdio.h>
-#include <heap.h>
 
 void help() {
     _puts("Syntax: calias [flags] file [flags]");
@@ -15,8 +12,19 @@ void help() {
     _puts("  -c        Compile program to Asm code.");
     _puts("  -a        Compile program and assemble it using nasm to object file.");
     _puts("  -l        Compile, assemble and link program using gcc to executable file.");
-    _puts("  -m        Enable top level main function.");
     _puts("  -o        Set output file name. File name has to follow this flag.");
+}
+
+struct Settings *build_settings() {
+    struct Settings *settings = (struct Settings*)_malloc(sizeof(struct Settings));
+    settings->language_server = false;
+    settings->states = false;
+    settings->compile = false;
+    settings->assemble = false;
+    settings->link = false;
+    settings->filename_input = NULL;
+    settings->filename_output = NULL;
+    settings->filename_compile_output = NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -25,11 +33,11 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     else {
-        struct Settings *settings = BuildSettings();
+        struct Settings *settings = build_settings();
         for (int i = 1; i < argc; i++) {
             const char *arg = argv[i];
             if (_strcmp(arg, "-ls") == 0) {
-                settings->languageServer = true;
+                settings->language_server = true;
             }
             else if (_strcmp(arg, "-s") == 0) {
                 settings->states = true;
@@ -43,32 +51,29 @@ int main(int argc, char *argv[]) {
             else if (_strcmp(arg, "-l") == 0) {
                 settings->link = true;
             }
-            else if (_strcmp(arg, "-m") == 0) {
-                settings->topMain = true;
-            }
             else if (_strcmp(arg, "-o") == 0) {
                 if (i + 1 == argc) {
                     _puts("Filename has to be specified after -o flag");
                     return 1;
                 }
                 const char *str = _strdup(argv[i + 1]);
-                settings->outputFilename = str;
+                settings->filename_output = str;
                 i++;
             }
             else {
-                settings->inputFilename = _strdup(arg);
+                settings->filename_input = _strdup(arg);
             }
         }
 
-        if (settings->languageServer) {
-            LanguageServer();
+        if (settings->language_server) {
+            language_server();
         }
 
-        if (!settings->inputFilename) {
+        if (!settings->filename_input) {
             help();
             return 0;
         }
 
-        return Process(settings);
+        return process(settings);
     }
 }

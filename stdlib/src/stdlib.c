@@ -1,6 +1,43 @@
 #include <stdlib.h>
 #include <heap.h>
 
+char *_itoa(int n) {
+    if (n == 0) {
+        char *str = (char*)_malloc(sizeof(char) * 2);
+        str[0] = '0';
+        str[1] = '\0';
+        return str;
+    }
+
+    int sign = 1;
+    if (n < 0) {
+        sign = -1;
+        n = -n;
+    }
+
+    int len = 0;
+    int m = n;
+    while (m) {
+        len++;
+        m /= 10;
+    }
+    if (sign == -1) {
+        len++;
+    }
+    char *str = (char*)_malloc(sizeof(char) * (len + 1));
+    if (sign == -1) {
+        str[0] = '-';
+    }
+    str[len] = '\0';
+    len--;
+    while (n) {
+        str[len] = (char)(n % 10 + '0');
+        n /= 10;
+        len--;
+    }
+    return str;
+}
+
 heap_t *heap;
 
 void _init_malloc() {

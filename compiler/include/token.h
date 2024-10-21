@@ -60,9 +60,9 @@ struct TokenStream {
     int pos;
 };
 
-struct TokenStream *TokenStream_New();
-void TokenStream_PushBack(struct TokenStream *this, struct Token token);
-struct Token TokenStream_GetToken(struct TokenStream *this);
-void TokenStream_NextToken(struct TokenStream *this);
+struct TokenStream *tokenstream_new();
+void tokenstream_push(struct TokenStream *this, struct Token token);
+struct Token tokenstream_get(struct TokenStream *this);
+void tokenstream_next(struct TokenStream *this);
 
-struct Token Token_Build(TokenType _type, int _line_begin, int _position_begin, int _line_end, int _position_end, const char *_filename);
+struct Token token_build(TokenType _type, int _line_begin, int _position_begin, int _line_end, int _position_end, const char *_filename);

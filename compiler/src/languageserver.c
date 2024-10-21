@@ -3,7 +3,7 @@
 #include <lexer.h>
 #include <string.h>
 
-void LanguageServer(int c, char **v) {
+void language_server(int c, char **v) {
     serve_forever("12913");
 }
 
@@ -12,7 +12,7 @@ void route() {
 
     POST("/highlight")
     {
-        const char *output = Lexer_Highlight(payload);
+        const char *output = lexer_highlight(payload);
         _puts("HTTP/1.1 200 OK\r\n\r\n");
         _puts(output);
     }

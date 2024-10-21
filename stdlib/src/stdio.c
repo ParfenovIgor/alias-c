@@ -4,30 +4,65 @@
 #include <posix.h>
 
 int _puts(const char *str) {
-    posix_write(STDOUT, str, _strlen(str));
-    posix_write(STDOUT, "\n", 1);
-    return 0;
+    int res = 0;
+    res += _fputs(STDOUT, str);
+    res += _fputs(STDOUT, "\n");
+    return res;
 }
 
 int _puti(int n) {
-    const int N = 10;
-    char arr[N];
-    int ptr = N - 1;
-    
-    if (n == 0) {
-        arr[ptr] = '0';
-        ptr--;
-    }
-    else {
-        while (n) {
-            arr[ptr] = '0' + n % 10;
-            ptr--;
-            n /= 10;
-        }
-    }
+    int res = 0;
+    res += _fputi(STDOUT, n);
+    res += _fputs(STDOUT, "\n");
+    return res;
+}
 
-    ptr++;
-    posix_write(STDOUT, arr + ptr, N - ptr);
-    posix_write(STDOUT, "\n", 1);
-    return 0;
+int _fputs(int fd, const char *str) {
+    return posix_write(fd, str, _strlen(str));
+}
+
+int _fputs2(int fd, const char *str1, const char *str2) {
+    int res = 0;
+    res += _fputs(fd, str1);
+    res += _fputs(fd, str2);
+    return res;
+}
+
+int _fputs3(int fd, const char *str1, const char *str2, const char *str3) {
+    int res = 0;
+    res += _fputs(fd, str1);
+    res += _fputs(fd, str2);
+    res += _fputs(fd, str3);
+    return res;
+}
+
+int _fputsi(int fd, const char *str1, int x, const char *str2) {
+    int res = 0;
+    res += _fputs(fd, str1);
+    res += _fputi(fd, x);
+    res += _fputs(fd, str2);
+    return res;
+}
+
+int _fputi(int fd, int n) {
+    char *str = _itoa(n);
+    int res = posix_write(fd, str, _strlen(str));
+    _free(str);
+    return res;
+}
+
+int _sputs(char *dest, const char *src) {
+    int i;
+    for (i = 0; src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    return i;
+}
+
+int _sputi(char *dest, int n) {
+    char *str = _itoa(n);
+    _sputs(dest, str);
+    int res = _strlen(str);
+    _free(str);
+    return res;
 }
