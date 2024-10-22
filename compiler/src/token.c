@@ -32,13 +32,13 @@ void tokenstream_next(struct TokenStream *this) {
     this->pos++;
 }
 
-struct Token token_build(TokenType _type, int _line_begin, int _position_begin, int _line_end, int _position_end, const char *_filename) {
+struct Token token_build(TokenType type, int line_begin, int position_begin, int line_end, int position_end, const char *filename) {
     struct Token token;
-    token.type = _type;
-    token.line_begin = _line_begin;
-    token.position_begin = _position_begin;
-    token.line_end = _line_end;
-    token.position_end = _position_end;
-    token.filename = _filename;
+    token.type = type;
+    token.line_begin = line_begin;
+    token.position_begin = position_begin;
+    token.line_end = line_end;
+    token.position_end = position_end;
+    token.filename = filename;
     return token;
 }

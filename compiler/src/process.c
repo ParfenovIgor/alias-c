@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
-struct Node *process_parse(const char *filename) {
+struct Node *process_parse(const char *filename, struct Settings *settings) {
     char *buffer = read_file(filename);
     if (!buffer) {
         _fputs(STDOUT, "Could not open file ");
@@ -18,7 +18,7 @@ struct Node *process_parse(const char *filename) {
         posix_exit(1);
     }
     struct TokenStream *token_stream = lexer_process(buffer, filename);
-    struct Node *node = syntax_process(token_stream);
+    struct Node *node = syntax_process(token_stream, settings);
 
     return node;
 }
@@ -53,7 +53,7 @@ int process(struct Settings *settings) {
     filename[_strlen(filename) - 3] = '\0';
 
     // generate AST
-    struct Node *node = process_parse(settings->filename_input);
+    struct Node *node = process_parse(settings->filename_input, settings);
 
     if (settings->compile || settings->assemble || settings->link) {
         // choose the filename of the result of compilation
