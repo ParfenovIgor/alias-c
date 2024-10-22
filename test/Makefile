@@ -1,3 +1,4 @@
+ALFLAGS=-i altlib ../altlib/include/
 LDFLAGS=-z noexecstack
 
 SRCS_AL := $(wildcard src/*.al)
@@ -12,7 +13,7 @@ all: $(OBJS_AL)
 	diff $(BUILD_DIR)/test/output output || (echo "Test failed"; exit 1)
 
 $(BUILD_DIR)/test/%.o: src/%.al make_dir
-	$(BUILD_DIR)/calias -a $< -o $@
+	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $@
 
 make_dir:
 	mkdir -p $(BUILD_DIR)/test

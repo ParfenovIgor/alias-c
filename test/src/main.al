@@ -1,7 +1,7 @@
-include "include/stdio.hal"
-include "include/stdlib.hal"
-include "../altlib/include/posix.hal"
-include "../altlib/include/algorithm.hal"
+include ."include/stdio.hal"
+include ."include/stdlib.hal"
+include altlib."posix.hal"
+include altlib."algorithm.hal"
 
 struct Point {
     x <int, 0>

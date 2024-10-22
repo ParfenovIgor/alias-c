@@ -35,5 +35,5 @@ struct CPContext {
     int fd_bss;
 };
 
-struct VariableInfo *context_find_variable(struct CPContext *context, const char *identifier);
-struct StructInfo *context_find_struct(struct CPContext *context, const char *identifier);
+struct VariableInfo *context_find_variable(struct CPContext*, const char*);
+struct StructInfo *context_find_struct(struct CPContext*, const char*);
