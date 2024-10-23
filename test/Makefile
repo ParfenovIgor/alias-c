@@ -1,22 +1,14 @@
-ALFLAGS=-i altlib ../altlib/include/
-LDFLAGS=-z noexecstack
+BUILD_DIR=$(abspath build)
 
-SRCS_AL := $(wildcard src/*.al)
-OBJS_AL := $(patsubst src/%.al, $(BUILD_DIR)/test/%.o, $(SRCS_AL))
+.PHONY: unit integration
 
-OBJS_STDLIB := $(wildcard $(BUILD_DIR)/stdlib/*.o)
-OBJS_ALTLIB := $(wildcard $(BUILD_DIR)/altlib/*.o)
+all: unit integration
 
-all: $(OBJS_AL)
-	ld $(LDFLAGS) -o $(BUILD_DIR)/test/testal $(OBJS_AL) $(OBJS_STDLIB) $(OBJS_ALTLIB)
-	$(BUILD_DIR)/test/testal > $(BUILD_DIR)/test/output
-	diff $(BUILD_DIR)/test/output output || (echo "Test failed"; exit 1)
+unit:
+	$(MAKE) -C unit BUILD_DIR=$(BUILD_DIR)
 
-$(BUILD_DIR)/test/%.o: src/%.al make_dir
-	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $@
-
-make_dir:
-	mkdir -p $(BUILD_DIR)/test
+integration:
+	$(MAKE) -C integration BUILD_DIR=$(BUILD_DIR)
 
 clean:
-	rm -r $(BUILD_DIR)/test
+	rm -r build

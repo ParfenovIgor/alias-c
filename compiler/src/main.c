@@ -13,7 +13,8 @@ void help() {
     _puts("  -c                        Compile program to Asm code.");
     _puts("  -a                        Compile program and assemble it using nasm to object file.");
     _puts("  -l                        Compile, assemble and link program using gcc to executable file.");
-    _puts("  -i <name> <path>          And include directory.");
+    _puts("  -t                        Compile to testing.");
+    _puts("  -i <name> <path>          Add include directory.");
     _puts("  -o <file>                 Set output file name.");
 }
 
@@ -24,6 +25,7 @@ struct Settings *build_settings() {
     settings->compile = false;
     settings->assemble = false;
     settings->link = false;
+    settings->testing = false;
     settings->include_names = vnew();
     settings->include_paths = vnew();
     settings->filename_input = NULL;
@@ -72,6 +74,9 @@ int main(int argc, char *argv[]) {
                 const char *str = _strdup(argv[i + 1]);
                 settings->filename_output = str;
                 i++;
+            }
+            else if (_strcmp(arg, "-t") == 0) {
+                settings->testing = true;
             }
             else {
                 settings->filename_input = _strdup(arg);

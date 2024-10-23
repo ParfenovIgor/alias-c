@@ -23,6 +23,13 @@ struct Node *process_parse(const char *filename, struct Settings *settings) {
     return node;
 }
 
+struct Node *process_parse_fd(int fd, struct Settings *settings) {
+    struct TokenStream *token_stream = lexer_process(read_file_descriptor(fd), "");
+    struct Node *node = syntax_process(token_stream, settings);
+
+    return node;
+}
+
 void process_assemble(const char *input, const char *output) {
     int pid = posix_fork();
     if (pid == 0) {

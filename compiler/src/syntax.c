@@ -52,45 +52,6 @@ struct Node *syntax_process_block(struct TokenStream *ts, struct Settings *st, b
             tokenstream_next(ts);
             continue;
         }
-        if (tokenstream_get(ts).type == TokenInclude) {
-            tokenstream_next(ts);
-            const char *include_path = "";
-            if (tokenstream_get(ts).type == TokenIdentifier) {
-                const char *include_name = tokenstream_get(ts).value_string;
-                for (int i = 0; i < vsize(&st->include_names); i++) {
-                    if (!_strcmp(include_name, st->include_names.ptr[i])) {
-                        include_path = st->include_paths.ptr[i];
-                        break;
-                    }
-                }
-                if (_strlen(include_path) == 0) {
-                    error_syntax("Include name was not declared", tokenstream_get(ts));
-                }
-                tokenstream_next(ts);
-            }
-            pass_next(ts, TokenDot, ". expected in include");
-            check_next(ts, TokenString, "String literal expected in include");
-            char *filename = concat(include_path, tokenstream_get(ts).value_string);
-            tokenstream_next(ts);
-            int fd = posix_open(filename, 0, 0);
-            if (fd <= 0) {
-                const char *buffer = concat("Could not open file ", filename);
-                error_syntax(buffer, tokenstream_get(ts));
-            }
-            else {
-                posix_close(fd);
-            }
-            struct Node *_node = process_parse(filename, st);
-            struct Block *inc_block = (struct Block*)_node->node_ptr;
-            for (int i = 0; i < vsize(&inc_block->statement_list); i++) {
-                vpush(&this->statement_list, inc_block->statement_list.ptr[i]);
-            }
-            vdrop(&inc_block->statement_list);
-            _free(filename);
-            _free(inc_block);
-            _free(_node);
-            continue;
-        }
         vpush(&this->statement_list, syntax_process_statement(ts, st));
     }
     if (braces && tokenstream_get(ts).type != TokenBraceClose) {
@@ -544,6 +505,63 @@ struct FunctionSignature *syntax_process_function_signature(struct TokenStream *
 struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *st) {
     if (tokenstream_get(ts).type == TokenBraceOpen) {
         struct Node *node = syntax_process_block(ts, st, true);
+        tokenstream_next(ts);
+        return node;
+    }
+    if (tokenstream_get(ts).type == TokenInclude) {
+        struct Node *node = init_node(ts);
+        struct Include *this = (struct Include*)_malloc(sizeof(struct Include));
+        node->node_ptr = this;
+        node->node_type = NodeInclude;
+
+        tokenstream_next(ts);
+        const char *include_path = "";
+        if (tokenstream_get(ts).type == TokenIdentifier) {
+            const char *include_name = tokenstream_get(ts).value_string;
+            for (int i = 0; i < vsize(&st->include_names); i++) {
+                if (!_strcmp(include_name, st->include_names.ptr[i])) {
+                    include_path = st->include_paths.ptr[i];
+                    break;
+                }
+            }
+            if (_strlen(include_path) == 0) {
+                error_syntax("Include name was not declared", tokenstream_get(ts));
+            }
+            tokenstream_next(ts);
+        }
+        pass_next(ts, TokenDot, ". expected in include");
+        check_next(ts, TokenString, "String literal expected in include");
+        char *filename = concat(include_path, tokenstream_get(ts).value_string);
+        tokenstream_next(ts);
+        int fd = posix_open(filename, 0, 0);
+        if (fd <= 0) {
+            const char *buffer = concat("Could not open file ", filename);
+            error_syntax(buffer, tokenstream_get(ts));
+        }
+        else {
+            posix_close(fd);
+        }
+        struct Node *_node = process_parse(filename, st);
+        struct Block *inc_block = (struct Block*)_node->node_ptr;
+        this->statement_list = inc_block->statement_list;
+        _free(filename);
+        _free(inc_block);
+        _free(_node);
+        return node;
+    }
+    if (tokenstream_get(ts).type == TokenTest) {
+        struct Node *node = init_node(ts);
+        struct Test *this = (struct Test*)_malloc(sizeof(struct Test));
+        node->node_ptr = this;
+        node->node_type = NodeTest;
+        tokenstream_next(ts);
+        check_next(ts, TokenIdentifier, "Identifier expected in test");
+        this->name = _strdup(tokenstream_get(ts).value_string);
+        tokenstream_next(ts);
+        check_next(ts, TokenBraceOpen, "{ expected in test block");
+        this->block = syntax_process_block(ts, st, true);
+        node->line_end = tokenstream_get(ts).line_end;
+        node->position_end = tokenstream_get(ts).position_end;
         tokenstream_next(ts);
         return node;
     }

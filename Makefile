@@ -1,9 +1,5 @@
 BUILD_DIR=$(abspath build)
 
-ASFLAGS=-f elf64
-CFLAGS=-g -fno-stack-protector
-LDFLAGS=-z noexecstack
-
 .PHONY: compiler stdlib altlib test clean
 
 compiler: stdlib
