@@ -29,6 +29,11 @@ struct CPContext {
     int branch_index;
     int data_index;
     int bss_index;
+    
+    struct Vector test_names;
+    bool testing;
+
+    bool header;
 
     int fd_text;
     int fd_data;

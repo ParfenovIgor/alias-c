@@ -9,6 +9,7 @@ struct Settings {
     bool compile;
     bool assemble;
     bool link;
+    bool testing;
     struct Vector include_names;
     struct Vector include_paths;
     const char *filename_input;

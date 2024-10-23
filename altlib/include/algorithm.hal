@@ -1,2 +1,0 @@
-proto .al_min(a <int, 0>, b <int, 0>) -> <int, 0>
-proto .al_max(a <int, 0>, b <int, 0>) -> <int, 0>

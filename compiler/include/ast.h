@@ -6,6 +6,8 @@
 
 enum NodeType {
     NodeBlock,
+    NodeInclude,
+    NodeTest,
     NodeIf,
     NodeWhile,
     NodeFunctionDefinition,
@@ -39,6 +41,8 @@ enum NodeType {
 
 struct Node;
 struct Block;
+struct Include;
+struct Test;
 struct If;
 struct While;
 struct FunctionDefinition;
@@ -85,6 +89,15 @@ struct Node {
 
 struct Block {
     struct Vector statement_list;
+};
+
+struct Include {
+    struct Vector statement_list;
+};
+
+struct Test {
+    const char *name;
+    struct Node *block;
 };
 
 struct If {

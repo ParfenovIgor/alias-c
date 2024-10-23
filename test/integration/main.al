@@ -1,7 +1,11 @@
-include ."include/stdio.hal"
-include ."include/stdlib.hal"
-include altlib."posix.hal"
-include altlib."algorithm.hal"
+proto ._malloc(sz <int, 0>) -> <int, 1>
+proto ._free(pt <int, 1>) -> <int, 0>
+
+proto ._puts(n <char, 1>) -> <int, 0>
+proto ._puti(n <int, 0>) -> <int, 0>
+
+include altlib."posix.al"
+include altlib."algorithm.al"
 
 struct Point {
     x <int, 0>

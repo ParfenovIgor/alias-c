@@ -1,4 +1,5 @@
 #include <ast.h>
+#include <process.h>
 #include <compile.h>
 #include <settings.h>
 #include <vector.h>
@@ -20,6 +21,39 @@ const char *regs[] = {
 
 struct Type *CompileNode(struct Node *node, struct CPContext *context);
 
+void GenerateTestFunction(struct CPContext *context, struct Settings *settings) {
+    _fputs(context->fd_text, "global test\n");
+    _fputs(context->fd_text, "test:\n");
+    int idx = context->branch_index;
+    context->branch_index += 2;
+    for (int i = 0; i < vsize(&context->test_names); i++) {
+        _fputs3(context->fd_text, "call ", context->test_names.ptr[i], "\n");
+        _fputs(context->fd_text, "cmp rax, 0\n");
+        _fputsi(context->fd_text, "jne _L", idx, "\n");
+    }
+    _fputs(context->fd_text, "mov rdi, 0\n");
+    _fputsi(context->fd_text, "jmp _L", idx + 1, "\n");
+    _fputsi(context->fd_text, "_L", idx, ":\n");
+    _fputs(context->fd_text, "mov rdi, 1\n");
+    _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    _fputs(context->fd_text, "mov rax, 0x3c\n");
+    _fputs(context->fd_text, "syscall\n");
+//     int fd[2];
+//     posix_pipe(fd);
+// 
+//     _fputs(fd[1], "func ^.run_tests() -> <int, 0> {\n");
+//     for (int i = 0; i < vsize(&context->test_names); i++) {
+//         _fputs3(fd[1], "if (.", context->test_names.ptr[i], "() = 0) {} else { return 1 }\n");
+//     }
+//     _fputs(fd[1], "return 0\n");
+//     _fputs(fd[1], "}\n");
+//     posix_close(fd[1]);
+// 
+//     struct Node *node = process_parse_fd(fd[0], settings);
+//     posix_close(fd[0]);
+//     return node;
+}
+
 void compile_process(struct Node *node, struct Settings *settings) {
     struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
     context->variables = vnew();
@@ -32,6 +66,9 @@ void compile_process(struct Node *node, struct Settings *settings) {
     context->branch_index = 0;
     context->data_index = 0;
     context->bss_index = 0;
+    context->test_names = vnew();
+    context->testing = settings->testing;
+    context->header = false;
     
     int fd[2];
 
@@ -54,15 +91,16 @@ void compile_process(struct Node *node, struct Settings *settings) {
     _fputs(context->fd_text, "; ");
     _fputs(context->fd_text, node->filename);
     _fputs(context->fd_text, " ");
-    _fputi   (context->fd_text, node->line_begin + 1);
+    _fputi(context->fd_text, node->line_begin + 1);
     _fputs(context->fd_text, ":");
-    _fputi   (context->fd_text, node->position_begin + 1);
+    _fputi(context->fd_text, node->position_begin + 1);
     _fputs(context->fd_text, " -> program\n");
 
     CompileNode(node, context);
 
-    _fputs(context->fd_text, "leave\n");
-    _fputs(context->fd_text, "ret\n");
+    if (context->testing) {
+        GenerateTestFunction(context, settings);
+    }
 
     posix_close(context->fd_text);
     posix_close(context->fd_data);
@@ -105,6 +143,47 @@ void CompileBlock(struct Node *node, struct Block *this, struct CPContext *conte
     context->sf_pos = old_sf_pos;
 }
 
+void CompileInclude(struct Node *node, struct Include *this, struct CPContext *context) {
+    int old_header = context->header;
+    context->header = true;
+    for (int i = 0; i < vsize(&this->statement_list); i++) {
+        CompileNode(this->statement_list.ptr[i], context);
+    }
+    context->header = old_header;
+}
+
+void CompileTest(struct Node *node, struct Test *this, struct CPContext *context) {
+    vpush(&context->test_names, (void*)this->name);
+    char *identifier_end = concat("_T", this->name);
+
+    if (context->header) {
+        _fputs3(context->fd_text, "extern ", this->name, "\n");
+        return;
+    }
+
+    _fputs3(context->fd_text, "jmp ", identifier_end, "\n");
+    _fputs2(context->fd_text, this->name, ":\n");
+    _fputs(context->fd_text, "push rbp\n");
+    _fputs(context->fd_text, "mov rbp, rsp\n");
+
+    struct Vector variables_tmp = context->variables;
+    int sf_pos_tmp = context->sf_pos;
+    context->variables = vnew();
+    context->sf_pos = -8;
+
+    CompileNode(this->block, context);
+    
+    vdrop(&context->variables);
+    context->variables = variables_tmp;
+    context->sf_pos = sf_pos_tmp;
+    
+    _fputs(context->fd_text, "leave\n");
+    _fputs(context->fd_text, "ret\n");
+    _fputs2(context->fd_text, identifier_end, ":\n");
+
+    _free(identifier_end);
+}
+
 void CompileIf(struct Node *node, struct If *this, struct CPContext *context) {
     int sz = vsize(&this->condition_list);
     int idx = context->branch_index;
@@ -141,7 +220,7 @@ void CompileWhile(struct Node *node, struct While *this, struct CPContext *conte
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
 }
 
-void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) {
+void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) { 
     char *identifier_front, *identifier_back, *identifier_end;
     if (this->struct_name) {
         identifier_front = concat(this->struct_name, this->name);
@@ -158,9 +237,20 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     }
     identifier_end = concat("_E", identifier_back);
 
+    vpush(&context->function_name_front, _strdup(identifier_front));
+    vpush(&context->function_name_back, _strdup(identifier_back));
+    vpush(&context->function_signature, this->signature);
+
     if (this->external) {
-        _fputs3(context->fd_text, "global ", identifier_back, "\n");
+        if (context->header) {
+            _fputs3(context->fd_text, "extern ", identifier_back, "\n");
+            return;
+        }
+        else {
+            _fputs3(context->fd_text, "global ", identifier_back, "\n");
+        }
     }
+
     _fputs3(context->fd_text, "jmp ", identifier_end, "\n");
     _fputs2(context->fd_text, identifier_back, ":\n");
     _fputs(context->fd_text, "push rbp\n");
@@ -170,10 +260,6 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     int sf_pos_tmp = context->sf_pos;
     context->variables = vnew();
     context->sf_pos = -8;
-
-    vpush(&context->function_name_front, _strdup(identifier_front));
-    vpush(&context->function_name_back, _strdup(identifier_back));
-    vpush(&context->function_signature, this->signature);
 
     if (this->struct_name) {
         if (vsize(&this->signature->identifiers)) {
@@ -203,6 +289,7 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     }
     vdrop(&context->variables);
     context->variables = variables_tmp;
+    context->sf_pos = sf_pos_tmp;
     
     _fputs(context->fd_text, "leave\n");
     _fputs(context->fd_text, "ret\n");
@@ -406,7 +493,7 @@ struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, s
         }
     }
     if (function_idx == -1) {
-        error_semantic("Function was not defined", node);
+        error_semantic("Function was not declared", node);
     }
 
     struct FunctionSignature *signature = context->function_signature.ptr[function_idx];
@@ -595,14 +682,24 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     _fputs(context->fd_text, "; ");
     _fputs(context->fd_text, node->filename);
     _fputs(context->fd_text, " ");
-    _fputi   (context->fd_text, node->line_begin + 1);
+    _fputi(context->fd_text, node->line_begin + 1);
     _fputs(context->fd_text, ":");
-    _fputi   (context->fd_text, node->position_begin + 1);
+    _fputi(context->fd_text, node->position_begin + 1);
     _fputs(context->fd_text, " -> ");
 
     if (node->node_type == NodeBlock) {
         _fputs(context->fd_text, "block\n");
         CompileBlock(node, (struct Block*)node->node_ptr, context);
+        return type_build("", 0);
+    }
+    if (node->node_type == NodeInclude) {
+        _fputs(context->fd_text, "include\n");
+        CompileInclude(node, (struct Include*)node->node_ptr, context);
+        return type_build("", 0);
+    }
+    if (node->node_type == NodeTest) {
+        _fputs(context->fd_text, "test\n");
+        CompileTest(node, (struct Test*)node->node_ptr, context);
         return type_build("", 0);
     }
     else if (node->node_type == NodeIf) {
