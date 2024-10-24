@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta http-equip="Context-Type" context="text/html">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Alias Language Reference</title>
+    <style>
+      :root{
+         --nav-width: 26em;
+         --nav-margin-l: 1em;
+      }
+      body{
+        font-family: system-ui, -apple-system, Roboto, "Segoe UI", sans-serif;
+        margin: 0;
+        line-height: 1.5;
+      }
+
+      #contents {
+        max-width: 60em;
+        margin: auto;
+        padding: 0 1em;
+      }
+      #navigation {
+        padding: 0 1em;
+      }
+
+      @media screen and (min-width: 1025px) {
+        header {
+          margin-left: calc(var(--nav-width) + var(--nav-margin-l));
+        }
+        header h1 {
+          margin: auto;
+          max-width: 30em;
+        }
+        #navigation {
+          overflow: auto;
+          width: var(--nav-width);
+          height: 100vh;
+          position: fixed;
+          top:0;
+          left:0;
+          bottom:0;
+          padding: unset;
+          margin-left: var(--nav-margin-l);
+        }
+        #navigation nav ul {
+          padding-left: 1em;
+        }
+        #contents-wrapper {
+          margin-left: calc(var(--nav-width) + var(--nav-margin-l));
+        }
+      }
+
+      code {
+        background: #f8f8f8;
+        border: 1px dotted silver;
+        padding-left: 0.3em;
+        padding-right: 0.3em;
+      }
+      pre > code {
+        display: block;
+        overflow: auto;
+        padding: 0.5em;
+        border: 1px solid #eee;
+        line-height: normal;
+      }
+    </style>
+</head>
