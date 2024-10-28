@@ -167,7 +167,7 @@ func ^._start() -> <int, 0> {
 
     def x <int, 0>; x := 32
     def y <int, 0>; y := 48
-    _ := ._puti(.al_min(x, y))
+    _ := ._puti(.min_(x, y))
 
     // _ := .posix_fork();
     _ := .foo(1234);
