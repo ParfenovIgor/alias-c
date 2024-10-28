@@ -525,8 +525,19 @@ struct Type *CompileDereference(struct Node *node, struct Dereference *this, str
     struct Type *_type = CompileNode(this->expression, context);
     if (_type->degree == 0) error_semantic("Dereference of not pointer value", node);
     _type->degree--;
+    int _type_size = type_size(_type, context, false);
 
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    if (_type_size == 1) {
+        _fputs(context->fd_text, "mov rbx, 0\n");
+        _fputs(context->fd_text, "mov bl, [rax]\n");
+    }
+    else if (_type_size == 8) {
+        _fputs(context->fd_text, "mov rbx, [rax]\n");
+    }
+    else {
+        error_semantic("Not implemented", node);
+    }
     _fputs(context->fd_text, "mov rbx, [rax]\n");
     _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
 
@@ -582,12 +593,22 @@ struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContex
     context->sf_pos += 8;
     _fputs(context->fd_text, "mov rax, [rsp - 16]\n");
     _type->degree--;
-    _fputsi(context->fd_text, "mov rbx, ", type_size(_type, context, false), "\n");
+    int _type_size = type_size(_type, context, false);
+    _fputsi(context->fd_text, "mov rbx, ", _type_size, "\n");
     _type->degree++;
     _fputs(context->fd_text, "mul rbx\n");
     _fputs(context->fd_text, "add rax, [rsp - 8]\n");
     if (!this->address) {
-        _fputs(context->fd_text, "mov rbx, [rax]\n");
+        if (_type_size == 1) {
+            _fputs(context->fd_text, "mov rbx, 0\n");
+            _fputs(context->fd_text, "mov bl, [rax]\n");
+        }
+        else if (_type_size == 8) {
+            _fputs(context->fd_text, "mov rbx, [rax]\n");
+        }
+        else {
+            error_semantic("Not implemented", node);
+        }
         _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
         _type->degree--;
     }
