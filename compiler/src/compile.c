@@ -241,7 +241,7 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     vpush(&context->function_name_back, _strdup(identifier_back));
     vpush(&context->function_signature, this->signature);
 
-    if (this->external) {
+    if (this->external || this->struct_name) {
         if (context->header) {
             _fputs3(context->fd_text, "extern ", identifier_back, "\n");
             return;
