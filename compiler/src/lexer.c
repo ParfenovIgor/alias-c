@@ -144,6 +144,7 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         else if (append_token(str, N, &i, "proto", TokenProto, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "struct", TokenStruct, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "def", TokenDef, false, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "typedef", TokenTypedef, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "return", TokenReturn, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "as", TokenAs, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "const", TokenConst, false, line, &position, filename, token_stream)) {}
@@ -165,6 +166,7 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         else if (append_token(str, N, &i, "!!", TokenIndex, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "->", TokenGetField, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "^", TokenCaret, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "#", TokenSharp, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "+", TokenPlus, true, line, &position, filename, token_stream)) {}
         else if (check_token(str, N, "-", i, true)) {
             if (i + 2 <= N && _isdigit(str[i + 1]) && 
@@ -351,6 +353,7 @@ const char *TokenColor(enum TokenType type,
         Color_Blue,         // TokenProto,
         Color_Blue,         // TokenStruct,
         Color_Blue,         // TokenDef,
+        Color_Blue,         // TokenTypedef,
         Color_Blue,         // TokenReturn,
         Color_Blue,         // TokenAs,
         Color_Blue,         // TokenConst,
@@ -372,6 +375,7 @@ const char *TokenColor(enum TokenType type,
         Color_Black,        // TokenIndex,
         Color_Black,        // TokenGetField,
         Color_Black,        // TokenCaret,
+        Color_Black,        // TokenSharp,
         Color_Black,        // TokenPlus,
         Color_Black,        // TokenMinus,
         Color_Black,        // TokenMult,

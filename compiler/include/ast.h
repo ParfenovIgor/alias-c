@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector.h>
-#include <type.h>
+#include <typeast.h>
 #include <stdbool.h>
 
 enum NodeType {
@@ -12,8 +12,8 @@ enum NodeType {
     NodeWhile,
     NodeFunctionDefinition,
     NodePrototype,
-    NodeStructDefinition,
     NodeDefinition,
+    NodeTypeDefinition,
     NodeReturn,
     NodeAs,
     NodeAssignment,
@@ -47,8 +47,8 @@ struct If;
 struct While;
 struct FunctionDefinition;
 struct Prototype;
-struct StructDefinition;
 struct Definition;
+struct TypeDefinition;
 struct Return;
 struct As;
 struct Assignment;
@@ -77,7 +77,7 @@ struct Equal;
 struct FunctionSignature {
     struct Vector identifiers;
     struct Vector types;
-    struct Type *return_type;
+    struct TypeNode *return_type;
 };
 
 struct Node {
@@ -125,15 +125,14 @@ struct Prototype {
     struct FunctionSignature *signature;
 };
 
-struct StructDefinition {
-    const char *name;
-    struct Vector identifiers;
-    struct Vector types;
-};
-
 struct Definition {
     const char *identifier;
-    struct Type *type;
+    struct Node *value;
+};
+
+struct TypeDefinition {
+    const char *identifier;
+    struct TypeNode *type;
 };
 
 struct Return {
@@ -142,7 +141,7 @@ struct Return {
 
 struct As {
     struct Node *expression;
-    struct Type *type;
+    struct TypeNode *type;
 };
 
 struct Index {
@@ -185,13 +184,12 @@ struct Array {
 };
 
 struct Sizeof {
-    struct Type *type;
+    struct TypeNode *type;
 };
 
 struct FunctionCall {
-    const char *identifier;
+    struct Node *function;
     struct Vector arguments;
-    struct Node *caller;
 };
 
 struct Dereference {

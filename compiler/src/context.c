@@ -13,12 +13,23 @@ struct VariableInfo *context_find_variable(struct CPContext *context, const char
     return NULL;
 }
 
-struct StructInfo *context_find_struct(struct CPContext *context, const char *identifier) {
-    int sz = vsize(&context->structs);
-    for (int i = 0; i < sz; i++) {
-        struct StructInfo *_struct = context->structs.ptr[i];
-        if (_strcmp(_struct->name, identifier) == 0) {
-            return context->structs.ptr[i];
+struct TypeInfo *context_find_type(struct CPContext *context, const char *identifier) {
+    int sz = vsize(&context->types);
+    for (int i = sz - 1; i >= 0; i--) {
+        struct TypeInfo *type_info = context->types.ptr[i];
+        if (_strcmp(type_info->name, identifier) == 0) {
+            return type_info;
+        }
+    }
+    return NULL;
+}
+
+struct FunctionInfo *context_find_function(struct CPContext *context, const char *identifier) {
+    int sz = vsize(&context->types);
+    for (int i = sz - 1; i >= 0; i--) {
+        struct FunctionInfo *function_info = context->functions.ptr[i];
+        if (_strcmp(function_info->name_front, identifier) == 0) {
+            return function_info;
         }
     }
     return NULL;
