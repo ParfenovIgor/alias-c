@@ -1,4 +1,5 @@
 #include <ast.h>
+#include <type.h>
 #include <process.h>
 #include <compile.h>
 #include <settings.h>
@@ -10,6 +11,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define WORD 8
+
 const char *regs[] = {
     "rdi",
     "rsi",
@@ -19,7 +22,7 @@ const char *regs[] = {
     "r9"
 };
 
-struct Type *CompileNode(struct Node *node, struct CPContext *context);
+struct TypeNode *CompileNode(struct Node *node, struct CPContext *context);
 
 void GenerateTestFunction(struct CPContext *context, struct Settings *settings) {
     _fputs(context->fd_text, "global test\n");
@@ -38,30 +41,14 @@ void GenerateTestFunction(struct CPContext *context, struct Settings *settings) 
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
     _fputs(context->fd_text, "mov rax, 0x3c\n");
     _fputs(context->fd_text, "syscall\n");
-//     int fd[2];
-//     posix_pipe(fd);
-// 
-//     _fputs(fd[1], "func ^.run_tests() -> <int, 0> {\n");
-//     for (int i = 0; i < vsize(&context->test_names); i++) {
-//         _fputs3(fd[1], "if (.", context->test_names.ptr[i], "() = 0) {} else { return 1 }\n");
-//     }
-//     _fputs(fd[1], "return 0\n");
-//     _fputs(fd[1], "}\n");
-//     posix_close(fd[1]);
-// 
-//     struct Node *node = process_parse_fd(fd[0], settings);
-//     posix_close(fd[0]);
-//     return node;
 }
 
 void compile_process(struct Node *node, struct Settings *settings) {
     struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
     context->variables = vnew();
+    context->types = vnew();
+    context->functions = vnew();
     context->sf_pos = -8;
-    context->function_name_front = vnew();
-    context->function_name_back = vnew();
-    context->function_signature = vnew();
-    context->structs = vnew();
     context->function_index = 0;
     context->branch_index = 0;
     context->data_index = 0;
@@ -123,22 +110,20 @@ void compile_process(struct Node *node, struct Settings *settings) {
 void CompileBlock(struct Node *node, struct Block *this, struct CPContext *context) {
     int old_cnt_var = vsize(&context->variables);
     int old_sf_pos = context->sf_pos;
-    int old_cnt_functions = vsize(&context->function_name_front);
+    int old_cnt_functions = vsize(&context->functions);
     
     for (int i = 0; i < vsize(&this->statement_list); i++) {
         CompileNode(this->statement_list.ptr[i], context);
     }
 
     int cnt_var = vsize(&context->variables);
-    int cnt_functions = vsize(&context->function_name_front);
+    int cnt_functions = vsize(&context->functions);
     _fputsi(context->fd_text, "add rsp, ", context->sf_pos - old_sf_pos, "\n");
     for (int i = 0; i < cnt_var - old_cnt_var; i++) {
         vpop(&context->variables);
     }
     for (int i = 0; i < cnt_functions - old_cnt_functions; i++) {
-        vpop(&context->function_name_front);
-        vpop(&context->function_name_back);
-        vpop(&context->function_signature);
+        vpop(&context->functions);
     }
     context->sf_pos = old_sf_pos;
 }
@@ -220,6 +205,21 @@ void CompileWhile(struct Node *node, struct While *this, struct CPContext *conte
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
 }
 
+struct TypeNode *from_signature_to_type(struct FunctionSignature *signature) {
+    struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+    struct TypeFunction *_type = (struct TypeFunction*)_malloc(sizeof(struct TypeFunction));
+    type->node_ptr = _type;
+    type->node_type = TypeNodeFunction;
+    type->degree = 0;
+    _type->types = vnew();
+    int sz = vsize(&signature->types);
+    for (int i = 0; i < sz; i++) {
+        vpush(&_type->types, signature->types.ptr[i]);
+    }
+    _type->return_type = signature->return_type;
+    return type;
+}
+
 void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) { 
     char *identifier_front, *identifier_back, *identifier_end;
     if (this->struct_name) {
@@ -237,9 +237,11 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     }
     identifier_end = concat("_E", identifier_back);
 
-    vpush(&context->function_name_front, _strdup(identifier_front));
-    vpush(&context->function_name_back, _strdup(identifier_back));
-    vpush(&context->function_signature, this->signature);
+    struct FunctionInfo *function_info = (struct FunctionInfo*)_malloc(sizeof(struct FunctionInfo));
+    function_info->name_front = identifier_front;
+    function_info->name_back = identifier_back;
+    function_info->type = from_signature_to_type(this->signature);
+    vpush(&context->functions, function_info);
 
     if (this->external || this->struct_name) {
         if (context->header) {
@@ -259,16 +261,22 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     struct Vector variables_tmp = context->variables;
     int sf_pos_tmp = context->sf_pos;
     context->variables = vnew();
-    context->sf_pos = -8;
+    context->sf_pos = -WORD;
 
     if (this->struct_name) {
         if (vsize(&this->signature->identifiers)) {
-            struct Type *type = this->signature->types.ptr[0];
-            if (_strcmp(type->identifier, this->struct_name) || type->degree != 1) {
-                error_semantic("Pointer to struct expected as first argument in function method", node);
+            struct TypeNode *type1 = this->signature->types.ptr[0];
+            type1->degree--;
+            struct TypeNode *type2 = context_find_type(context, this->struct_name)->type;
+            if (!type2) {
+                error_semantic("Type identifier was not declared in method", node);
             }
+            if (!type_equal(type1, type2)) {
+                error_semantic("Pointer to type expected as first argument in method", node);
+            }
+            type1->degree++;
         }
-        else error_semantic("Pointer to struct expected as first argument in function method", node);
+        else error_semantic("Pointer to type expected as first argument in method", node);
     }
 
     int sz = vsize(&this->signature->identifiers);
@@ -276,14 +284,14 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
         _fputs3(context->fd_text, "push ", regs[i], "\n");
         struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
         var_info->name = this->signature->identifiers.ptr[i];
-        var_info->type = type_copy(this->signature->types.ptr[i]);
+        var_info->type = this->signature->types.ptr[i];
         var_info->sf_phase = context->sf_pos;
-        context->sf_pos -= 8;
+        context->sf_pos -= WORD;
         vpush(&context->variables, var_info);
     }
     CompileNode(this->block, context);
     
-    _fputsi(context->fd_text, "add rsp, ", sz * 8, "\n");
+    _fputsi(context->fd_text, "add rsp, ", sz * WORD, "\n");
     for (int i = 0; i < sz; i++) {
         _free(context->variables.ptr[i]);
     }
@@ -309,37 +317,31 @@ void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContex
         identifier = this->name;
     }
     _fputs3(context->fd_text, "extern ", identifier, "\n");
-    vpush(&context->function_name_front, (void*)identifier);
-    vpush(&context->function_name_back, (void*)identifier);
-    vpush(&context->function_signature, this->signature);
-}
 
-void CompileStructDefinition(struct Node *node, struct StructDefinition *this, struct CPContext *context) {
-    struct StructInfo *_struct = (struct StructInfo*)_malloc(sizeof(struct StructInfo));
-    _struct->name = this->name;
-    _struct->variables = vnew();
-    _struct->size = 0;
-    int sz = vsize(&this->identifiers);
-    for (int i = 0; i < sz; i++) {
-        struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
-        var_info->name = _strdup(this->identifiers.ptr[i]);
-        var_info->type = type_copy(this->types.ptr[i]);
-        var_info->sf_phase = _struct->size;
-        _struct->size += type_size(var_info->type, context, false);
-        vpush(&_struct->variables, var_info);
-    }
-    vpush(&context->structs, (void*)_struct);
+    struct FunctionInfo *function_info = (struct FunctionInfo*)_malloc(sizeof(struct FunctionInfo));
+    function_info->name_front = identifier;
+    function_info->name_back = identifier;
+    function_info->type = from_signature_to_type(this->signature);
+    vpush(&context->functions, function_info);
 }
 
 void CompileDefinition(struct Node *node, struct Definition *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileNode(this->value, context);
     struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
     var_info->name = _strdup(this->identifier);
-    var_info->type = type_copy(this->type);
+    var_info->type = _type;
     var_info->sf_phase = context->sf_pos;
     vpush(&context->variables, var_info);
-    context->sf_pos -= type_size(this->type, context, true);
+    context->sf_pos -= WORD;
 
-    _fputsi(context->fd_text, "sub rsp, ", type_size(this->type, context, true), "\n");
+    _fputsi(context->fd_text, "sub rsp, ", WORD, "\n");
+}
+
+void CompileTypeDefinition(struct Node *node, struct TypeDefinition *this, struct CPContext *context) {
+    struct TypeInfo *type_info = (struct TypeInfo*)_malloc(sizeof(struct TypeInfo));
+    type_info->name = _strdup(this->identifier);
+    type_info->type = this->type;
+    vpush(&context->types, type_info);
 }
 
 void CompileReturn(struct Node *node, struct Return *this, struct CPContext *context) {
@@ -349,10 +351,9 @@ void CompileReturn(struct Node *node, struct Return *this, struct CPContext *con
     _fputs(context->fd_text, "ret\n");
 }
 
-struct Type *CompileAs(struct Node *node, struct As *this, struct CPContext *context) {
-    struct Type *_type = CompileNode(this->expression, context);
-    _free(_type);
-    return type_copy(this->type);
+struct TypeNode *CompileAs(struct Node *node, struct As *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileNode(this->expression, context);
+    return this->type;
 }
 
 void CompileAssignment(struct Node *node, struct Assignment *this, struct CPContext *context) {
@@ -364,65 +365,86 @@ void CompileAssignment(struct Node *node, struct Assignment *this, struct CPCont
     if (!var_info) {
         error_semantic("Variable was not declared in assignment", node);
     }
-    struct Type *_type1 = var_info->type;
-    struct Type *_type2 = CompileNode(this->src, context);
-    if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree) error_semantic("Assignment of not equal types", node);
-    _free(_type2);
+    struct TypeNode *_type1 = var_info->type;
+    struct TypeNode *_type2 = CompileNode(this->src, context);
+    if (!type_equal(_type1, _type2)) {
+        error_semantic("Assignment of not equal types", node);
+    }
 
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputsi(context->fd_text, "mov [rbp + ", var_info->sf_phase, "], rax\n");
 }
 
 void CompileMovement(struct Node *node, struct Movement *this, struct CPContext *context) {
-    struct Type *_type1 = CompileNode(this->dst, context);
+    struct TypeNode *_type1 = CompileNode(this->dst, context);
     if (_type1->degree == 0) error_semantic("Pointer expected in movement", node);
 
     _fputs(context->fd_text, "sub rsp, 8\n");
-    context->sf_pos -= 8;
+    context->sf_pos -= WORD;
 
-    struct Type *_type2 = CompileNode(this->src, context);
-    if (_strcmp(_type1->identifier, _type2->identifier) || _type1->degree != _type2->degree + 1) {
+    struct TypeNode *_type2 = CompileNode(this->src, context);
+    _type2->degree++;
+    if (!type_equal(_type1, _type2)) {
         error_semantic("Movement of inappropriate types", node);
     }
+    _type2->degree--;
 
     _fputs(context->fd_text, "add rsp, 8\n");
-    context->sf_pos += 8;
+    context->sf_pos += WORD;
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "mov rbx, [rsp - 16]\n");
-    if (!_strcmp(_type1->identifier, "char")) {
+    if (type_size(_type1, context) == 1) {
         _fputs(context->fd_text, "mov [rax], bl\n");
     }
     else {
         _fputs(context->fd_text, "mov [rax], rbx\n");
     }
-    
-    _free(_type1);
-    _free(_type2);
 }
 
-struct Type *CompileIdentifier(struct Node *node, struct Identifier *this, struct CPContext *context) {
-    struct VariableInfo *var_info = context_find_variable(context, this->identifier);
-    if (!var_info) {
-        error_semantic("Variable was not declared", node);
+struct TypeNode *CompileIdentifier(struct Node *node, struct Identifier *this, struct CPContext *context) {
+    struct TypeNode *type = NULL;
+    struct FunctionInfo *function_info = context_find_function(context, this->identifier);
+    if (function_info) {
+        type = function_info->type;
+        _fputs3(context->fd_text, "mov rax, ", function_info->name_back, "\n");
     }
-    _fputsi(context->fd_text, "mov rax, [rbp + ", var_info->sf_phase, "]\n");
+    else {
+        struct VariableInfo *var_info = context_find_variable(context, this->identifier);
+        if (var_info) {
+            type = var_info->type;
+            _fputsi(context->fd_text, "mov rax, [rbp + ", var_info->sf_phase, "]\n");
+        }
+        else {
+            error_semantic("Variable was not declared", node);
+        }
+    }
+
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
 
-    struct Type *type = var_info->type;
-    return type_copy(type);
+    return type;
 }
 
-struct Type *CompileInteger(struct Node *node, struct Integer *this, struct CPContext *context) {
+struct TypeNode *CompileInteger(struct Node *node, struct Integer *this, struct CPContext *context) {
     _fputsi(context->fd_text, "mov qword [rsp - 8], ", this->value, "\n");
-    return type_build("int", 0);
+    struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+    struct TypeInt *_type = (struct TypeInt*)_malloc(sizeof(struct TypeInt));
+    type->node_ptr = _type;
+    type->node_type = TypeNodeInt;
+    type->degree = 0;
+    return type;
 }
 
-struct Type *CompileChar(struct Node *node, struct Char *this, struct CPContext *context) {
+struct TypeNode *CompileChar(struct Node *node, struct Char *this, struct CPContext *context) {
     _fputsi(context->fd_text, "mov qword [rsp - 8], ", this->value, "\n");
-    return type_build("char", 0);
+    struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+    struct TypeChar *_type = (struct TypeChar*)_malloc(sizeof(struct TypeChar));
+    type->node_ptr = _type;
+    type->node_type = TypeNodeChar;
+    type->degree = 0;
+    return type;
 }
 
-struct Type *CompileString(struct Node *node, struct String *this, struct CPContext *context) {
+struct TypeNode *CompileString(struct Node *node, struct String *this, struct CPContext *context) {
     int idx = context->data_index;
     context->data_index++;
     _fputsi(context->fd_data, "_S", idx, ":\n");
@@ -433,31 +455,33 @@ struct Type *CompileString(struct Node *node, struct String *this, struct CPCont
     }
     _fputs(context->fd_data, "0\n");
     _fputsi(context->fd_text, "mov qword [rsp - 8], _S", idx, "\n");
-    return type_build("char", 1);
+    
+    struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+    struct TypeChar *_type = (struct TypeChar*)_malloc(sizeof(struct TypeChar));
+    type->node_ptr = _type;
+    type->node_type = TypeNodeChar;
+    type->degree = 1;
+    return type;
 }
 
-struct Type *CompileArray(struct Node *node, struct Array *this, struct CPContext *context) {
+struct TypeNode *CompileArray(struct Node *node, struct Array *this, struct CPContext *context) {
     int size = vsize(&this->values);
     if (size == 0) {
         error_semantic("Array has to be non-empty", node);
     }
     int idx = context->bss_index;
     context->bss_index++;
-    struct Type *_type = NULL;
+    struct TypeNode *_type = NULL;
     _fputsi(context->fd_bss, "_B", idx, ":\n");
     _fputsi(context->fd_bss, "resb ", size * 8, "\n");
     for (int i = 0; i < size; i++) {
-        struct Type *_type2 = CompileNode(this->values.ptr[i], context);
+        struct TypeNode *_type2 = CompileNode(this->values.ptr[i], context);
         if (i == 0) {
             _type = _type2;
-            if (!(_type)) {
-                error_semantic("Base type expected", node);
-            }
         }
         if (!type_equal(_type, _type2)) {
             error_semantic("Array elements have to have same type", node);
         }
-        if (i != 0) _free(_type2);
         _fputsi(context->fd_text, "mov rax, _B", idx, "\n");
         _fputs(context->fd_text, "mov rbx, [rsp - 8]\n");
         _fputsi(context->fd_text, "mov [rax + ", i * 8, "], rbx\n");
@@ -467,65 +491,58 @@ struct Type *CompileArray(struct Node *node, struct Array *this, struct CPContex
     return _type;
 }
 
-struct Type *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
-    int size = type_size(this->type, context, false);
+struct TypeNode *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
+    int size = type_size(this->type, context);
     _fputsi(context->fd_text, "mov qword [rsp - 8], ", size, "\n");
-    return type_build("int", 0);
+    struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+    struct TypeInt *_type = (struct TypeInt*)_malloc(sizeof(struct TypeInt));
+    type->node_ptr = _type;
+    type->node_type = TypeNodeInt;
+    type->degree = 0;
+    return type;
 }
 
-struct Type *CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
-    char *identifier;
-    if (this->caller) {
-        struct Type *_type = CompileNode(this->caller, context);
-        identifier = concat(_type->identifier, this->identifier);
-        _free(_type);
-        _fputs3(context->fd_text, "mov ", regs[0], ", [rsp - 8]\n");
-    }
-    else {
-        identifier = _strdup(this->identifier);
-    }
-    
-    int function_idx = -1;
-    for (int i = vsize(&context->function_name_front) - 1; i >= 0; i--) {
-        if (_strcmp(context->function_name_front.ptr[i], identifier) == 0) {
-            function_idx = i;
-            break;
-        }
-    }
-    if (function_idx == -1) {
-        error_semantic("Function was not declared", node);
-    }
+struct TypeNode *CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
+    struct TypeNode *type = CompileNode(this->function, context);
+    _fputs(context->fd_text, "sub rsp, 8\n");
+    context->sf_pos -= 8;
 
-    struct FunctionSignature *signature = context->function_signature.ptr[function_idx];
-    int sz = vsize(&this->arguments);
-    bool has_caller = (this->caller != NULL);
-    if (sz + has_caller != vsize(&signature->identifiers)) error_semantic("Incorrect number of arguments in function call", node);
+    if (type->node_type != TypeNodeFunction) {
+        error_semantic("Function expected in function call", node);
+    }
+    struct TypeFunction *_type = type->node_ptr;
+    int sz = vsize(&_type->types);
+    if (sz != vsize(&this->arguments)) {
+        error_semantic("Incorrect number of arguments in function call", node);
+    }
 
     for (int i = 0; i < sz; i++) {
-        struct Type *_type = CompileNode(this->arguments.ptr[i], context);
-        if (!type_equal(_type, signature->types.ptr[i + has_caller])){
+        struct TypeNode *type_arg = CompileNode(this->arguments.ptr[i], context);
+        if (!type_equal(type_arg, _type->types.ptr[i])) {
             error_semantic("Passing to function value of incorrect type", node);
         }
-        _free(_type);
-        _fputs(context->fd_text, "mov ");
-        _fputs(context->fd_text, regs[i + has_caller]);
-        _fputs(context->fd_text, ", [rsp - 8]\n");
+        _fputs(context->fd_text, "sub rsp, 8\n");
+        context->sf_pos -= 8;
     }
+    _fputsi(context->fd_text, "add rsp, ", WORD * (sz + 1), "\n");
+    context->sf_pos -= WORD * (sz + 1);
+
+    for (int i = 0; i < sz; i++) {
+        _fputs3(context->fd_text, "mov ", regs[i], ", ");
+        _fputsi(context->fd_text, "[rsp - ", WORD * (i + 2), "]\n");
+    }
+
+    _fputs(context->fd_text, "mov rax, [rsp - 8]");
+    _fputs(context->fd_text, "call rax\n");
     
-    const char *identifier_back = context->function_name_back.ptr[function_idx];
-    _fputs3(context->fd_text, "call ", identifier_back, "\n");
-    _free(identifier);
-    
-    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
-    
-    return type_copy(signature->return_type);
+    return _type->return_type;
 }
 
-struct Type *CompileDereference(struct Node *node, struct Dereference *this, struct CPContext *context) {
-    struct Type *_type = CompileNode(this->expression, context);
+struct TypeNode *CompileDereference(struct Node *node, struct Dereference *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileNode(this->expression, context);
     if (_type->degree == 0) error_semantic("Dereference of not pointer value", node);
     _type->degree--;
-    int _type_size = type_size(_type, context, false);
+    int _type_size = type_size(_type, context);
 
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     if (_type_size == 1) {
@@ -544,58 +561,59 @@ struct Type *CompileDereference(struct Node *node, struct Dereference *this, str
     return _type;
 }
 
-struct Type *CompileGetField(struct Node *node, struct GetField *this, struct CPContext *context) {
-    struct Type *_type = CompileNode(this->left, context);
-    if (_type->degree != 1) error_semantic("Pointer to structure expected", node);
-    struct StructInfo *_struct = context_find_struct(context, _type->identifier);
-    if (!_struct) error_semantic("Structure was not declared", node);
-    _free(_type);
+struct TypeNode *CompileGetField(struct Node *node, struct GetField *this, struct CPContext *context) {
+    struct TypeNode *type = CompileNode(this->left, context);
+    if (type->degree != 1 || type->node_type != TypeNodeStruct) {
+        error_semantic("Pointer to structure expected", node);
+    }
+    struct TypeStruct *_type = type->node_ptr;
 
-    int sz = vsize(&_struct->variables);
-    struct VariableInfo *var_info;
-    bool found = false;
+    int sz = vsize(&_type->names);
+    int phase = 0;
+    struct TypeNode *field_type = NULL;
     for (int i = 0; i < sz; i++) {
-        var_info = _struct->variables.ptr[i];
-        if (_strcmp(this->field, var_info->name) == 0) {
-            found = true;
+        if (!_strcmp(this->field, _type->names.ptr[i])) {
+            field_type = _type->types.ptr[i];
             break;
         }
+        phase += type_size(_type->types.ptr[i], context);
     }
-    if (!found) error_semantic("Structure doesn't have corresponding field", node);
+
+    if (!field_type) {
+        error_semantic("Structure doesn't have corresponding field", node);
+    }
     
-    _type = type_copy(var_info->type);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     if (!this->address) {    
-        _fputsi(context->fd_text, "mov rbx, [rax + ", var_info->sf_phase, "]\n");
+        _fputsi(context->fd_text, "mov rbx, [rax + ", phase, "]\n");
         _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
     }
     else {
-        _fputsi(context->fd_text, "lea rbx, [rax + ", var_info->sf_phase, "]\n");
+        _fputsi(context->fd_text, "lea rbx, [rax + ", phase, "]\n");
         _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
-        _type->degree++;
+        field_type->degree++;
     }
 
-    return _type;
+    return field_type;
 }
 
-struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContext *context) {
-    struct Type *_type = CompileNode(this->left, context);
-    if (_type->degree == 0) error_semantic("Pointer expected in indexation", node);
+struct TypeNode *CompileIndex(struct Node *node, struct Index *this, struct CPContext *context) {
+    struct TypeNode *_type1 = CompileNode(this->left, context);
+    if (_type1->degree == 0) error_semantic("Pointer expected in indexation", node);
 
     _fputs(context->fd_text, "sub rsp, 8\n");
     context->sf_pos -= 8;
 
-    struct Type *_type2 = CompileNode(this->right, context);
-    if (_strcmp(_type2->identifier, "int") || _type2->degree != 0) error_semantic("Integer expected in indexation", node);
-    _free(_type2);
+    struct TypeNode *_type2 = CompileNode(this->right, context);
+    if (_type2->node_ptr != TypeNodeInt || _type2->degree != 0) error_semantic("Integer expected in indexation", node);
     
     _fputs(context->fd_text, "add rsp, 8\n");
     context->sf_pos += 8;
     _fputs(context->fd_text, "mov rax, [rsp - 16]\n");
-    _type->degree--;
-    int _type_size = type_size(_type, context, false);
+    _type1->degree--;
+    int _type_size = type_size(_type1, context);
     _fputsi(context->fd_text, "mov rbx, ", _type_size, "\n");
-    _type->degree++;
+    _type1->degree++;
     _fputs(context->fd_text, "mul rbx\n");
     _fputs(context->fd_text, "add rax, [rsp - 8]\n");
     if (!this->address) {
@@ -610,69 +628,74 @@ struct Type *CompileIndex(struct Node *node, struct Index *this, struct CPContex
             error_semantic("Not implemented", node);
         }
         _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
-        _type->degree--;
+        _type1->degree--;
     }
     else {
         _fputs(context->fd_text, "lea rbx, [rax]\n");
         _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
     }
-    return _type;
+    return _type1;
 }
 
-struct Type *CompileArithmetic(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    struct Type *_type1 = CompileNode(this->left, context);
-    if (!type_is_int(_type1, context)) error_semantic("Integer expected in addition", this->left);
+struct TypeNode *CompileArithmetic(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type1 = CompileNode(this->left, context);
+    if (_type1->node_type != TypeNodeInt &&
+        _type1->node_type != TypeNodeChar) {
+        error_semantic("Integer type expected in arithmetic operation", this->left);
+    }
 
     _fputs(context->fd_text, "sub rsp, 8\n");
     context->sf_pos -= 8;
 
-    struct Type *_type2 = CompileNode(this->right, context);
-    if (!type_is_int(_type2, context)) error_semantic("Integer expected in addition", this->right);
+    struct TypeNode *_type2 = CompileNode(this->right, context);
+    if (_type2->node_type != TypeNodeInt &&
+        _type2->node_type != TypeNodeChar) {
+        error_semantic("Integer type expected in addition", this->right);
+    }
 
-    if (_strcmp(_type1->identifier, _type2->identifier)) error_semantic("Equal types expected in addition", node);
-    _free(_type1);
+    if (!type_equal(_type1, _type2)) error_semantic("Equal types expected in addition", node);
 
     _fputs(context->fd_text, "add rsp, 8\n");
     context->sf_pos += 8;
 
-    return _type2;
+    return _type1;
 }
 
-struct Type *CompileAddition(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    struct Type *_type = CompileArithmetic(node, this, context);
+struct TypeNode *CompileAddition(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "add rax, [rsp - 16]\n");
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
     return _type;
 }
 
-struct Type *CompileSubtraction(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    struct Type *_type = CompileArithmetic(node, this, context);
+struct TypeNode *CompileSubtraction(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+    return _type;
 }
 
-struct Type *CompileMultiplication(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    struct Type *_type = CompileArithmetic(node, this, context);
+struct TypeNode *CompileMultiplication(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "mov rdx, [rsp - 16]\n");
     _fputs(context->fd_text, "mul rdx\n");
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
-
-    return type_build("int", 0);
+    return _type;
 }
 
-struct Type *CompileDivision(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    struct Type *_type = CompileArithmetic(node, this, context);
+struct TypeNode *CompileDivision(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "mov rdx, 0\n");
     _fputs(context->fd_text, "div qword [rsp - 16]\n");
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
 }
 
-struct Type *CompileLess(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    struct Type *_type = CompileArithmetic(node, this, context);
+struct TypeNode *CompileLess(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
@@ -685,8 +708,8 @@ struct Type *CompileLess(struct Node *node, struct BinaryOperator *this, struct 
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
 }
 
-struct Type *CompileEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
-    struct Type *_type = CompileArithmetic(node, this, context);
+struct TypeNode *CompileEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
@@ -699,7 +722,7 @@ struct Type *CompileEqual(struct Node *node, struct BinaryOperator *this, struct
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
 }
 
-struct Type *CompileNode(struct Node *node, struct CPContext *context) {
+struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
     _fputs(context->fd_text, "; ");
     _fputs(context->fd_text, node->filename);
     _fputs(context->fd_text, " ");
@@ -711,52 +734,42 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     if (node->node_type == NodeBlock) {
         _fputs(context->fd_text, "block\n");
         CompileBlock(node, (struct Block*)node->node_ptr, context);
-        return type_build("", 0);
     }
     if (node->node_type == NodeInclude) {
         _fputs(context->fd_text, "include\n");
         CompileInclude(node, (struct Include*)node->node_ptr, context);
-        return type_build("", 0);
     }
     if (node->node_type == NodeTest) {
         _fputs(context->fd_text, "test\n");
         CompileTest(node, (struct Test*)node->node_ptr, context);
-        return type_build("", 0);
     }
     else if (node->node_type == NodeIf) {
         _fputs(context->fd_text, "if\n");
         CompileIf(node, (struct If*)node->node_ptr, context);
-        return type_build("", 0);
     }
     else if (node->node_type == NodeWhile) {
         _fputs(context->fd_text, "while\n");
         CompileWhile(node, (struct While*)node->node_ptr, context);
-        return type_build("", 0);
     }
     else if (node->node_type == NodeFunctionDefinition) {
         _fputs(context->fd_text, "function definition\n");
         CompileFunctionDefinition(node, (struct FunctionDefinition*)node->node_ptr, context);
-        return type_build("", 0);
     }
     else if (node->node_type == NodePrototype) {
         _fputs(context->fd_text, "prototype\n");
         CompilePrototype(node, (struct Prototype*)node->node_ptr, context);
-        return type_build("", 0);
-    }
-    else if (node->node_type == NodeStructDefinition) {
-        _fputs(context->fd_text, "struct definition\n");
-        CompileStructDefinition(node, (struct StructDefinition*)node->node_ptr, context);
-        return type_build("", 0);
     }
     else if (node->node_type == NodeDefinition) {
         _fputs(context->fd_text, "definition\n");
         CompileDefinition(node, (struct Definition*)node->node_ptr, context);
-        return type_build("", 0);
+    }
+    else if (node->node_type == NodeTypeDefinition) {
+        _fputs(context->fd_text, "type definition\n");
+        CompileTypeDefinition(node, (struct TypeDefinition*)node->node_ptr, context);
     }
     else if (node->node_type == NodeReturn) {
         _fputs(context->fd_text, "return\n");
         CompileReturn(node, (struct Return*)node->node_ptr, context);
-        return type_build("", 0);
     }
     else if (node->node_type == NodeAs) {
         _fputs(context->fd_text, "as\n");
@@ -765,12 +778,10 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeAssignment) {
         _fputs(context->fd_text, "assignment\n");
         CompileAssignment(node, (struct Assignment*)node->node_ptr, context);
-        return type_build("", 0);
     }
     else if (node->node_type == NodeMovement) {
         _fputs(context->fd_text, "movement\n");
         CompileMovement(node, (struct Movement*)node->node_ptr, context);
-        return type_build("", 0);
     }
     else if (node->node_type == NodeIdentifier) {
         _fputs(context->fd_text, "identifier\n");
@@ -836,4 +847,5 @@ struct Type *CompileNode(struct Node *node, struct CPContext *context) {
         _fputs(context->fd_text, "equal\n");
         return CompileEqual(node, (struct BinaryOperator*)node->node_ptr, context);
     }
+    return NULL;
 }

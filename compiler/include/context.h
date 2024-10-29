@@ -1,29 +1,31 @@
 #pragma once
 
 #include <vector.h>
-#include <type.h>
+#include <typeast.h>
+#include <stdbool.h>
 
 struct VariableInfo {
     const char *name;
-    struct Type *type;
+    struct TypeNode *type;
     int sf_phase;
 };
 
-struct StructInfo {
+struct TypeInfo {
     const char *name;
-    struct Vector variables;
-    int size;
+    struct TypeNode *type;
+};
+
+struct FunctionInfo {
+    const char *name_front;
+    const char *name_back;
+    struct TypeNode *type;
 };
 
 struct CPContext {
     struct Vector variables;
+    struct Vector types;
+    struct Vector functions;
     int sf_pos;
-
-    struct Vector function_name_front;
-    struct Vector function_name_back;
-    struct Vector function_signature;
-
-    struct Vector structs;
 
     int function_index;
     int branch_index;
@@ -41,4 +43,5 @@ struct CPContext {
 };
 
 struct VariableInfo *context_find_variable(struct CPContext*, const char*);
-struct StructInfo *context_find_struct(struct CPContext*, const char*);
+struct TypeInfo *context_find_type(struct CPContext*, const char*);
+struct FunctionInfo *context_find_function(struct CPContext*, const char*);
