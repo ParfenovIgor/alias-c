@@ -1,29 +1,29 @@
-proto ._malloc(sz <int, 0>) -> <int, 1>
-proto ._free(pt <int, 1>) -> <int, 0>
+proto ._malloc(sz #I) -> #1I
+proto ._free(pt #1I) -> #I
 
-proto ._puts(n <char, 1>) -> <int, 0>
-proto ._puti(n <int, 0>) -> <int, 0>
+proto ._puts(n #1C) -> #I
+proto ._puti(n #I) -> #I
 
 include altlib."posix.al"
 include altlib."algorithm.al"
 
 struct Point {
-    x <int, 0>
-    y <int, 0>
+    x #I
+    y #I
 }
 
-func .foo(a <int, 0>) -> <int, 0> {
-    func .boo(b <int, 0>) -> <int, 0> {
+func .foo(a #I) -> #I {
+    func .boo(b #I) -> #I {
         return b + 4
     }
-    def _ <int, 0>;
+    def _ #I;
     _ := ._puti(a);
-    def b <int, 0>
+    def b #I
     b := .boo(a)
     return b
 }
 
-func Point.foo(this <Point, 1>, a <int, 0>) -> <int, 0> {
+func Point.foo(this <Point, 1>, a #I) -> #I {
     this->x& <- a * a
 }
 
@@ -34,10 +34,10 @@ struct Pair {
 
 func Pair.init(
     this <Pair, 1>,
-    a <int, 0>,
-    b <int, 0>,
-    c <int, 0>,
-    d <int, 0>) -> <int, 0> {
+    a #I,
+    b #I,
+    c #I,
+    d #I) -> #I {
     this->p1& <- ._malloc(^<Point, 0>) as <Point, 1>
     this->p2& <- ._malloc(^<Point, 0>) as <Point, 1>
     this->p1->x& <- a
@@ -46,15 +46,15 @@ func Pair.init(
     this->p2->y& <- d
 }
 
-func Pair.apply_foo(this <Pair, 1>, a <int, 0>, b <int, 0>) -> <int, 0> {
-    def _ <int, 0>
+func Pair.apply_foo(this <Pair, 1>, a #I, b #I) -> #I {
+    def _ #I
     _ := this->p1.foo(a)
     _ := this->p2.foo(b)
 }
 
-func .putstrs(size <int, 0>, strs <char, 2>) -> <int, 0> {
-    def _ <int, 0>
-    def i <int, 0>
+func .putstrs(size #I, strs <char, 2>) -> #I {
+    def _ #I
+    def i #I
     i := 0
     while (i < size) {
         _ := ._puts(strs[i]);
@@ -62,16 +62,16 @@ func .putstrs(size <int, 0>, strs <char, 2>) -> <int, 0> {
     }
 }
 
-func ^._start() -> <int, 0> {
-    def _ <int, 0>
+func ^._start() -> #I {
+    def _ #I
 
-    def str <char, 1>
+    def str #1C
     str := "abacaba"
     _ := ._puts(str)
     str[3]& <- 'x'
     _ := ._puts(str)
 
-    def bcd <int, 1>
+    def bcd #1I
     bcd := [1, 2, 6, 3]
     _ := ._puti(bcd[0])
     _ := ._puti(bcd[1])
@@ -99,11 +99,11 @@ func ^._start() -> <int, 0> {
         _ := ._puti(2)
     }
 
-    def c <char, 0>
+    def c #C
     c := 'a' + '\n'
-    _ := ._puti('a' as <int, 0>)
-    def d <char, 1>
-    d := ._malloc(^<char, 0> * 100) as <char, 1>
+    _ := ._puti('a' as #I)
+    def d #1C
+    d := ._malloc(^#C * 100) as #1C
     d[0]& <- 'H'
     d[1]& <- 'e'
     d[2]& <- 'l'
@@ -112,21 +112,21 @@ func ^._start() -> <int, 0> {
     d[5]& <- '\0'
     _ := ._puts(d)
 
-    def pt <int, 1>
-    pt := ._malloc(^<int, 0> * 20)
+    def pt #1I
+    pt := ._malloc(^#I * 20)
     pt <- 4
     _ := ._puti(pt$)
 
-    def i <int, 0>
+    def i #I
     i := 0
     while (i < 10) {
         pt[i]& <- i * i
         i := i + 1
     }
     while (i < 20) {
-        def j <int, 0>; j := pt as <int, 0>
-        j := j + ^<int, 0> * i
-        def pt2 <int, 1>; pt2 := j as <int, 1>
+        def j #I; j := pt as #I
+        j := j + ^#I * i
+        def pt2 #1I; pt2 := j as #1I
         pt2 <- i
         i := i + 1
     }
@@ -144,7 +144,7 @@ func ^._start() -> <int, 0> {
     _ := ._puti(a->y)
     _ := a.foo(123)
     _ := ._puti(a->x)
-    _ := ._free(a as <int, 1>)
+    _ := ._free(a as #1I)
 
     def p <Pair, 1>
     p := ._malloc(^<Pair, 0>) as <Pair, 1>
@@ -165,8 +165,8 @@ func ^._start() -> <int, 0> {
         i := i + 1
     }
 
-    def x <int, 0>; x := 32
-    def y <int, 0>; y := 48
+    def x #I; x := 32
+    def y #I; y := 48
     _ := ._puti(.min_(x, y))
 
     // _ := .posix_fork();
