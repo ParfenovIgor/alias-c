@@ -40,6 +40,9 @@ struct CPContext {
     int fd_text;
     int fd_data;
     int fd_bss;
+
+    struct TypeNode *node_int;
+    struct TypeNode *node_char;
 };
 
 struct VariableInfo *context_find_variable(struct CPContext*, const char*);

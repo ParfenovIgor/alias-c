@@ -25,7 +25,7 @@ struct TypeInfo *context_find_type(struct CPContext *context, const char *identi
 }
 
 struct FunctionInfo *context_find_function(struct CPContext *context, const char *identifier) {
-    int sz = vsize(&context->types);
+    int sz = vsize(&context->functions);
     for (int i = sz - 1; i >= 0; i--) {
         struct FunctionInfo *function_info = context->functions.ptr[i];
         if (_strcmp(function_info->name_front, identifier) == 0) {

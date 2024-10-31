@@ -81,14 +81,18 @@
 <ul>
 <li><a href="#2.1">Functions introduction</a></li>
 </ul></li>
+<li><a href="#3">Typedef</a>
+<ul>
+<li><a href="#3.1">Int type</a></li>
+<li><a href="#3.2">Function type</a></li>
+</ul></li>
 </ul></nav></div>
 <div id="contents-wrapper"><main id="contents">
 <h2 id="1">Control flow</h2>
 <h3 id="1.1">If statement</h3>
 <p>The if statement consists of set of blocks and conditions. The last block may be without a condition.</p>
 <pre><code>test demo_if_statement {
-    def a &ltint, 0&gt
-    a := 3
+    def a := 3
     if (a = 2) {
         a := 1
     }
@@ -98,31 +102,57 @@
     else {
         a := 3
     }
-    return .test_equal(a, 2)
+    return test_equal(a, 2)
 }
 
 </code></pre>
 <h3 id="1.2">While statement</h3>
 <p>The while statement consists of block an condition.</p>
 <pre><code>test demo_while_statement {
-    def i &ltint, 0&gt; i := 0
-    def sum &ltint, 0&gt; sum := 0
+    def i := 0
+    def sum := 0
     while (i &lt 10) {
         sum := sum + i
         i := i + 1
     }
-    return .test_equal(sum, 45)
+    return test_equal(sum, 45)
 }
 </code></pre>
 <h2 id="2">Functions</h2>
 <h3 id="2.1">Functions introduction</h3>
 <p>We can create and call functions.</p>
-<pre><code>func .add_one(x &ltint, 0&gt) -&gt &ltint, 0&gt {
+<pre><code>func .add_one(x #I) -&gt #I {
     return x + 1
 }
 
 test demo_functions {
-    return .test_equal(.add_one(1), 2)
+    return test_equal(add_one(1), 2)
+}
+</code></pre>
+<h2 id="3">Typedef</h2>
+<h3 id="3.1">Int type</h3>
+<p>We can give names to types.</p>
+<pre><code>typedef T := #I
+
+func .add_one(x #T) -&gt #T {
+    return x + 1
+}
+
+test demo_typedef_int {
+    return test_equal(add_one(1), 2)
+}
+
+</code></pre>
+<h3 id="3.2">Function type</h3>
+<p>The function is also a type.</p>
+<pre><code>typedef K := #F(#I) -&gt #I
+
+func .apply(f #K, a #T) -&gt #T {
+    return f(a)
+}
+
+test demo_typedef_function {
+    return test_equal(apply(add_one, 1), 2)
 }
 </code></pre>
 </main></div></body></html>

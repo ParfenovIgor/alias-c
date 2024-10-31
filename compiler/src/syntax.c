@@ -105,7 +105,7 @@ struct TypeNode *syntax_process_type(struct TokenStream *ts, struct Settings *st
         node->node_ptr = this;
         this->types = vnew();
         pass_next(ts, TokenParenthesisOpen, "( expected in function type definition");
-        while (tokenstream_get(ts).type != TokenBraceClose) {
+        while (tokenstream_get(ts).type != TokenParenthesisClose) {
             vpush(&this->types, syntax_process_type(ts, st));
         }
         pass_next(ts, TokenParenthesisClose, ") expected in function type definition");
@@ -316,7 +316,7 @@ struct Node *syntax_process_expression(struct TokenStream *ts, struct Settings *
         this->type = syntax_process_type(ts, st);
         node->line_end = tokenstream_get(ts).line_end;
         node->position_end = tokenstream_get(ts).position_end;
-        tokenstream_next(ts);
+        
         return node;
     }
     return res;
@@ -380,7 +380,6 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         this->type = syntax_process_type(ts, st);
         node->line_end = tokenstream_get(ts).line_end;
         node->position_end = tokenstream_get(ts).position_end;
-        tokenstream_next(ts);
         return node;
     }
 
@@ -489,9 +488,9 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
             }
             else break;
         }
-    }
 
-    
+        return node;
+    }
 
     error_syntax("Undexpected symbol in primary expression", tokenstream_get(ts));
 }
@@ -510,7 +509,6 @@ struct FunctionSignature *syntax_process_function_signature(struct TokenStream *
         vpush(&this->identifiers, _strdup(tokenstream_get(ts).value_string));
         tokenstream_next(ts);
         vpush(&this->types, syntax_process_type(ts, st));
-        tokenstream_next(ts);
         bool *is_const = (bool*)_malloc(sizeof(bool));
         if (tokenstream_get(ts).type == TokenParenthesisClose) {
             tokenstream_next(ts);
@@ -677,7 +675,6 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         tokenstream_next(ts);
         pass_next(ts, TokenParenthesisOpen, "( expected in function definition");
         this->signature = syntax_process_function_signature(ts, st);
-        tokenstream_next(ts);
         check_next(ts, TokenBraceOpen, "{ expected in function block");
         this->block = syntax_process_block(ts, st, true);
         node->line_end = tokenstream_get(ts).line_end;
@@ -707,7 +704,6 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         this->signature = syntax_process_function_signature(ts, st);
         node->line_end = tokenstream_get(ts).line_end;
         node->position_end = tokenstream_get(ts).position_end;
-        tokenstream_next(ts);
 
         return node;
     }

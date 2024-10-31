@@ -1,4 +1,4 @@
-func ^.min_(a <int, 0>, b <int, 0>) -> <int, 0> {
+func ^.min_(a #I, b #I) -> #I {
     if (a < b) {
         return a
     }
@@ -7,7 +7,7 @@ func ^.min_(a <int, 0>, b <int, 0>) -> <int, 0> {
     }
 }
 
-func ^.max_(a <int, 0>, b <int, 0>) -> <int, 0> {
+func ^.max_(a #I, b #I) -> #I {
     if (a < b) {
         return b
     }
