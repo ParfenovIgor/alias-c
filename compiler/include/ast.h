@@ -24,9 +24,8 @@ enum NodeType {
     NodeChar,
     NodeString,
     NodeArray,
+    NodeStructInstance,
     NodeSizeof,
-    NodeAlloc,
-    NodeFree,
     NodeFunctionCall,
     NodeDereference,
     NodeIndex,
@@ -59,6 +58,7 @@ struct Integer;
 struct Char;
 struct String;
 struct Array;
+struct StructInstance;
 struct Sizeof;
 struct Alloc;
 struct Free;
@@ -180,6 +180,11 @@ struct String {
 };
 
 struct Array {
+    struct Vector values;
+};
+
+struct StructInstance {
+    struct Vector names;
     struct Vector values;
 };
 
