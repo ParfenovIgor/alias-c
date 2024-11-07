@@ -91,14 +91,18 @@ struct TypeNode *syntax_process_type(struct TokenStream *ts, struct Settings *st
         this->names = vnew();
         this->types = vnew();
         pass_next(ts, TokenBraceOpen, "{ expected in struct type definition");
-        while (tokenstream_get(ts).type != TokenBraceClose) {
+        while (true) {
+            if (tokenstream_get(ts).type == TokenBraceClose) break;
             check_next(ts, TokenIdentifier, "Identifier expected in field of struct type definition");
             vpush(&this->names, _strdup(tokenstream_get(ts).value_string));
             tokenstream_next(ts);
+            pass_next(ts, TokenColon, ": expected in field of struct type definition");
             vpush(&this->types, syntax_process_type(ts, st));
+            if (tokenstream_get(ts).type == TokenBraceClose) break;
+            pass_next(ts, TokenComma, ", or } expected after field of struct type definition");
         }
-        pass_next(ts, TokenBraceClose, "} expected in struct type definition");
-    }
+        tokenstream_next(ts);
+    }        
     else if (!_strcmp(typestr, "F")) {
         struct TypeFunction *this = (struct TypeFunction*)_malloc(sizeof(struct TypeFunction));
         node->node_type = TypeNodeFunction;
@@ -369,6 +373,27 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         }
         node->line_end = tokenstream_get(ts).line_end;
         node->position_end = tokenstream_get(ts).position_end;
+        tokenstream_next(ts);
+        return node;
+    }
+    if (tokenstream_get(ts).type == TokenDot) {
+        struct StructInstance *this = (struct StructInstance*)_malloc(sizeof(struct StructInstance));
+        node->node_type = NodeStructInstance;
+        node->node_ptr = this;
+        this->names = vnew();
+        this->values = vnew();
+        tokenstream_next(ts);
+        pass_next(ts, TokenBraceOpen, "{ expected in struct instance definition");
+        while (true) {
+            if (tokenstream_get(ts).type == TokenBraceClose) break;
+            check_next(ts, TokenIdentifier, "Identifier expected in field of struct instance definition");
+            vpush(&this->names, _strdup(tokenstream_get(ts).value_string));
+            tokenstream_next(ts);
+            pass_next(ts, TokenAssign, ":= expected in field of struct instance definition");
+            vpush(&this->values, syntax_process_expression(ts, st));
+            if (tokenstream_get(ts).type == TokenBraceClose) break;
+            pass_next(ts, TokenComma, ", or } expected after field of struct instance definition");
+        }
         tokenstream_next(ts);
         return node;
     }

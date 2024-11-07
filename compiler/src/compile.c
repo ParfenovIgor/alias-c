@@ -502,6 +502,32 @@ struct TypeNode *CompileArray(struct Node *node, struct Array *this, struct CPCo
     return _type;
 }
 
+struct TypeNode *CompileStructInstance(struct Node *node, struct StructInstance *this, struct CPContext *context) {
+    struct TypeNode *type_node = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+    type_node->degree = 0;
+    
+    struct TypeStruct *type = (struct TypeStruct*)_malloc(sizeof(struct TypeStruct));
+    type_node->node_type = TypeNodeStruct;
+    type_node->node_ptr = type;
+    type->names = vnew();
+    type->types = vnew();
+
+    int sz = vsize(&this->names);
+    int struct_size = 0;
+    for (int i = sz - 1; i >= 0; i--) {
+        struct TypeNode *_type = CompileNode(this->values.ptr[i], context);
+        int field_size = type_size(_type, context);
+        struct_size += field_size;
+        context->sf_pos -= field_size;
+        _fputsi(context->fd_text, "sub rsp, ", field_size, "\n");
+        vpush(&type->names, this->names.ptr[i]);
+        vpush(&type->types, _type);
+    }
+    context->sf_pos += struct_size;
+    _fputsi(context->fd_text, "add rsp, ", struct_size, "\n");
+    return type_node;
+}
+
 struct TypeNode *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
     int size = type_size(this->type, context);
     _fputsi(context->fd_text, "mov qword [rsp - 8], ", size, "\n");
@@ -820,6 +846,10 @@ struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeArray) {
         _fputs(context->fd_text, "array\n");
         return CompileArray(node, (struct Array*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeStructInstance) {
+        _fputs(context->fd_text, "struct instance\n");
+        return CompileStructInstance(node, (struct StructInstance*)node->node_ptr, context);
     }
     else if (node->node_type == NodeSizeof) {
         _fputs(context->fd_text, "sizeof\n");

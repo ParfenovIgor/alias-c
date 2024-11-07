@@ -81,10 +81,14 @@
 <ul>
 <li><a href="#2.1">Functions introduction</a></li>
 </ul></li>
-<li><a href="#3">Typedef</a>
+<li><a href="#3">Structs</a>
 <ul>
-<li><a href="#3.1">Int type</a></li>
-<li><a href="#3.2">Function type</a></li>
+<li><a href="#3.1">Definition of structs.</a></li>
+</ul></li>
+<li><a href="#4">Typedef</a>
+<ul>
+<li><a href="#4.1">Int type</a></li>
+<li><a href="#4.2">Function type</a></li>
 </ul></li>
 </ul></nav></div>
 <div id="contents-wrapper"><main id="contents">
@@ -129,8 +133,20 @@ test demo_functions {
     return test_equal(add_one(1), 2)
 }
 </code></pre>
-<h2 id="3">Typedef</h2>
-<h3 id="3.1">Int type</h3>
+<h2 id="3">Structs</h2>
+<h3 id="3.1">Definition of structs.</h3>
+<p>This way we can declare structs.</p>
+<pre><code>typedef Pt := #S{ x: #I, y: #I }
+
+test demo_local_struct {
+    def pt := .{ x := 32, y := 76 }
+    def a := pt as #I
+    return test_equal(a, 76)
+}
+
+</code></pre>
+<h2 id="4">Typedef</h2>
+<h3 id="4.1">Int type</h3>
 <p>We can give names to types.</p>
 <pre><code>typedef T := #I
 
@@ -143,7 +159,7 @@ test demo_typedef_int {
 }
 
 </code></pre>
-<h3 id="3.2">Function type</h3>
+<h3 id="4.2">Function type</h3>
 <p>The function is also a type.</p>
 <pre><code>typedef K := #F(#I) -&gt #I
 
