@@ -165,6 +165,7 @@ struct Movement {
 
 struct Identifier {
     const char *identifier;
+    bool address;
 };
 
 struct Integer {
