@@ -1,12 +1,3 @@
-func .test_equal_char(a #C, b #C) -> #I {
-    if (a = b) {
-        return 0
-    }
-    else {
-        return 1
-    }
-}
-
 func .test_equal(a #I, b #I) -> #I {
     if (a = b) {
         return 0
@@ -37,6 +28,8 @@ test demo_local_struct {
 typedef Str := #S{ a: #C, b: #C, c: #I, d: #C, e: #I }
 
 test demo_struct_layout {
+    if (^#Str = 19) {} else { return 1 }
+
     def str1 := .{ a := 'a', b := 'b', c := 11, d := 'd', e := 43 }
     def str2 := .{ a := 'A', b := 'B', c := 111, d := 'D', e := 143 }
     str2 := str1
@@ -58,8 +51,6 @@ test demo_struct_layout {
     s2&->c& <- 100
     s1& <- s2
     if (s1&->c = 100) {} else { return 1 }
-    
-    if (^#Str = 19) {} else { return 1 }
 
     return 0
 }

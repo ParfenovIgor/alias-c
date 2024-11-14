@@ -161,6 +161,8 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         else if (append_token(str, N, &i, ")", TokenParenthesisClose, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "[", TokenBracketOpen, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "]", TokenBracketClose, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "\\", TokenBackslash, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "|", TokenPipe, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "&", TokenAddress, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "$", TokenDereference, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "!!", TokenIndex, true, line, &position, filename, token_stream)) {}
@@ -370,6 +372,8 @@ const char *TokenColor(enum TokenType type,
         Color_White,        // TokenParenthesisClose,
         Color_White,        // TokenBracketOpen,
         Color_White,        // TokenBracketClose,
+        Color_Black,        // TokenBackslash,
+        Color_Black,        // TokenPipe,
         Color_Black,        // TokenAddress,
         Color_Black,        // TokenDereference,
         Color_Black,        // TokenIndex,

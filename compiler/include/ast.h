@@ -25,6 +25,7 @@ enum NodeType {
     NodeString,
     NodeArray,
     NodeStructInstance,
+    NodeLambdaFunction,
     NodeSizeof,
     NodeFunctionCall,
     NodeDereference,
@@ -59,6 +60,7 @@ struct Char;
 struct String;
 struct Array;
 struct StructInstance;
+struct LambdaFunction;
 struct Sizeof;
 struct Alloc;
 struct Free;
@@ -127,6 +129,7 @@ struct Prototype {
 
 struct Definition {
     const char *identifier;
+    struct TypeNode *type;
     struct Node *value;
 };
 
@@ -187,6 +190,11 @@ struct Array {
 struct StructInstance {
     struct Vector names;
     struct Vector values;
+};
+
+struct LambdaFunction {
+    struct FunctionSignature *signature;
+    struct Node *block;
 };
 
 struct Sizeof {

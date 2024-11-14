@@ -77,19 +77,30 @@
 <li><a href="#1.1">If statement</a></li>
 <li><a href="#1.2">While statement</a></li>
 </ul></li>
-<li><a href="#2">Functions</a>
+<li><a href="#2">Definitions</a>
 <ul>
-<li><a href="#2.1">Functions introduction</a></li>
+<li><a href="#2.1">Definition</a></li>
+<li><a href="#2.2">Types</a></li>
+<li><a href="#2.3">Type size</a></li>
 </ul></li>
-<li><a href="#3">Structs</a>
+<li><a href="#3">Functions</a>
 <ul>
-<li><a href="#3.1">Definition of structs</a></li>
-<li><a href="#3.2">Structs layout</a></li>
+<li><a href="#3.1">Functions introduction</a></li>
 </ul></li>
-<li><a href="#4">Typedef</a>
+<li><a href="#4">Lambda functions</a>
 <ul>
-<li><a href="#4.1">Int type</a></li>
-<li><a href="#4.2">Function type</a></li>
+<li><a href="#4.1">Simple lambda functions</a></li>
+<li><a href="#4.2">Higher order functions</a></li>
+</ul></li>
+<li><a href="#5">Structs</a>
+<ul>
+<li><a href="#5.1">Definition of structs</a></li>
+<li><a href="#5.2">Structs layout</a></li>
+</ul></li>
+<li><a href="#6">Typedef</a>
+<ul>
+<li><a href="#6.1">Int type</a></li>
+<li><a href="#6.2">Function type</a></li>
 </ul></li>
 </ul></nav></div>
 <div id="contents-wrapper"><main id="contents">
@@ -124,8 +135,35 @@
     return test_equal(sum, 45)
 }
 </code></pre>
-<h2 id="2">Functions</h2>
-<h3 id="2.1">Functions introduction</h3>
+<h2 id="2">Definitions</h2>
+<h3 id="2.1">Definition</h3>
+<p>Use `def` to define a local variable. The variable must have an initial value after := operator.</p>
+<pre><code>test demo_definition {
+    def a := 5 // this is variable `a`, which has type `integer`
+    def b := '4' // this is variable `b`, which has type `char`
+    return 0 // to succeed, the test has to return zero
+}
+
+</code></pre>
+<h3 id="2.2">Types</h3>
+<p>We can write types of local variables explicitly. The types begin with symbol `#`.</p>
+<pre><code>test demo_types {
+    def a #I := 5 // `#I` is an `integer` type
+    def b #C := '4' // `#C` is a `char` type
+    return 0
+}
+
+</code></pre>
+<h3 id="2.3">Type size</h3>
+<p>Operator `^` returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.</p>
+<pre><code>test demo_type_size {
+    if (^#I = 8) {} else { return 1 } // The size of `#I` is 8 bytes
+    if (^#C = 1) {} else { return 1 } // The size of `#C` is 1 byte
+    return 0
+}
+</code></pre>
+<h2 id="3">Functions</h2>
+<h3 id="3.1">Functions introduction</h3>
 <p>We can create and call functions.</p>
 <pre><code>func .add_one(x #I) -&gt #I {
     return x + 1
@@ -135,8 +173,28 @@ test demo_functions {
     return test_equal(add_one(1), 2)
 }
 </code></pre>
-<h2 id="3">Structs</h2>
-<h3 id="3.1">Definition of structs</h3>
+<h2 id="4">Lambda functions</h2>
+<h3 id="4.1">Simple lambda functions</h3>
+<p>The lambda functions don't require to have name. But we can assign them to variables.</p>
+<pre><code>test demo_lambda_functions {
+    def f := \(x #I) -&gt #I {
+        return x + 1
+    }
+    return test_equal(f(2), 3)
+}
+
+</code></pre>
+<h3 id="4.2">Higher order functions</h3>
+<p>We can pass lambda functions to function calls.</p>
+<pre><code>test demo_higher_order_functions {
+    def twice := \(f #F(#I) -&gt #I, x #I) -&gt #I {
+        return f(f(x))
+    }
+    return test_equal(twice(\(x #I) -&gt #I { return x * x }, 2), 16)
+}
+</code></pre>
+<h2 id="5">Structs</h2>
+<h3 id="5.1">Definition of structs</h3>
 <p>This way we can declare structs.</p>
 <pre><code>typedef Pt := #S{ x: #I, y: #I }
 
@@ -149,11 +207,13 @@ test demo_local_struct {
 }
 
 </code></pre>
-<h3 id="3.2">Structs layout</h3>
+<h3 id="5.2">Structs layout</h3>
 <p>Structs are packed.</p>
 <pre><code>typedef Str := #S{ a: #C, b: #C, c: #I, d: #C, e: #I }
 
 test demo_struct_layout {
+    if (^#Str = 19) {} else { return 1 }
+
     def str1 := .{ a := 'a', b := 'b', c := 11, d := 'd', e := 43 }
     def str2 := .{ a := 'A', b := 'B', c := 111, d := 'D', e := 143 }
     str2 := str1
@@ -175,14 +235,12 @@ test demo_struct_layout {
     s2&-&gtc& &lt- 100
     s1& &lt- s2
     if (s1&-&gtc = 100) {} else { return 1 }
-    
-    if (^#Str = 19) {} else { return 1 }
 
     return 0
 }
 </code></pre>
-<h2 id="4">Typedef</h2>
-<h3 id="4.1">Int type</h3>
+<h2 id="6">Typedef</h2>
+<h3 id="6.1">Int type</h3>
 <p>We can give names to types.</p>
 <pre><code>typedef T := #I
 
@@ -195,7 +253,7 @@ test demo_typedef_int {
 }
 
 </code></pre>
-<h3 id="4.2">Function type</h3>
+<h3 id="6.2">Function type</h3>
 <p>The function is also a type.</p>
 <pre><code>typedef K := #F(#I) -&gt #I
 

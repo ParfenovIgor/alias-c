@@ -28,6 +28,8 @@ enum TokenType {
     TokenParenthesisClose,
     TokenBracketOpen,
     TokenBracketClose,
+    TokenBackslash,
+    TokenPipe,
     TokenAddress,
     TokenDereference,
     TokenIndex,

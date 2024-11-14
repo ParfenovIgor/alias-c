@@ -397,6 +397,20 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         tokenstream_next(ts);
         return node;
     }
+    if (tokenstream_get(ts).type == TokenBackslash) {
+        struct LambdaFunction *this = (struct LambdaFunction*)_malloc(sizeof(struct LambdaFunction));
+        node->node_type = NodeLambdaFunction;
+        node->node_ptr = this;
+        tokenstream_next(ts);
+        pass_next(ts, TokenParenthesisOpen, "( expected in function definition");
+        this->signature = syntax_process_function_signature(ts, st);
+        check_next(ts, TokenBraceOpen, "{ expected in function block");
+        this->block = syntax_process_block(ts, st, true);
+        node->line_end = tokenstream_get(ts).line_end;
+        node->position_end = tokenstream_get(ts).position_end;
+        tokenstream_next(ts);
+        return node;
+    } 
     if (tokenstream_get(ts).type == TokenCaret) {
         struct Sizeof *this = (struct Sizeof*)_malloc(sizeof(struct Sizeof));
         node->node_ptr = this;
@@ -748,6 +762,12 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         check_next(ts, TokenIdentifier, "Identifier expected in definition statement");
         this->identifier = _strdup(tokenstream_get(ts).value_string);
         tokenstream_next(ts);
+        if (tokenstream_get(ts).type == TokenSharp) {
+            this->type = syntax_process_type(ts, st);
+        }
+        else {
+            this->type = NULL;
+        }
         pass_next(ts, TokenAssign, ":= expected in definition statement");
         this->value = syntax_process_expression(ts, st);
         node->line_end = this->value->line_end;
