@@ -1,0 +1,12 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build and Test
+        run: |
+          sudo apt install nasm make
+          make test
