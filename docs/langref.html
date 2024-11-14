@@ -81,14 +81,23 @@
 <ul>
 <li><a href="#2.1">Functions introduction</a></li>
 </ul></li>
+<li><a href="#3">Structs</a>
+<ul>
+<li><a href="#3.1">Definition of structs</a></li>
+<li><a href="#3.2">Structs layout</a></li>
+</ul></li>
+<li><a href="#4">Typedef</a>
+<ul>
+<li><a href="#4.1">Int type</a></li>
+<li><a href="#4.2">Function type</a></li>
+</ul></li>
 </ul></nav></div>
 <div id="contents-wrapper"><main id="contents">
 <h2 id="1">Control flow</h2>
 <h3 id="1.1">If statement</h3>
 <p>The if statement consists of set of blocks and conditions. The last block may be without a condition.</p>
 <pre><code>test demo_if_statement {
-    def a &ltint, 0&gt
-    a := 3
+    def a := 3
     if (a = 2) {
         a := 1
     }
@@ -98,31 +107,104 @@
     else {
         a := 3
     }
-    return .test_equal(a, 2)
+    return test_equal(a, 2)
 }
 
 </code></pre>
 <h3 id="1.2">While statement</h3>
 <p>The while statement consists of block an condition.</p>
 <pre><code>test demo_while_statement {
-    def i &ltint, 0&gt; i := 0
-    def sum &ltint, 0&gt; sum := 0
+    return 0
+    def i := 0
+    def sum := 0
     while (i &lt 10) {
         sum := sum + i
         i := i + 1
     }
-    return .test_equal(sum, 45)
+    return test_equal(sum, 45)
 }
 </code></pre>
 <h2 id="2">Functions</h2>
 <h3 id="2.1">Functions introduction</h3>
 <p>We can create and call functions.</p>
-<pre><code>func .add_one(x &ltint, 0&gt) -&gt &ltint, 0&gt {
+<pre><code>func .add_one(x #I) -&gt #I {
     return x + 1
 }
 
 test demo_functions {
-    return .test_equal(.add_one(1), 2)
+    return test_equal(add_one(1), 2)
+}
+</code></pre>
+<h2 id="3">Structs</h2>
+<h3 id="3.1">Definition of structs</h3>
+<p>This way we can declare structs.</p>
+<pre><code>typedef Pt := #S{ x: #I, y: #I }
+
+test demo_local_struct {
+    def pt1 := .{ x := 32, y := 76 }
+    def pt2 := pt1
+    if (pt1&-&gtx = pt2&-&gtx) {} else { return 1 }
+    if (pt1&-&gty = pt2&-&gty) {} else { return 1 }
+    return 0
+}
+
+</code></pre>
+<h3 id="3.2">Structs layout</h3>
+<p>Structs are packed.</p>
+<pre><code>typedef Str := #S{ a: #C, b: #C, c: #I, d: #C, e: #I }
+
+test demo_struct_layout {
+    def str1 := .{ a := 'a', b := 'b', c := 11, d := 'd', e := 43 }
+    def str2 := .{ a := 'A', b := 'B', c := 111, d := 'D', e := 143 }
+    str2 := str1
+    if (str1&-&gtc = str2&-&gtc) {} else { return 1 }
+    if (str1&-&gtd = str2&-&gtd) {} else { return 1 }
+
+    def t1 := .{ a := 12, b := str1, c := 'C' }
+    def t2 := t1
+    if (str1&-&gta = str2&-&gta) {} else { return 1 }
+    if (str1&-&gtc = str2&-&gtc) {} else { return 1 }
+
+    def s1 := t1&-&gtb
+    if (s1&-&gtc = 11) {} else { return 1 }
+
+    def sp := s1&
+    def s2 := sp$
+    if (s2&-&gtc = 11) {} else { return 1 }
+
+    s2&-&gtc& &lt- 100
+    s1& &lt- s2
+    if (s1&-&gtc = 100) {} else { return 1 }
+    
+    if (^#Str = 19) {} else { return 1 }
+
+    return 0
+}
+</code></pre>
+<h2 id="4">Typedef</h2>
+<h3 id="4.1">Int type</h3>
+<p>We can give names to types.</p>
+<pre><code>typedef T := #I
+
+func .add_one(x #T) -&gt #T {
+    return x + 1
+}
+
+test demo_typedef_int {
+    return test_equal(add_one(1), 2)
+}
+
+</code></pre>
+<h3 id="4.2">Function type</h3>
+<p>The function is also a type.</p>
+<pre><code>typedef K := #F(#I) -&gt #I
+
+func .apply(f #K, a #T) -&gt #T {
+    return f(a)
+}
+
+test demo_typedef_function {
+    return test_equal(apply(add_one, 1), 2)
 }
 </code></pre>
 </main></div></body></html>

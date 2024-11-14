@@ -92,15 +92,33 @@ int _strlen(const char *a) {
 char *concat(const char *a, const char *b) {
     int s_a = _strlen(a);
     int s_b = _strlen(b);
-    char *c = (char*)_malloc(s_a + s_b + 1);
+    char *buf = (char*)_malloc(s_a + s_b + 1);
     for (int i = 0; i < s_a; i++) {
-        c[i] = a[i];
+        buf[i] = a[i];
     }
     for (int i = 0; i < s_b; i++) {
-        c[s_a + i] = b[i];
+        buf[s_a + i] = b[i];
     }
-    c[s_a + s_b] = '\0';
-    return c;
+    buf[s_a + s_b] = '\0';
+    return buf;
+}
+
+char *concat3(const char *a, const char *b, const char *c) {
+    int s_a = _strlen(a);
+    int s_b = _strlen(b);
+    int s_c = _strlen(c);
+    char *buf = (char*)_malloc(s_a + s_b + s_c + 1);
+    for (int i = 0; i < s_a; i++) {
+        buf[i] = a[i];
+    }
+    for (int i = 0; i < s_b; i++) {
+        buf[s_a + i] = b[i];
+    }
+    for (int i = 0; i < s_c; i++) {
+        buf[s_a + s_b + i] = c[i];
+    }
+    buf[s_a + s_b + s_c] = '\0';
+    return buf;
 }
 
 const char *substr(const char *a, int n) {

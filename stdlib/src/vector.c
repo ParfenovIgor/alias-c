@@ -38,3 +38,11 @@ void *vback(struct Vector *v) {
 int vsize(struct Vector *v) {
     return v->size;
 }
+
+void vreverse(struct Vector *v) {
+    for (int i = 0; i < v->size / 2; i++) {
+        void *x = v->ptr[i];
+        v->ptr[i] = v->ptr[v->size - i - 1];
+        v->ptr[v->size - i - 1] = x;
+    }
+}
