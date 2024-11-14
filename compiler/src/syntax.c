@@ -416,6 +416,13 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         node->line_end = tokenstream_get(ts).line_end;
         node->position_end = tokenstream_get(ts).position_end;
         tokenstream_next(ts);
+        if (tokenstream_get(ts).type == TokenAddress) {
+            this->address = true;
+            tokenstream_next(ts);
+        }
+        else {
+            this->address = false;
+        }
 
         while (true) {
             if (tokenstream_get(ts).type == TokenParenthesisOpen) {
@@ -517,7 +524,7 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         return node;
     }
 
-    error_syntax("Undexpected symbol in primary expression", tokenstream_get(ts));
+    error_syntax("Unexpected symbol in primary expression", tokenstream_get(ts));
 }
 
 struct FunctionSignature *syntax_process_function_signature(struct TokenStream *ts, struct Settings *st) {

@@ -73,6 +73,7 @@ int type_size(struct TypeNode *n, struct CPContext *context) {
         for (int i = 0; i < sz; i++) {
             res += type_size(_n->types.ptr[i], context);
         }
+        return res;
     }
     if (n->node_type == TypeNodeFunction) return 8;
     if (n->node_type == TypeNodeIdentifier) {

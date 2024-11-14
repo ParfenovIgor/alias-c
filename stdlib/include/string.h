@@ -20,6 +20,7 @@ int _strcmp(const char *a, const char *b);
 int _strncmp(const char *a, const char *b, int num);
 int _strlen(const char *a);
 char *concat(const char *a, const char *b);
+char *concat3(const char *a, const char *b, const char *c);
 const char *substr(const char *a, int n);
 char *read_file_descriptor(int fd);
 char *read_file(const char *filename);

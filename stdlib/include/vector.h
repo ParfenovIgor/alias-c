@@ -12,3 +12,4 @@ void vpush(struct Vector *v, void *x);
 void vpop(struct Vector *v);
 void *vback(struct Vector *v);
 int vsize(struct Vector *v);
+void vreverse(struct Vector *v);

@@ -22,6 +22,17 @@ const char *regs[] = {
     "r9"
 };
 
+void CompileMemcpy(const char *dst, const char *src, int sz, struct CPContext *context) {
+    _fputs3(context->fd_text, "lea rdi, ", dst, "\n");
+    _fputs3(context->fd_text, "lea rsi, ", src, "\n");
+    _fputsi(context->fd_text, "mov rcx, ", sz, "\n");
+    _fputs(context->fd_text, "rep movsb\n");
+}
+
+int align_to_word(int x) {
+    return (x + WORD - 1) / WORD * WORD;
+}
+
 struct TypeNode *CompileNode(struct Node *node, struct CPContext *context);
 
 void GenerateTestFunction(struct CPContext *context, struct Settings *settings) {
@@ -48,7 +59,7 @@ void compile_process(struct Node *node, struct Settings *settings) {
     context->variables = vnew();
     context->types = vnew();
     context->functions = vnew();
-    context->sf_pos = -8;
+    context->sf_pos = 0;
     context->function_index = 0;
     context->branch_index = 0;
     context->data_index = 0;
@@ -169,7 +180,7 @@ void CompileTest(struct Node *node, struct Test *this, struct CPContext *context
     struct Vector variables_tmp = context->variables;
     int sf_pos_tmp = context->sf_pos;
     context->variables = vnew();
-    context->sf_pos = -8;
+    context->sf_pos = 0;
 
     CompileNode(this->block, context);
     
@@ -276,7 +287,7 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     struct Vector variables_tmp = context->variables;
     int sf_pos_tmp = context->sf_pos;
     context->variables = vnew();
-    context->sf_pos = -WORD;
+    context->sf_pos = 0;
 
     if (this->struct_name) {
         if (vsize(&this->signature->identifiers)) {
@@ -300,13 +311,14 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
         struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
         var_info->name = this->signature->identifiers.ptr[i];
         var_info->type = this->signature->types.ptr[i];
-        var_info->sf_phase = context->sf_pos;
-        context->sf_pos -= WORD;
+        int sz = align_to_word(type_size(var_info->type, context));
+        var_info->sf_phase = context->sf_pos - sz;
+        context->sf_pos -= sz;
         vpush(&context->variables, var_info);
     }
     CompileNode(this->block, context);
     
-    _fputsi(context->fd_text, "add rsp, ", sz * WORD, "\n");
+    _fputsi(context->fd_text, "add rsp, ", -context->sf_pos, "\n");
     for (int i = 0; i < sz; i++) {
         _free(context->variables.ptr[i]);
     }
@@ -341,11 +353,12 @@ void CompileDefinition(struct Node *node, struct Definition *this, struct CPCont
     struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
     var_info->name = _strdup(this->identifier);
     var_info->type = _type;
-    var_info->sf_phase = context->sf_pos;
+    int sz = align_to_word(type_size(_type, context));
+    var_info->sf_phase = context->sf_pos - sz;
     vpush(&context->variables, var_info);
-    context->sf_pos -= WORD;
+    context->sf_pos -= sz;
 
-    _fputsi(context->fd_text, "sub rsp, ", WORD, "\n");
+    _fputsi(context->fd_text, "sub rsp, ", sz, "\n");
 }
 
 void CompileTypeDefinition(struct Node *node, struct TypeDefinition *this, struct CPContext *context) {
@@ -382,8 +395,10 @@ void CompileAssignment(struct Node *node, struct Assignment *this, struct CPCont
         error_semantic("Assignment of not equal types", node);
     }
 
-    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
-    _fputsi(context->fd_text, "mov [rbp + ", var_info->sf_phase, "], rax\n");
+    int tsize = type_size(_type1, context);
+    const char *dst = concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
+    const char *src = concat3("[rsp - ", _itoa(align_to_word(tsize)), "]");
+    CompileMemcpy(dst, src, tsize, context);
 }
 
 void CompileMovement(struct Node *node, struct Movement *this, struct CPContext *context) {
@@ -402,34 +417,45 @@ void CompileMovement(struct Node *node, struct Movement *this, struct CPContext 
 
     _fputs(context->fd_text, "add rsp, 8\n");
     context->sf_pos += WORD;
+
+    int tsize = align_to_word(type_size(_type2, context));
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
-    _fputs(context->fd_text, "mov rbx, [rsp - 16]\n");
-    if (type_size(_type1, context) == 1) {
-        _fputs(context->fd_text, "mov [rax], bl\n");
-    }
-    else {
-        _fputs(context->fd_text, "mov [rax], rbx\n");
-    }
+    const char *dst = "[rax]";
+    const char *src = concat3("[rsp - ", _itoa(tsize + WORD), "]");
+    CompileMemcpy(dst, src, tsize, context);
 }
 
 struct TypeNode *CompileIdentifier(struct Node *node, struct Identifier *this, struct CPContext *context) {
     struct TypeNode *_type = NULL;
     struct FunctionInfo *function_info = context_find_function(context, this->identifier);
     if (function_info) {
+        if (this->address) {
+            error_semantic("Can't take address of function", node);
+        }
         _type = function_info->type;
         _fputs3(context->fd_text, "mov rax, ", function_info->name_back, "\n");
+        _fputs(context->fd_text, "mov [rsp - 8], rax\n");
     }
     else {
         struct VariableInfo *var_info = context_find_variable(context, this->identifier);
         if (var_info) {
-            _type = var_info->type;
-            _fputsi(context->fd_text, "mov rax, [rbp + ", var_info->sf_phase, "]\n");
+            if (this->address) {
+                _type = type_copy_node(var_info->type);
+                _type->degree++;
+                _fputsi(context->fd_text, "lea rax, [rbp + ", var_info->sf_phase, "]\n");
+                _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+            }
+            else {
+                _type = var_info->type;
+                const char *dst = concat3("[rsp - ", _itoa(align_to_word(type_size(_type, context))), "]");
+                const char *src = concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
+                CompileMemcpy(dst, src, align_to_word(type_size(_type, context)), context);
+            }
         }
         else {
             error_semantic("Variable was not declared", node);
         }
     }
-    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
 
     return _type;
 }
@@ -512,19 +538,43 @@ struct TypeNode *CompileStructInstance(struct Node *node, struct StructInstance 
     type->names = vnew();
     type->types = vnew();
 
+    int old_sf_pos = context->sf_pos;
+
     int sz = vsize(&this->names);
-    int struct_size = 0;
+    int orig_struct_size = 0;
+    int packed_struct_size = 0;
     for (int i = sz - 1; i >= 0; i--) {
         struct TypeNode *_type = CompileNode(this->values.ptr[i], context);
         int field_size = type_size(_type, context);
-        struct_size += field_size;
-        context->sf_pos -= field_size;
-        _fputsi(context->fd_text, "sub rsp, ", field_size, "\n");
+        orig_struct_size += align_to_word(field_size);
+        packed_struct_size += field_size;
+        context->sf_pos -= align_to_word(field_size);
+        _fputsi(context->fd_text, "sub rsp, ", align_to_word(field_size), "\n");
         vpush(&type->names, this->names.ptr[i]);
         vpush(&type->types, _type);
     }
-    context->sf_pos += struct_size;
-    _fputsi(context->fd_text, "add rsp, ", struct_size, "\n");
+
+    vreverse(&type->names);
+    vreverse(&type->types);
+
+    _fputsi(context->fd_text, "add rsp, ", orig_struct_size, "\n");
+
+    int ptr1 = 0;
+    int ptr2 = 0;
+    for (int i = 0; i < sz; i++) {
+        const char *dst = concat3("[rsp - ", _itoa(orig_struct_size + packed_struct_size - ptr1), "]");
+        const char *src = concat3("[rsp - ", _itoa(orig_struct_size - ptr2), "]");
+        int tsize = type_size(type->types.ptr[i], context);
+        CompileMemcpy(dst, src, tsize, context);
+        ptr1 += tsize;
+        ptr2 += align_to_word(tsize);
+    }
+
+    const char *dst = concat3("[rsp - ", _itoa(align_to_word(packed_struct_size)), "]");
+    const char *src = concat3("[rsp - ", _itoa(orig_struct_size + packed_struct_size), "]");
+    CompileMemcpy(dst, src, packed_struct_size, context);
+
+    context->sf_pos = old_sf_pos;
     return type_node;
 }
 
@@ -585,18 +635,9 @@ struct TypeNode *CompileDereference(struct Node *node, struct Dereference *this,
     int _type_size = type_size(_type, context);
 
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
-    if (_type_size == 1) {
-        _fputs(context->fd_text, "mov rbx, 0\n");
-        _fputs(context->fd_text, "mov bl, [rax]\n");
-    }
-    else if (_type_size == 8) {
-        _fputs(context->fd_text, "mov rbx, [rax]\n");
-    }
-    else {
-        error_semantic("Not implemented", node);
-    }
-    _fputs(context->fd_text, "mov rbx, [rax]\n");
-    _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
+    const char *dst = concat3("[rsp - ", _itoa(align_to_word(_type_size)), "]");
+    const char *src = "[rax]";
+    CompileMemcpy(dst, src, align_to_word(_type_size), context);
 
     return _type;
 }
@@ -627,6 +668,9 @@ struct TypeNode *CompileGetField(struct Node *node, struct GetField *this, struc
     if (!this->address) {    
         _fputsi(context->fd_text, "mov rbx, [rax + ", phase, "]\n");
         _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
+        const char *dst = concat3("[rsp - ", _itoa(align_to_word(type_size(field_type, context))), "]");
+        const char *src = concat3("[rax + ", _itoa(phase), "]");
+        CompileMemcpy(dst, src, align_to_word(type_size(field_type, context)), context);
     }
     else {
         _fputsi(context->fd_text, "lea rbx, [rax + ", phase, "]\n");
