@@ -358,6 +358,10 @@ void CompileDefinition(struct Node *node, struct Definition *this, struct CPCont
     vpush(&context->variables, var_info);
     context->sf_pos -= sz;
 
+    if (this->type && !type_equal(_type, this->type, context)) {
+        error_semantic("Declared and inferred types are not equal", node);
+    }
+
     _fputsi(context->fd_text, "sub rsp, ", sz, "\n");
 }
 
@@ -576,6 +580,52 @@ struct TypeNode *CompileStructInstance(struct Node *node, struct StructInstance 
 
     context->sf_pos = old_sf_pos;
     return type_node;
+}
+
+struct TypeNode *CompileLambdaFunction(struct Node *node, struct LambdaFunction *this, struct CPContext *context) {
+    char *identifier_back = concat("_Z", _itoa(context->function_index));
+    context->function_index++;
+    char *identifier_end = concat("_E", identifier_back);
+
+    struct TypeNode *_type = from_signature_to_type(this->signature);
+
+    _fputs3(context->fd_text, "jmp ", identifier_end, "\n");
+    _fputs2(context->fd_text, identifier_back, ":\n");
+    _fputs(context->fd_text, "push rbp\n");
+    _fputs(context->fd_text, "mov rbp, rsp\n");
+
+    struct Vector variables_tmp = context->variables;
+    int sf_pos_tmp = context->sf_pos;
+    context->variables = vnew();
+    context->sf_pos = 0;
+
+    int sz = vsize(&this->signature->identifiers);
+    for (int i = 0; i < sz; i++) {
+        _fputs3(context->fd_text, "push ", regs[i], "\n");
+        struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
+        var_info->name = this->signature->identifiers.ptr[i];
+        var_info->type = this->signature->types.ptr[i];
+        int sz = align_to_word(type_size(var_info->type, context));
+        var_info->sf_phase = context->sf_pos - sz;
+        context->sf_pos -= sz;
+        vpush(&context->variables, var_info);
+    }
+    CompileNode(this->block, context);
+    
+    _fputsi(context->fd_text, "add rsp, ", -context->sf_pos, "\n");
+    for (int i = 0; i < sz; i++) {
+        _free(context->variables.ptr[i]);
+    }
+    vdrop(&context->variables);
+    context->variables = variables_tmp;
+    context->sf_pos = sf_pos_tmp;
+    
+    _fputs(context->fd_text, "leave\n");
+    _fputs(context->fd_text, "ret\n");
+    _fputs2(context->fd_text, identifier_end, ":\n");
+
+    _fputs3(context->fd_text, "mov qword [rsp - 8], ", identifier_back, "\n");
+    return _type;
 }
 
 struct TypeNode *CompileSizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
@@ -894,6 +944,10 @@ struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeStructInstance) {
         _fputs(context->fd_text, "struct instance\n");
         return CompileStructInstance(node, (struct StructInstance*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeLambdaFunction) {
+        _fputs(context->fd_text, "lambda function\n");
+        return CompileLambdaFunction(node, (struct LambdaFunction*)node->node_ptr, context);
     }
     else if (node->node_type == NodeSizeof) {
         _fputs(context->fd_text, "sizeof\n");
