@@ -21,10 +21,18 @@ struct FunctionInfo {
     struct TypeNode *type;
 };
 
+struct LabelInfo {
+    const char *name_begin;
+    const char *name_end;
+    struct Vector *types;
+};
+
 struct CPContext {
     struct Vector variables;
     struct Vector types;
     struct Vector functions;
+    struct Vector labels;
+    struct Vector return_types;
     int sf_pos;
 
     int function_index;

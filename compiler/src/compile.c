@@ -59,6 +59,7 @@ void compile_process(struct Node *node, struct Settings *settings) {
     context->variables = vnew();
     context->types = vnew();
     context->functions = vnew();
+    context->return_types = vnew();
     context->sf_pos = 0;
     context->function_index = 0;
     context->branch_index = 0;
@@ -177,15 +178,26 @@ void CompileTest(struct Node *node, struct Test *this, struct CPContext *context
     _fputs(context->fd_text, "push rbp\n");
     _fputs(context->fd_text, "mov rbp, rsp\n");
 
+    struct TypeNode *return_type;
+    {
+        return_type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+        struct TypeInt *_type = (struct TypeInt*)_malloc(sizeof(struct TypeInt));
+        return_type->node_ptr = _type;
+        return_type->node_type = TypeNodeInt;
+        return_type->degree = 0;
+    }
+
     struct Vector variables_tmp = context->variables;
-    int sf_pos_tmp = context->sf_pos;
     context->variables = vnew();
+    vpush(&context->return_types, return_type);
+    int sf_pos_tmp = context->sf_pos;
     context->sf_pos = 0;
 
     CompileNode(this->block, context);
     
     vdrop(&context->variables);
     context->variables = variables_tmp;
+    vpop(&context->return_types);
     context->sf_pos = sf_pos_tmp;
     
     _fputs(context->fd_text, "leave\n");
@@ -285,8 +297,9 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     _fputs(context->fd_text, "mov rbp, rsp\n");
 
     struct Vector variables_tmp = context->variables;
-    int sf_pos_tmp = context->sf_pos;
     context->variables = vnew();
+    vpush(&context->return_types, this->signature->return_type);
+    int sf_pos_tmp = context->sf_pos;
     context->sf_pos = 0;
 
     if (this->struct_name) {
@@ -324,6 +337,7 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     }
     vdrop(&context->variables);
     context->variables = variables_tmp;
+    vpop(&context->return_types);
     context->sf_pos = sf_pos_tmp;
     
     _fputs(context->fd_text, "leave\n");
@@ -373,7 +387,13 @@ void CompileTypeDefinition(struct Node *node, struct TypeDefinition *this, struc
 }
 
 void CompileReturn(struct Node *node, struct Return *this, struct CPContext *context) {
-    CompileNode(this->expression, context);
+    struct TypeNode *_type = CompileNode(this->expression, context);
+    if (vsize(&context->return_types) == 0) {
+        error_semantic("Return expected to be in function", node);
+    }
+    if (!type_equal(_type, vback(&context->return_types), context)) {
+        error_semantic("Value type doesn't not equal to return type in function signature", node);
+    }
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "leave\n");
     _fputs(context->fd_text, "ret\n");
@@ -595,9 +615,10 @@ struct TypeNode *CompileLambdaFunction(struct Node *node, struct LambdaFunction 
     _fputs(context->fd_text, "mov rbp, rsp\n");
 
     struct Vector variables_tmp = context->variables;
-    int sf_pos_tmp = context->sf_pos;
     context->variables = vnew();
+    int sf_pos_tmp = context->sf_pos;
     context->sf_pos = 0;
+    vpush(&context->return_types, this->signature->return_type);
 
     int sz = vsize(&this->signature->identifiers);
     for (int i = 0; i < sz; i++) {
@@ -618,6 +639,7 @@ struct TypeNode *CompileLambdaFunction(struct Node *node, struct LambdaFunction 
     }
     vdrop(&context->variables);
     context->variables = variables_tmp;
+    vpop(&context->return_types);
     context->sf_pos = sf_pos_tmp;
     
     _fputs(context->fd_text, "leave\n");
