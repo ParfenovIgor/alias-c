@@ -14,15 +14,12 @@ func .test_equal(a #I, b #I) -> #I {
 
 test demo_if_statement {
     def a := 3
-    if (a = 2) {
+    if (a = 2)
         a := 1
-    }
-    else if (a = 3) {
+    else if (a = 3)
         a := 2
-    }
-    else {
+    else
         a := 3
-    }
     return test_equal(a, 2)
 }
 

@@ -26,5 +26,5 @@ test demo_higher_order_functions {
     def twice := \(f #F(#I) -> #I, x #I) -> #I {
         return f(f(x))
     }
-    return test_equal(twice(\(x #I) -> #I { return x * x }, 2), 16)
+    return test_equal(twice(\(x #I) -> #I return x * x, 2), 16)
 }

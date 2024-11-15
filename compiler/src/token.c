@@ -1,6 +1,7 @@
 #include <token.h>
 #include <stdlib.h>
 #include <memory.h>
+#include <cassert.h>
 
 struct TokenStream *tokenstream_new() {
     struct TokenStream *ts = (struct TokenStream*)_malloc(sizeof(struct TokenStream));
@@ -26,6 +27,11 @@ void tokenstream_push(struct TokenStream *this, struct Token token) {
 
 struct Token tokenstream_get(struct TokenStream *this) {
     return this->stream[this->pos];
+}
+
+struct Token tokenstream_get_prev(struct TokenStream *this) {
+    _assert(this->pos > 0);
+    return this->stream[this->pos - 1];
 }
 
 void tokenstream_next(struct TokenStream *this) {
