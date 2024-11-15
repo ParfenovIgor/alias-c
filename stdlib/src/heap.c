@@ -1,14 +1,8 @@
 #include <heap.h>
 #include <posix.h>
-#include <sys/mman.h>
+#include <cassert.h>
 
 #define HEAP_MAGIC 0x123890AB
-
-void assert(int x) {
-    if (!x) {
-        posix_exit(3);
-    }
-}
 
 int find_smallest_hole(int size, heap_t *heap) {
     int iterator = 0;
@@ -70,10 +64,10 @@ void *malloc_heap(heap_t *heap, int size) {
         hole_header->is_hole = 1;
         hole_header->size = orig_hole_size - new_size;
         footer_t *hole_footer = (footer_t*)((void*)hole_header + orig_hole_size - new_size - sizeof(footer_t));
-        assert((void*)hole_footer < heap->end_address);
+        _assert((void*)hole_footer < heap->end_address);
         hole_footer->magic = HEAP_MAGIC;
         hole_footer->header = hole_header;
-        assert(insert_ordered_array((void*)hole_header, &heap->index));
+        _assert(insert_ordered_array((void*)hole_header, &heap->index));
     }
     return (void*)((void*)block_header + sizeof(header_t));
 }
@@ -84,8 +78,8 @@ void free_heap(heap_t *heap, void *p) {
     header_t *header = (header_t*)((void*)p - sizeof(header_t));
     footer_t *footer = (footer_t*)((void*)header + header->size - sizeof(footer_t));
 
-    assert(header->magic == HEAP_MAGIC);
-    assert(footer->magic == HEAP_MAGIC);
+    _assert(header->magic == HEAP_MAGIC);
+    _assert(footer->magic == HEAP_MAGIC);
 
     header->is_hole = 1;
     int do_add = 1;
@@ -110,11 +104,11 @@ void free_heap(heap_t *heap, void *p) {
                 (lookup_ordered_array(iterator, &heap->index) != (void*)test_header))
             iterator++;
         
-        assert(iterator < heap->index.size);
+        _assert(iterator < heap->index.size);
         remove_ordered_array(iterator, &heap->index);
     }
 
     if (do_add == 1) {
-        assert(insert_ordered_array((void*)header, &heap->index));
+        _assert(insert_ordered_array((void*)header, &heap->index));
     }
 }
