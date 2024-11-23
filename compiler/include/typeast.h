@@ -3,6 +3,7 @@
 #include <vector.h>
 
 enum TypeNodeType {
+    TypeNodeVoid,
     TypeNodeInt,
     TypeNodeChar,
     TypeNodeStruct,
@@ -11,6 +12,7 @@ enum TypeNodeType {
 };
 
 struct TypeNode;
+struct TypeVoid;
 struct TypeInt;
 struct TypeChar;
 struct TypeStruct;
@@ -22,6 +24,10 @@ struct TypeNode {
     void *node_ptr;
     enum TypeNodeType node_type;
     int degree;
+};
+
+struct TypeVoid {
+
 };
 
 struct TypeInt {

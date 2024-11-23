@@ -59,6 +59,7 @@ void compile_process(struct Node *node, struct Settings *settings) {
     context->variables = vnew();
     context->types = vnew();
     context->functions = vnew();
+    context->labels = vnew();
     context->return_types = vnew();
     context->sf_pos = 0;
     context->function_index = 0;
@@ -134,10 +135,22 @@ void compile_process(struct Node *node, struct Settings *settings) {
     write_file(settings->filename_compile_output, program);
 }
 
-void CompileBlock(struct Node *node, struct Block *this, struct CPContext *context) {
+struct TypeNode *CompileBlock(struct Node *node, struct Block *this, struct CPContext *context) {
+    struct LabelInfo *label_info = (struct LabelInfo*)_malloc(sizeof(struct LabelInfo));
+    if(this->label) label_info->name = this->label;
+    else label_info->name = NULL;
+    int idx = context->branch_index;
+    context->branch_index += 2;
+    label_info->name_begin = concat("_L", _itoa(idx));
+    label_info->name_end = concat("_L", _itoa(idx + 1));
+    label_info->type = NULL;
+    label_info->sf_pos = context->sf_pos;
+    vpush(&context->labels, label_info);
+    _fputs2(context->fd_text, label_info->name_begin, ":\n");
+
     int old_cnt_var = vsize(&context->variables);
-    int old_sf_pos = context->sf_pos;
     int old_cnt_functions = vsize(&context->functions);
+    int old_sf_pos = context->sf_pos;
     
     for (int i = 0; i < vsize(&this->statement_list); i++) {
         CompileNode(this->statement_list.ptr[i], context);
@@ -145,14 +158,28 @@ void CompileBlock(struct Node *node, struct Block *this, struct CPContext *conte
 
     int cnt_var = vsize(&context->variables);
     int cnt_functions = vsize(&context->functions);
-    _fputsi(context->fd_text, "add rsp, ", old_sf_pos - context->sf_pos, "\n");
+    _fputsi(context->fd_text, "add rsp, ", label_info->sf_pos - context->sf_pos, "\n");
     for (int i = 0; i < cnt_var - old_cnt_var; i++) {
         vpop(&context->variables);
     }
     for (int i = 0; i < cnt_functions - old_cnt_functions; i++) {
         vpop(&context->functions);
     }
-    context->sf_pos = old_sf_pos;
+    _fputs2(context->fd_text, label_info->name_end, ":\n");
+
+    struct TypeNode *type;
+    if (!label_info->type) {
+        type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+        struct TypeVoid *_type = (struct TypeVoid*)_malloc(sizeof(struct TypeVoid));
+        type->node_ptr = _type;
+        type->node_type = TypeNodeVoid;
+        type->degree = 0;
+    }
+    else {
+        type = label_info->type;
+    }
+    vpop(&context->labels);
+    return type;
 }
 
 void CompileInclude(struct Node *node, struct Include *this, struct CPContext *context) {
@@ -232,7 +259,17 @@ void CompileIf(struct Node *node, struct If *this, struct CPContext *context) {
 }
 
 void CompileWhile(struct Node *node, struct While *this, struct CPContext *context) {
+    struct LabelInfo *label_info = (struct LabelInfo*)_malloc(sizeof(struct LabelInfo));
+    if(this->label) label_info->name = this->label;
+    else label_info->name = NULL;
     int idx = context->branch_index;
+    context->branch_index += 2;
+    label_info->name_begin = concat("_L", _itoa(idx));
+    label_info->name_end = concat("_L", _itoa(idx + 1));
+    vpush(&context->labels, label_info);
+    _fputs2(context->fd_text, label_info->name_begin, ":\n");
+
+    idx = context->branch_index;
     context->branch_index += 2;
     _fputsi(context->fd_text, "_L", idx, ":\n");
     CompileNode(this->condition, context);
@@ -241,6 +278,9 @@ void CompileWhile(struct Node *node, struct While *this, struct CPContext *conte
     CompileNode(this->block, context);
     _fputsi(context->fd_text, "jmp _L", idx, "\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+
+    vpop(&context->labels);
+    _fputs2(context->fd_text, label_info->name_end, ":\n");
 }
 
 struct TypeNode *from_signature_to_type(struct FunctionSignature *signature) {
@@ -392,11 +432,29 @@ void CompileReturn(struct Node *node, struct Return *this, struct CPContext *con
         error_semantic("Return expected to be in function", node);
     }
     if (!type_equal(_type, vback(&context->return_types), context)) {
-        error_semantic("Value type doesn't not equal to return type in function signature", node);
+        error_semantic("Value type does not equal to return type in function signature", node);
     }
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "leave\n");
     _fputs(context->fd_text, "ret\n");
+}
+
+void CompileBreak(struct Node *node, struct Break *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileNode(this->expression, context);
+    struct LabelInfo *label_info = context_find_label(context, this->label);
+    if (!label_info) {
+        error_semantic("Label was not declared", node);
+    }
+    if (!label_info->type) {
+        label_info->type = _type;
+    }
+    else {
+        if (!type_equal(_type, label_info->type, context)) {
+            error_semantic("Break values types do not equal", node);
+        }
+    }
+    _fputsi(context->fd_text, "add rsp, ", label_info->sf_pos - context->sf_pos, "\n");
+    _fputs3(context->fd_text, "jmp ", label_info->name_end, "\n");
 }
 
 struct TypeNode *CompileAs(struct Node *node, struct As *this, struct CPContext *context) {
@@ -893,7 +951,7 @@ struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
 
     if (node->node_type == NodeBlock) {
         _fputs(context->fd_text, "block\n");
-        CompileBlock(node, (struct Block*)node->node_ptr, context);
+        return CompileBlock(node, (struct Block*)node->node_ptr, context);
     }
     if (node->node_type == NodeInclude) {
         _fputs(context->fd_text, "include\n");
@@ -930,6 +988,10 @@ struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeReturn) {
         _fputs(context->fd_text, "return\n");
         CompileReturn(node, (struct Return*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeBreak) {
+        _fputs(context->fd_text, "break\n");
+        CompileBreak(node, (struct Break*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAs) {
         _fputs(context->fd_text, "as\n");

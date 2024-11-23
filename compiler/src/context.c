@@ -34,3 +34,15 @@ struct FunctionInfo *context_find_function(struct CPContext *context, const char
     }
     return NULL;
 }
+
+struct LabelInfo *context_find_label(struct CPContext *context, const char *identifier) {
+    int sz = vsize(&context->labels);
+    for (int i = sz - 1; i >= 0; i--) {
+        struct LabelInfo *label_info = context->labels.ptr[i];
+        if (label_info->name && identifier && _strcmp(label_info->name, identifier) == 0 ||
+            !label_info->name && !identifier) {
+            return label_info;
+        }
+    }
+    return NULL;
+}

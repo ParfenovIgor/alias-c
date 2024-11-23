@@ -56,6 +56,17 @@ struct Node *syntax_process_block(struct TokenStream *ts, struct Settings *st, b
             one_statement = true;
         }
     }
+
+    if (tokenstream_get(ts).type == TokenDot) {
+        tokenstream_next(ts);
+        check_next(ts, TokenIdentifier, "Identifier expected in label");
+        this->label = tokenstream_get(ts).value_string;
+        tokenstream_next(ts);
+    }
+    else {
+        this->label = NULL;
+    }
+
     while (tokenstream_get(ts).type != TokenEof && tokenstream_get(ts).type != TokenBraceClose) {
         if (tokenstream_get(ts).type == TokenSemicolon) {
             tokenstream_next(ts);
@@ -85,8 +96,13 @@ struct TypeNode *syntax_process_type(struct TokenStream *ts, struct Settings *st
     check_next(ts, TokenIdentifier, "Identifier expected in type definition");
     const char *typestr = tokenstream_get(ts).value_string;
     tokenstream_next(ts);
-    
-    if (!_strcmp(typestr, "I")) {
+        
+    if (!_strcmp(typestr, "V")) {
+        struct TypeVoid *this = (struct TypeVoid*)_malloc(sizeof(struct TypeVoid));
+        node->node_type = TypeNodeVoid;
+        node->node_ptr = this;
+    }
+    else if (!_strcmp(typestr, "I")) {
         struct TypeInt *this = (struct TypeInt*)_malloc(sizeof(struct TypeInt));
         node->node_type = TypeNodeInt;
         node->node_ptr = this;
@@ -425,103 +441,105 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         else {
             this->address = false;
         }
-        finish_node(node, ts);
-
-        while (true) {
-            if (tokenstream_get(ts).type == TokenParenthesisOpen) {
-                struct Node *prv_node = node;
-                node = (struct Node*)_malloc(sizeof(struct Node));
-                node->line_begin = prv_node->line_begin;
-                node->position_begin = prv_node->position_begin;
-                node->filename = _strdup(prv_node->filename);
-                tokenstream_next(ts);
-
-                struct FunctionCall *this = (struct FunctionCall*)_malloc(sizeof(struct FunctionCall));
-                node->node_ptr = this;
-                node->node_type = NodeFunctionCall;
-                this->function = prv_node;
-                this->arguments = vnew();
-                while (true) {
-                    if (tokenstream_get(ts).type == TokenParenthesisClose) {
-                        break;
-                    }
-                    vpush(&this->arguments, syntax_process_expression(ts, st));
-                    if (tokenstream_get(ts).type == TokenParenthesisClose) {
-                        break;
-                    }
-                    pass_next(ts, TokenComma, ", expected in function call");
-                }
-                tokenstream_next(ts);
-                finish_node(node, ts);
-            }
-            else if (tokenstream_get(ts).type == TokenGetField) {
-                struct Node *prv_node = node;
-                node = (struct Node*)_malloc(sizeof(struct Node));
-                node->line_begin = prv_node->line_begin;
-                node->position_begin = prv_node->position_begin;
-                node->filename = _strdup(prv_node->filename);
-
-                tokenstream_next(ts);
-
-                struct GetField *this = (struct GetField*)_malloc(sizeof(struct GetField));
-                node->node_ptr = this;
-                node->node_type = NodeGetField;
-                this->left = prv_node;
-                check_next(ts, TokenIdentifier, "Identifier expected in get struct field expression");
-                this->field = _strdup(tokenstream_get(ts).value_string);
-                tokenstream_next(ts);
-                if (tokenstream_get(ts).type == TokenAddress) {
-                    this->address = true;
-                    tokenstream_next(ts);
-                }
-                else {
-                    this->address = false;
-                }
-                finish_node(node, ts);
-            }
-            else if (tokenstream_get(ts).type == TokenBracketOpen) {
-                struct Node *prv_node = node;
-                node = (struct Node*)_malloc(sizeof(struct Node));
-                node->line_begin = prv_node->line_begin;
-                node->position_begin = prv_node->position_begin;
-                node->filename = _strdup(prv_node->filename);
-
-                tokenstream_next(ts);
-
-                struct Index *this = (struct Index*)_malloc(sizeof(struct Index));
-                node->node_ptr = this;
-                node->node_type = NodeIndex;
-                this->left = prv_node;
-                this->right = syntax_process_expression(ts, st);
-                pass_next(ts, TokenBracketClose, "] expected in index expression");
-                if (tokenstream_get(ts).type == TokenAddress) {
-                    this->address = true;
-                    tokenstream_next(ts);
-                }
-                else {
-                    this->address = false;
-                }
-                finish_node(node, ts);
-            }
-            else if (tokenstream_get(ts).type == TokenDereference) {
-                struct Node *prv_node = node;
-                node = (struct Node*)_malloc(sizeof(struct Node));
-                node->line_begin = prv_node->line_begin;
-                node->position_begin = prv_node->position_begin;
-                node->filename = _strdup(prv_node->filename);
-
-                struct Dereference *this = (struct Dereference*)_malloc(sizeof(struct Dereference));
-                node->node_ptr = this;
-                node->node_type = NodeDereference;
-                this->expression = prv_node;
-                tokenstream_next(ts);
-                finish_node(node, ts);
-            }
-            else break;
-        }
+    }
+    else if (tokenstream_get(ts).type == TokenBraceOpen) {
+        node = syntax_process_block(ts, st, true);
     }
     else {
-        error_syntax("Unexpected symbol in primary expression", tokenstream_get(ts));
+        error_syntax("Unexpected symbol in primary", tokenstream_get(ts));
+    }
+
+    while (true) {
+        if (tokenstream_get(ts).type == TokenParenthesisOpen) {
+            struct Node *prv_node = node;
+            node = (struct Node*)_malloc(sizeof(struct Node));
+            node->line_begin = prv_node->line_begin;
+            node->position_begin = prv_node->position_begin;
+            node->filename = _strdup(prv_node->filename);
+            tokenstream_next(ts);
+
+            struct FunctionCall *this = (struct FunctionCall*)_malloc(sizeof(struct FunctionCall));
+            node->node_ptr = this;
+            node->node_type = NodeFunctionCall;
+            this->function = prv_node;
+            this->arguments = vnew();
+            while (true) {
+                if (tokenstream_get(ts).type == TokenParenthesisClose) {
+                    break;
+                }
+                vpush(&this->arguments, syntax_process_expression(ts, st));
+                if (tokenstream_get(ts).type == TokenParenthesisClose) {
+                    break;
+                }
+                pass_next(ts, TokenComma, ", expected in function call");
+            }
+            tokenstream_next(ts);
+            finish_node(node, ts);
+        }
+        else if (tokenstream_get(ts).type == TokenGetField) {
+            struct Node *prv_node = node;
+            node = (struct Node*)_malloc(sizeof(struct Node));
+            node->line_begin = prv_node->line_begin;
+            node->position_begin = prv_node->position_begin;
+            node->filename = _strdup(prv_node->filename);
+
+            tokenstream_next(ts);
+
+            struct GetField *this = (struct GetField*)_malloc(sizeof(struct GetField));
+            node->node_ptr = this;
+            node->node_type = NodeGetField;
+            this->left = prv_node;
+            check_next(ts, TokenIdentifier, "Identifier expected in get struct field expression");
+            this->field = _strdup(tokenstream_get(ts).value_string);
+            tokenstream_next(ts);
+            if (tokenstream_get(ts).type == TokenAddress) {
+                this->address = true;
+                tokenstream_next(ts);
+            }
+            else {
+                this->address = false;
+            }
+            finish_node(node, ts);
+        }
+        else if (tokenstream_get(ts).type == TokenBracketOpen) {
+            struct Node *prv_node = node;
+            node = (struct Node*)_malloc(sizeof(struct Node));
+            node->line_begin = prv_node->line_begin;
+            node->position_begin = prv_node->position_begin;
+            node->filename = _strdup(prv_node->filename);
+
+            tokenstream_next(ts);
+
+            struct Index *this = (struct Index*)_malloc(sizeof(struct Index));
+            node->node_ptr = this;
+            node->node_type = NodeIndex;
+            this->left = prv_node;
+            this->right = syntax_process_expression(ts, st);
+            pass_next(ts, TokenBracketClose, "] expected in index expression");
+            if (tokenstream_get(ts).type == TokenAddress) {
+                this->address = true;
+                tokenstream_next(ts);
+            }
+            else {
+                this->address = false;
+            }
+            finish_node(node, ts);
+        }
+        else if (tokenstream_get(ts).type == TokenDereference) {
+            struct Node *prv_node = node;
+            node = (struct Node*)_malloc(sizeof(struct Node));
+            node->line_begin = prv_node->line_begin;
+            node->position_begin = prv_node->position_begin;
+            node->filename = _strdup(prv_node->filename);
+
+            struct Dereference *this = (struct Dereference*)_malloc(sizeof(struct Dereference));
+            node->node_ptr = this;
+            node->node_type = NodeDereference;
+            this->expression = prv_node;
+            tokenstream_next(ts);
+            finish_node(node, ts);
+        }
+        else break;
     }
 
     finish_node(node, ts);
@@ -647,6 +665,15 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         node->node_ptr = this;
         node->node_type = NodeWhile;
         tokenstream_next(ts);
+        if (tokenstream_get(ts).type == TokenDot) {
+            tokenstream_next(ts);
+            check_next(ts, TokenIdentifier, "Identifier expected in label");
+            this->label = tokenstream_get(ts).value_string;
+            tokenstream_next(ts);
+        }
+        else {
+            this->label = NULL;
+        }
         pass_next(ts, TokenParenthesisOpen, "( expected in while condition");
         struct Node *_expression = syntax_process_expression(ts, st);
         pass_next(ts, TokenParenthesisClose, ") expected in while condition");
@@ -731,6 +758,22 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         node->node_ptr = this;
         node->node_type = NodeReturn;
         tokenstream_next(ts);
+        this->expression = syntax_process_expression(ts, st);
+    }
+    else if (tokenstream_get(ts).type == TokenBreak) {
+        struct Break *this = (struct Break*)_malloc(sizeof(struct Break));
+        node->node_ptr = this;
+        node->node_type = NodeBreak;
+        tokenstream_next(ts);
+        if (tokenstream_get(ts).type == TokenDot) {
+            tokenstream_next(ts);
+            check_next(ts, TokenIdentifier, "Identifier expected in label");
+            this->label = tokenstream_get(ts).value_string;
+            tokenstream_next(ts);
+        }
+        else {
+            this->label = NULL;
+        }
         this->expression = syntax_process_expression(ts, st);
     }
     else {

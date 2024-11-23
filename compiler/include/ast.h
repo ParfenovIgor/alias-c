@@ -15,6 +15,7 @@ enum NodeType {
     NodeDefinition,
     NodeTypeDefinition,
     NodeReturn,
+    NodeBreak,
     NodeAs,
     NodeAssignment,
     NodeMovement,
@@ -50,6 +51,7 @@ struct Prototype;
 struct Definition;
 struct TypeDefinition;
 struct Return;
+struct Break;
 struct As;
 struct Assignment;
 struct Movement;
@@ -91,6 +93,7 @@ struct Node {
 
 struct Block {
     struct Vector statement_list;
+    const char *label;
 };
 
 struct Include {
@@ -111,6 +114,7 @@ struct If {
 struct While {
     struct Node *condition;
     struct Node *block;
+    const char *label;
 };
 
 struct FunctionDefinition {
@@ -140,6 +144,11 @@ struct TypeDefinition {
 
 struct Return {
     struct Node *expression;
+};
+
+struct Break {
+    struct Node *expression;
+    const char *label;
 };
 
 struct As {
