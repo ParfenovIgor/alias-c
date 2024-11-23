@@ -19,8 +19,9 @@ bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *cont
         n1->degree + sum_degree1 != n2->degree + sum_degree2) {
         return false;
     }
-    if (n1->node_type == TypeNodeInt) return true;
-    if (n1->node_type == TypeNodeChar) return true;
+    if (n1->node_type == TypeNodeVoid) return n2->node_type == TypeNodeVoid;
+    if (n1->node_type == TypeNodeInt) return n2->node_type == TypeNodeInt;
+    if (n1->node_type == TypeNodeChar) return n2->node_type == TypeNodeChar;
     if (n1->node_type == TypeNodeStruct) {
         struct TypeStruct *_n1 = n1->node_ptr;
         struct TypeStruct *_n2 = n2->node_ptr;
@@ -64,6 +65,7 @@ struct TypeNode *type_get_function(struct TypeNode *n, struct CPContext *context
 }
 
 int type_size(struct TypeNode *n, struct CPContext *context) {
+    if (n->node_type == TypeNodeVoid) return 0;
     if (n->node_type == TypeNodeInt) return 8;
     if (n->node_type == TypeNodeChar) return 1;
     if (n->node_type == TypeNodeStruct) {

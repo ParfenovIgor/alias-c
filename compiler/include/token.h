@@ -13,6 +13,7 @@ enum TokenType {
     TokenDef,
     TokenTypedef,
     TokenReturn,
+    TokenBreak,
     TokenAs,
     TokenConst,
     TokenTest,

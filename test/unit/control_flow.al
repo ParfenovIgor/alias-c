@@ -27,7 +27,6 @@ test demo_if_statement {
 //* The while statement consists of block an condition.
 
 test demo_while_statement {
-    return 0
     def i := 0
     def sum := 0
     while (i < 10) {
