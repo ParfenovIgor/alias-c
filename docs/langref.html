@@ -120,7 +120,7 @@
 <div id="contents-wrapper"><main id="contents">
 <h2 id="1">Block Expressions</h2>
 <h3 id="1.1">Return with expression</h3>
-<p>We can return value from a block using `return` statement. All return expressions have to have equal types.</p>
+<p>We can return value from a block using <code>return</code> statement. All return expressions have to have equal types.</p>
 <pre><code>test demo_return_with_expression {
     def a := {
         return 4
@@ -142,7 +142,7 @@
 
 </code></pre>
 <h3 id="1.3">Return void</h3>
-<p>The expression `{}` is a block, which returns type `#V`. We can use it to break from blocks, which are used as statements (don't return anything and have type `#V`).</p>
+<p>The expression <code>{}</code> is a block, which returns type <code>#V</code>. We can use it to break from blocks, which are used as statements (don't return anything and have type <code>#V</code>).</p>
 <pre><code>test demo_return_from_block {
     def a := 3
     eval {
@@ -155,7 +155,7 @@
 </code></pre>
 <h2 id="2">Definitions</h2>
 <h3 id="2.1">Definition</h3>
-<p>Use `def` to define a local variable. The variable must have an initial value after := operator.</p>
+<p>Use <code>def</code> to define a local variable. The variable must have an initial value after <code>:=</code> operator.</p>
 <pre><code>test demo_definition {
     def a := 5 // this is variable `a`, which has type `integer`
     def b := '4' // this is variable `b`, which has type `char`
@@ -164,7 +164,7 @@
 
 </code></pre>
 <h3 id="2.2">Types</h3>
-<p>We can write types of local variables explicitly. The types begin with symbol `#`.</p>
+<p>We can write types of local variables explicitly. The types begin with symbol <code>#</code>.</p>
 <pre><code>test demo_types {
     def a #I := 5 // `#I` is an `integer` type
     def b #C := '4' // `#C` is a `char` type
@@ -173,7 +173,7 @@
 
 </code></pre>
 <h3 id="2.3">Type size</h3>
-<p>Operator `^` returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.</p>
+<p>Operator <code>^</code> returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.</p>
 <pre><code>test demo_type_size { .foo
     eval if (^#I = 8) {} else { return .foo 1 } // The size of `#I` is 8 bytes
     eval if (^#C = 1) {} else { return .foo 1 } // The size of `#C` is 1 byte
@@ -193,7 +193,7 @@ test demo_functions {
 </code></pre>
 <h2 id="4">If</h2>
 <h3 id="4.1">If statement</h3>
-<p>The `if` statement consists of set of blocks and conditions. The last block may be without a condition.</p>
+<p>The <code>if</code> statement consists of set of blocks and conditions. The last block may be without a condition.</p>
 <pre><code>test demo_if_statement {
     def a := 3
     eval if (a = 2) {
@@ -210,7 +210,7 @@ test demo_functions {
 
 </code></pre>
 <h3 id="4.2">If expression</h3>
-<p>The `if` can be used as expression. All branches of `if` have to return equal types, and also `if` has to have an `else` block, if it returns not `#V`.</p>
+<p>The <code>if</code> can be used as expression. All branches of <code>if</code> have to return equal types, and also <code>if</code> has to have an <code>else</code> block, if it returns not <code>#V</code>.</p>
 <pre><code>test demo_if_expression {
     def a := 3
     a := if (a = 2)
@@ -351,7 +351,7 @@ test demo_typedef_function {
 
 </code></pre>
 <h3 id="8.2">While expression</h3>
-<p>The `while` can be used as expression. All `break` in `while` and an `else` block have to return equal types, and also `while` has to have an `else` block, if it returns not `#V`.</p>
+<p>The <code>while</code> can be used as expression. All <code>break</code> in <code>while</code> and an <code>else</code> block have to return equal types, and also <code>while</code> has to have an <code>else</code> block, if it returns not <code>#V</code>.</p>
 <pre><code>test demo_while_expression {
     def i := 0
     def sum := 0
@@ -366,7 +366,7 @@ test demo_typedef_function {
 
 </code></pre>
 <h3 id="8.3">While else block</h3>
-<p>The `else` block will be executed, if we exit the loop when checking a condition, which is false.</p>
+<p>The <code>else</code> block will be executed, if we exit the loop when checking a condition, which is false.</p>
 <pre><code>test demo_while_else_block {
     def i := 0
     def sum := 0
@@ -381,7 +381,7 @@ test demo_typedef_function {
 
 </code></pre>
 <h3 id="8.4">While continue statement</h3>
-<p>We can jump to the start of the loop using a `continue` statement.</p>
+<p>We can jump to the start of the loop using a <code>continue</code> statement.</p>
 <pre><code>test demo_while_continue_statement {
     def i := 0
     def sum := 0
@@ -397,7 +397,7 @@ test demo_typedef_function {
 
 </code></pre>
 <h3 id="8.5">While control with labels</h3>
-<p>We can use `break` and `continue` not only to nearest loop, but also to given labeled loop.</p>
+<p>We can use <code>break</code> and <code>continue</code> not only to nearest loop, but also to given labeled loop.</p>
 <pre><code>test demo_while_control_with_labels {
     def a := while .foo (1) {
         eval while (1) {

@@ -18,6 +18,7 @@ void parse(int section_id, char *filename, int fd) {
         char buffer[4096];
         int len = 0;
         bool bad = true;
+        int backtick = 0;
         while (posix_read(file, buffer + len, 1)) {
             if (buffer[len] == '\n') {
                 bad = false;
@@ -30,6 +31,17 @@ void parse(int section_id, char *filename, int fd) {
             if (buffer[len] == '>') {
                 _strcpy(buffer + len, "&gt");
                 len += 2;
+            }
+            if (buffer[len] == '`' && !code) {
+                if (backtick == 0) {
+                    _strcpy(buffer + len, "<code>");
+                    len += 5;
+                }
+                else {
+                    _strcpy(buffer + len, "</code>");
+                    len += 6;
+                }
+                backtick = 1 - backtick;
             }
             len++;
         }
