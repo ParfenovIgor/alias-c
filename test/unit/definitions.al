@@ -4,7 +4,7 @@ func .test_equal(a #I, b #I) -> #I
 //* Definitions
 
 //* Definition
-//* Use `def` to define a local variable. The variable must have an initial value after := operator.
+//* Use `def` to define a local variable. The variable must have an initial value after `:=` operator.
 
 test demo_definition {
     def a := 5 // this is variable `a`, which has type `integer`
