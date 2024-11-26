@@ -419,7 +419,7 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         tokenstream_next(ts);
         pass_next(ts, TokenParenthesisOpen, "( expected in function definition");
         this->signature = syntax_process_function_signature(ts, st);
-        this->block = syntax_process_block(ts, st, true);
+        this->block = syntax_process_expression(ts, st);
     } 
     else if (tokenstream_get(ts).type == TokenCaret) {
         struct Sizeof *this = (struct Sizeof*)_malloc(sizeof(struct Sizeof));
@@ -444,6 +444,64 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
     }
     else if (tokenstream_get(ts).type == TokenBraceOpen) {
         node = syntax_process_block(ts, st, true);
+    }
+    else if (tokenstream_get(ts).type == TokenIf) {
+        struct If *this = (struct If*)_malloc(sizeof(struct If));
+        this->condition_list = vnew();
+        this->block_list = vnew();
+        this->else_block = NULL;
+        node->node_ptr = this;
+        node->node_type = NodeIf;
+        tokenstream_next(ts);
+        pass_next(ts, TokenParenthesisOpen, "( expected in if condition");
+        struct Node *_expression = syntax_process_expression(ts, st);
+        pass_next(ts, TokenParenthesisClose, ") expected in if condition");
+        struct Node *_block = syntax_process_expression(ts, st);
+        vpush(&this->condition_list, _expression);
+        vpush(&this->block_list, _block);
+
+        while (tokenstream_get(ts).type == TokenElse) {
+            tokenstream_next(ts);
+
+            if (tokenstream_get(ts).type == TokenIf) {
+                tokenstream_next(ts);
+                pass_next(ts, TokenParenthesisOpen, "( expected in if condition");
+                struct Node *_expression = syntax_process_expression(ts, st);
+                pass_next(ts, TokenParenthesisClose, ") expected in if condition");
+                struct Node *_block = syntax_process_expression(ts, st);
+                vpush(&this->condition_list, _expression);
+                vpush(&this->block_list, _block);
+            }
+            else {
+                this->else_block = syntax_process_expression(ts, st);
+            }
+        }
+    }
+    else if (tokenstream_get(ts).type == TokenWhile) {
+        struct While *this = (struct While*)_malloc(sizeof(struct While));
+        this->else_block = NULL;
+        node->node_ptr = this;
+        node->node_type = NodeWhile;
+        tokenstream_next(ts);
+        if (tokenstream_get(ts).type == TokenDot) {
+            tokenstream_next(ts);
+            check_next(ts, TokenIdentifier, "Identifier expected in label");
+            this->label = tokenstream_get(ts).value_string;
+            tokenstream_next(ts);
+        }
+        else {
+            this->label = NULL;
+        }
+        pass_next(ts, TokenParenthesisOpen, "( expected in while condition");
+        struct Node *_expression = syntax_process_expression(ts, st);
+        pass_next(ts, TokenParenthesisClose, ") expected in while condition");
+        struct Node *_block = syntax_process_block(ts, st, true);
+        this->condition = _expression;
+        this->block = _block;
+        if (tokenstream_get(ts).type == TokenElse) {
+            tokenstream_next(ts);
+            this->else_block = syntax_process_expression(ts, st);
+        }
     }
     else {
         error_syntax("Unexpected symbol in primary", tokenstream_get(ts));
@@ -573,9 +631,9 @@ struct FunctionSignature *syntax_process_function_signature(struct TokenStream *
 }
 
 struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *st) {
-    if (tokenstream_get(ts).type == TokenBraceOpen) {
-        struct Node *node = syntax_process_block(ts, st, true);
-        return node;
+    if (tokenstream_get(ts).type == TokenEval) {
+        tokenstream_next(ts);
+        return syntax_process_expression(ts, st);
     }
     struct Node *node = init_node(ts);
     if (tokenstream_get(ts).type == TokenInclude) {
@@ -625,61 +683,7 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         check_next(ts, TokenIdentifier, "Identifier expected in test");
         this->name = _strdup(tokenstream_get(ts).value_string);
         tokenstream_next(ts);
-        this->block = syntax_process_block(ts, st, true);
-    }
-    else if (tokenstream_get(ts).type == TokenIf) {
-        struct If *this = (struct If*)_malloc(sizeof(struct If));
-        this->condition_list = vnew();
-        this->block_list = vnew();
-        this->else_block = NULL;
-        node->node_ptr = this;
-        node->node_type = NodeIf;
-        tokenstream_next(ts);
-        pass_next(ts, TokenParenthesisOpen, "( expected in if condition");
-        struct Node *_expression = syntax_process_expression(ts, st);
-        pass_next(ts, TokenParenthesisClose, ") expected in if condition");
-        struct Node *_block = syntax_process_block(ts, st, true);
-        vpush(&this->condition_list, _expression);
-        vpush(&this->block_list, _block);
-
-        while (tokenstream_get(ts).type == TokenElse) {
-            tokenstream_next(ts);
-
-            if (tokenstream_get(ts).type == TokenIf) {
-                tokenstream_next(ts);
-                pass_next(ts, TokenParenthesisOpen, "( expected in if condition");
-                struct Node *_expression = syntax_process_expression(ts, st);
-                pass_next(ts, TokenParenthesisClose, ") expected in if condition");
-                struct Node *_block = syntax_process_block(ts, st, true);
-                vpush(&this->condition_list, _expression);
-                vpush(&this->block_list, _block);
-            }
-            else {
-                struct Node *_block = syntax_process_block(ts, st, true);
-                this->else_block = _block;
-            }
-        }
-    }
-    else if (tokenstream_get(ts).type == TokenWhile) {
-        struct While *this = (struct While*)_malloc(sizeof(struct While));
-        node->node_ptr = this;
-        node->node_type = NodeWhile;
-        tokenstream_next(ts);
-        if (tokenstream_get(ts).type == TokenDot) {
-            tokenstream_next(ts);
-            check_next(ts, TokenIdentifier, "Identifier expected in label");
-            this->label = tokenstream_get(ts).value_string;
-            tokenstream_next(ts);
-        }
-        else {
-            this->label = NULL;
-        }
-        pass_next(ts, TokenParenthesisOpen, "( expected in while condition");
-        struct Node *_expression = syntax_process_expression(ts, st);
-        pass_next(ts, TokenParenthesisClose, ") expected in while condition");
-        struct Node *_block = syntax_process_block(ts, st, true);
-        this->condition = _expression;
-        this->block = _block;
+        this->block = syntax_process_expression(ts, st);
     }
     else if (tokenstream_get(ts).type == TokenFunc) {
         struct FunctionDefinition *this = (struct FunctionDefinition*)_malloc(sizeof(struct FunctionDefinition));
@@ -704,7 +708,7 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         tokenstream_next(ts);
         pass_next(ts, TokenParenthesisOpen, "( expected in function definition");
         this->signature = syntax_process_function_signature(ts, st);
-        this->block = syntax_process_block(ts, st, true);
+        this->block = syntax_process_expression(ts, st);
     }
     else if (tokenstream_get(ts).type == TokenProto) {
         struct Prototype *this = (struct Prototype*)_malloc(sizeof(struct Prototype));
@@ -758,6 +762,15 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         node->node_ptr = this;
         node->node_type = NodeReturn;
         tokenstream_next(ts);
+        if (tokenstream_get(ts).type == TokenDot) {
+            tokenstream_next(ts);
+            check_next(ts, TokenIdentifier, "Identifier expected in label");
+            this->label = tokenstream_get(ts).value_string;
+            tokenstream_next(ts);
+        }
+        else {
+            this->label = NULL;
+        }
         this->expression = syntax_process_expression(ts, st);
     }
     else if (tokenstream_get(ts).type == TokenBreak) {

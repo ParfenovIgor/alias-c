@@ -8,41 +8,39 @@ include altlib."posix.al"
 include altlib."algorithm.al"
 include altlib."string.al"
 
-func ^._start() -> #I {
-    def _ := 0
-
+func ^._start() -> #V {
     def str1 := "abacaba"
-    _ := _puts(str1);
+    eval _puts(str1);
     
     def str2 := _malloc(10 * ^#C) as #1C
-    _ := strcpy_(str2, str1) as #I
-    _ := _puts(str2);
+    eval strcpy_(str2, str1) as #I
+    eval _puts(str2);
 
     def str3 := _malloc(10 * ^#C) as #1C
-    _ := strncpy_(str3, str1, 3) as #I
-    _ := _puts(str3);
+    eval strncpy_(str3, str1, 3) as #I
+    eval _puts(str3);
 
     def n1 := strcmp_(str1, str2)
-    _ := _puti(n1)
+    eval _puti(n1)
 
     str2[3]& <- 't'
     def n2 := strcmp_(str1, str2)
-    _ := _puti(n2)
+    eval _puti(n2)
 
     def n3 := strcmp_(str2, str1)
-    _ := _puti(n3)
+    eval _puti(n3)
 
     def n4 := strncmp_(str1, str2, 3)
-    _ := _puti(n4)
+    eval _puti(n4)
 
     def n5 := strncmp_(str1, str2, 4)
-    _ := _puti(n5)
+    eval _puti(n5)
 
     def n6 := strlen_(str1)
-    _ := _puti(n6)
+    eval _puti(n6)
 
     def n7 := strlen_(str3)
-    _ := _puti(n7)
+    eval _puti(n7)
 
-    _ := posix_exit(0)
+    eval posix_exit(0)
 }

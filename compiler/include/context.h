@@ -33,8 +33,8 @@ struct CPContext {
     struct Vector variables;
     struct Vector types;
     struct Vector functions;
-    struct Vector labels;
-    struct Vector return_types;
+    struct Vector block_labels;
+    struct Vector loop_labels;
     int sf_pos;
 
     int function_index;
@@ -51,11 +51,13 @@ struct CPContext {
     int fd_data;
     int fd_bss;
 
+    struct TypeNode *node_void;
     struct TypeNode *node_int;
     struct TypeNode *node_char;
 };
 
-struct VariableInfo *context_find_variable  (struct CPContext*, const char*);
-struct TypeInfo     *context_find_type      (struct CPContext*, const char*);
-struct FunctionInfo *context_find_function  (struct CPContext*, const char*);
-struct LabelInfo    *context_find_label     (struct CPContext*, const char*);
+struct VariableInfo *context_find_variable      (struct CPContext*, const char*);
+struct TypeInfo     *context_find_type          (struct CPContext*, const char*);
+struct FunctionInfo *context_find_function      (struct CPContext*, const char*);
+struct LabelInfo    *context_find_block_label   (struct CPContext*, const char*);
+struct LabelInfo    *context_find_loop_label    (struct CPContext*, const char*);

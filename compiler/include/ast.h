@@ -114,6 +114,7 @@ struct If {
 struct While {
     struct Node *condition;
     struct Node *block;
+    struct Node *else_block;
     const char *label;
 };
 
@@ -144,6 +145,7 @@ struct TypeDefinition {
 
 struct Return {
     struct Node *expression;
+    const char *label;
 };
 
 struct Break {
