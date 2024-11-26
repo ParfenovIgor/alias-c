@@ -16,6 +16,7 @@ enum NodeType {
     NodeTypeDefinition,
     NodeReturn,
     NodeBreak,
+    NodeContinue,
     NodeAs,
     NodeAssignment,
     NodeMovement,
@@ -52,6 +53,7 @@ struct Definition;
 struct TypeDefinition;
 struct Return;
 struct Break;
+struct Continue;
 struct As;
 struct Assignment;
 struct Movement;
@@ -150,6 +152,10 @@ struct Return {
 
 struct Break {
     struct Node *expression;
+    const char *label;
+};
+
+struct Continue {
     const char *label;
 };
 

@@ -484,6 +484,15 @@ void CompileBreak(struct Node *node, struct Break *this, struct CPContext *conte
     _fputs3(context->fd_text, "jmp ", label_info->name_end, "\n");
 }
 
+void CompileContinue(struct Node *node, struct Continue *this, struct CPContext *context) {
+    struct LabelInfo *label_info = context_find_loop_label(context, this->label);
+    if (!label_info) {
+        error_semantic("Label was not declared", node);
+    }
+    _fputsi(context->fd_text, "add rsp, ", label_info->sf_pos - context->sf_pos, "\n");
+    _fputs3(context->fd_text, "jmp ", label_info->name_begin, "\n");
+}
+
 struct TypeNode *CompileAs(struct Node *node, struct As *this, struct CPContext *context) {
     struct TypeNode *_type = CompileNode(this->expression, context);
     return this->type;
@@ -978,6 +987,10 @@ struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeBreak) {
         _fputs(context->fd_text, "break\n");
         CompileBreak(node, (struct Break*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeContinue) {
+        _fputs(context->fd_text, "continue\n");
+        CompileContinue(node, (struct Continue*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAs) {
         _fputs(context->fd_text, "as\n");
