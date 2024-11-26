@@ -29,6 +29,10 @@ struct Token tokenstream_get(struct TokenStream *this) {
     return this->stream[this->pos];
 }
 
+struct Token *tokenstream_pget(struct TokenStream *this) {
+    return &this->stream[this->pos];
+}
+
 struct Token tokenstream_get_prev(struct TokenStream *this) {
     _assert(this->pos > 0);
     return this->stream[this->pos - 1];

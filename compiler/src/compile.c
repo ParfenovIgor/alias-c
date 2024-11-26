@@ -851,10 +851,13 @@ struct TypeNode *CompileIndex(struct Node *node, struct Index *this, struct CPCo
 }
 
 struct TypeNode *CompileArithmetic(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {    
-    struct TypeNode *_type1 = CompileNode(this->left, context);
-    if (!type_equal(_type1, context->node_int, context) && 
-        !type_equal(_type1, context->node_char, context)) {
-        error_semantic("Integer type expected in arithmetic operation", this->left);
+    struct TypeNode *_type1 = NULL;
+    if (this->left) {
+        _type1 = CompileNode(this->left, context);
+        if (!type_equal(_type1, context->node_int, context) && 
+            !type_equal(_type1, context->node_char, context)) {
+            error_semantic("Integer type expected in arithmetic operation", this->left);
+        }
     }
 
     _fputs(context->fd_text, "sub rsp, 8\n");
@@ -866,12 +869,14 @@ struct TypeNode *CompileArithmetic(struct Node *node, struct BinaryOperator *thi
         error_semantic("Integer type expected in arithmetic operator", this->right);
     }
 
-    if (!type_equal(_type1, _type2, context)) error_semantic("Equal types expected in arithmetic operator", node);
+    if (_type1 && !type_equal(_type1, _type2, context)) {
+        error_semantic("Equal types expected in arithmetic operator", node);
+    }
 
     _fputs(context->fd_text, "add rsp, 8\n");
     context->sf_pos += 8;
 
-    return _type1;
+    return _type2;
 }
 
 struct TypeNode *CompileAddition(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -884,7 +889,12 @@ struct TypeNode *CompileAddition(struct Node *node, struct BinaryOperator *this,
 
 struct TypeNode *CompileSubtraction(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct TypeNode *_type = CompileArithmetic(node, this, context);
-    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    if (this->left) {
+        _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    }
+    else {
+        _fputs(context->fd_text, "mov rax, 0\n");
+    }
     _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
     return _type;
