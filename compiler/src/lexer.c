@@ -148,6 +148,7 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         else if (append_token(str, N, &i, "eval", TokenEval, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "return", TokenReturn, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "break", TokenBreak, false, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "continue", TokenContinue, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "as", TokenAs, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "const", TokenConst, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "test", TokenTest, false, line, &position, filename, token_stream)) {}
@@ -361,6 +362,7 @@ const char *TokenColor(enum TokenType type,
         Color_Blue,         // TokenEval,
         Color_Blue,         // TokenReturn,
         Color_Blue,         // TokenBreak,
+        Color_Blue,         // TokenContinue,
         Color_Blue,         // TokenAs,
         Color_Blue,         // TokenConst,
         Color_Blue,         // TokenTest,

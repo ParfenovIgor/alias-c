@@ -1,7 +1,7 @@
 func .test_equal(a #I, b #I) -> #I
     if (a = b) 0 else 1
 
-//* Block expressions
+//* Block Expressions
 
 //* Return with expression
 //* We can return value from a block using `return` statement. All return expressions have to have equal types.

@@ -789,6 +789,21 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         }
         this->expression = syntax_process_expression(ts, st);
     }
+    else if (tokenstream_get(ts).type == TokenContinue) {
+        struct Continue *this = (struct Continue*)_malloc(sizeof(struct Continue));
+        node->node_ptr = this;
+        node->node_type = NodeContinue;
+        tokenstream_next(ts);
+        if (tokenstream_get(ts).type == TokenDot) {
+            tokenstream_next(ts);
+            check_next(ts, TokenIdentifier, "Identifier expected in label");
+            this->label = tokenstream_get(ts).value_string;
+            tokenstream_next(ts);
+        }
+        else {
+            this->label = NULL;
+        }
+    }
     else {
         struct Node *left = syntax_process_expression(ts, st);
 

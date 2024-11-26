@@ -15,6 +15,7 @@ enum TokenType {
     TokenEval,
     TokenReturn,
     TokenBreak,
+    TokenContinue,
     TokenAs,
     TokenConst,
     TokenTest,

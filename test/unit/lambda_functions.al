@@ -1,7 +1,7 @@
 func .test_equal(a #I, b #I) -> #I
     if (a = b) 0 else 1
 
-//* Lambda functions
+//* Lambda Functions
 
 //* Simple lambda functions
 //* The lambda functions don't require to have name. But we can assign them to variables.
