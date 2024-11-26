@@ -35,12 +35,22 @@ struct FunctionInfo *context_find_function(struct CPContext *context, const char
     return NULL;
 }
 
-struct LabelInfo *context_find_label(struct CPContext *context, const char *identifier) {
-    int sz = vsize(&context->labels);
+struct LabelInfo *context_find_block_label(struct CPContext *context, const char *identifier) {
+    int sz = vsize(&context->block_labels);
     for (int i = sz - 1; i >= 0; i--) {
-        struct LabelInfo *label_info = context->labels.ptr[i];
-        if (label_info->name && identifier && _strcmp(label_info->name, identifier) == 0 ||
-            !label_info->name && !identifier) {
+        struct LabelInfo *label_info = context->block_labels.ptr[i];
+        if (label_info->name && identifier && _strcmp(label_info->name, identifier) == 0 || !identifier) {
+            return label_info;
+        }
+    }
+    return NULL;
+}
+
+struct LabelInfo *context_find_loop_label(struct CPContext *context, const char *identifier) {
+    int sz = vsize(&context->loop_labels);
+    for (int i = sz - 1; i >= 0; i--) {
+        struct LabelInfo *label_info = context->loop_labels.ptr[i];
+        if (label_info->name && identifier && _strcmp(label_info->name, identifier) == 0 || !identifier) {
             return label_info;
         }
     }

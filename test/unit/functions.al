@@ -1,11 +1,5 @@
-func .test_equal(a #I, b #I) -> #I {
-    if (a = b) {
-        return 0
-    }
-    else {
-        return 1
-    }
-}
+func .test_equal(a #I, b #I) -> #I
+    if (a = b) 0 else 1
 
 //* Functions
 

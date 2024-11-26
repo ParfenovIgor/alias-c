@@ -1,11 +1,5 @@
-func .test_equal(a #I, b #I) -> #I {
-    if (a = b) {
-        return 0
-    }
-    else {
-        return 1
-    }
-}
+func .test_equal(a #I, b #I) -> #I
+    if (a = b) 0 else 1
 
 //* Lambda functions
 
@@ -26,5 +20,5 @@ test demo_higher_order_functions {
     def twice := \(f #F(#I) -> #I, x #I) -> #I {
         return f(f(x))
     }
-    return test_equal(twice(\(x #I) -> #I return x * x, 2), 16)
+    return test_equal(twice(\(x #I) -> #I x * x, 2), 16)
 }

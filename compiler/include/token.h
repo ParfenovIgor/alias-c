@@ -12,6 +12,7 @@ enum TokenType {
     TokenStruct,
     TokenDef,
     TokenTypedef,
+    TokenEval,
     TokenReturn,
     TokenBreak,
     TokenAs,

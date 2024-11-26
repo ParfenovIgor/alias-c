@@ -1,11 +1,5 @@
-func .test_equal(a #I, b #I) -> #I {
-    if (a = b) {
-        return 0
-    }
-    else {
-        return 1
-    }
-}
+func .test_equal(a #I, b #I) -> #I
+    if (a = b) 0 else 1
 
 //* Definitions
 
@@ -30,8 +24,8 @@ test demo_types {
 //* Type size
 //* Operator `^` returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.
 
-test demo_type_size {
-    if (^#I = 8) {} else { return 1 } // The size of `#I` is 8 bytes
-    if (^#C = 1) {} else { return 1 } // The size of `#C` is 1 byte
+test demo_type_size { .foo
+    eval if (^#I = 8) {} else { return .foo 1 } // The size of `#I` is 8 bytes
+    eval if (^#C = 1) {} else { return .foo 1 } // The size of `#C` is 1 byte
     return 0
 }
