@@ -71,6 +71,7 @@ struct TokenStream {
 struct TokenStream *tokenstream_new();
 void tokenstream_push(struct TokenStream*, struct Token);
 struct Token tokenstream_get(struct TokenStream*);
+struct Token *tokenstream_pget(struct TokenStream*);
 struct Token tokenstream_get_prev(struct TokenStream*);
 void tokenstream_next(struct TokenStream*);
 
