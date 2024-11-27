@@ -20,7 +20,6 @@ enum NodeType {
     NodeAs,
     NodeAssignment,
     NodeMovement,
-    NodeAssumption,
     NodeIdentifier,
     NodeInteger,
     NodeChar,
@@ -33,12 +32,27 @@ enum NodeType {
     NodeDereference,
     NodeIndex,
     NodeGetField,
+
+    NodeAnd,
+    NodeOr,
+    NodeNot,
+    NodeBitwiseAnd,
+    NodeBitwiseOr,
+    NodeBitwiseXor,
+    NodeBitwiseNot,
+    NodeBitwiseLeft,
+    NodeBitwiseRight,
     NodeAddition,
     NodeSubtraction,
     NodeMultiplication,
     NodeDivision,
+    NodeModulo,
     NodeLess,
+    NodeGreater,
     NodeEqual,
+    NodeLessEqual,
+    NodeGreaterEqual,
+    NodeNotEqual,
 };
 
 struct Node;
@@ -72,12 +86,6 @@ struct FunctionCall;
 struct Dereference;
 struct Index;
 struct GetField;
-struct Addition;
-struct Subtraction;
-struct Multiplication;
-struct Division;
-struct Less;
-struct Equal;
 
 
 struct FunctionSignature {
@@ -164,17 +172,6 @@ struct As {
     struct TypeNode *type;
 };
 
-struct Index {
-    struct Node *left, *right;
-    bool address;
-};
-
-struct GetField {
-    struct Node *left;
-    const char *field;
-    bool address;
-};
-
 struct Assignment {
     struct Node *dst, *src;
 };
@@ -225,6 +222,17 @@ struct FunctionCall {
 
 struct Dereference {
     struct Node *expression;
+};
+
+struct Index {
+    struct Node *left, *right;
+    bool address;
+};
+
+struct GetField {
+    struct Node *left;
+    const char *field;
+    bool address;
 };
 
 struct BinaryOperator {

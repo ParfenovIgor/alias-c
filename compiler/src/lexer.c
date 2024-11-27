@@ -152,6 +152,9 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         else if (append_token(str, N, &i, "as", TokenAs, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "const", TokenConst, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "test", TokenTest, false, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "and", TokenAnd, false, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "or", TokenOr, false, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "not", TokenNot, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, ":=", TokenAssign, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "<-", TokenMove, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, ",", TokenComma, true, line, &position, filename, token_stream)) {}
@@ -165,12 +168,14 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         else if (append_token(str, N, &i, "[", TokenBracketOpen, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "]", TokenBracketClose, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "\\", TokenBackslash, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "&", TokenAmpersand, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "|", TokenPipe, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "&", TokenAddress, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "$", TokenDereference, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "!!", TokenIndex, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "->", TokenGetField, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "^", TokenCaret, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "~", TokenTilde, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "<<", TokenBitwiseLeft, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, ">>", TokenBitwiseRight, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "$", TokenDereference, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "->", TokenGetField, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "#", TokenSharp, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "+", TokenPlus, true, line, &position, filename, token_stream)) {}
         else if (check_token(str, N, "-", i, true)) {
@@ -191,9 +196,13 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         }
         else if (append_token(str, N, &i, "*", TokenMult, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "/", TokenDiv, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "%", TokenMod, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "<", TokenLess, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, ">", TokenGreater, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "=", TokenEqual, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "<=", TokenLessEqual, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, ">=", TokenGreaterEqual, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "<>", TokenNotEqual, true, line, &position, filename, token_stream)) {}
         else if (_isdigit(str[i])) {
             int l = i;
             i++;
@@ -366,6 +375,9 @@ const char *TokenColor(enum TokenType type,
         Color_Blue,         // TokenAs,
         Color_Blue,         // TokenConst,
         Color_Blue,         // TokenTest,
+        Color_Blue,         // TokenAnd,
+        Color_Blue,         // TokenOr,
+        Color_Blue,         // TokenNot,
         Color_Black,        // TokenAssign,
         Color_Black,        // TokenMove,
         Color_Black,        // TokenDot,
@@ -379,20 +391,26 @@ const char *TokenColor(enum TokenType type,
         Color_White,        // TokenBracketOpen,
         Color_White,        // TokenBracketClose,
         Color_Black,        // TokenBackslash,
+        Color_Black,        // TokenAmpersand,
         Color_Black,        // TokenPipe,
-        Color_Black,        // TokenAddress,
-        Color_Black,        // TokenDereference,
-        Color_Black,        // TokenIndex,
-        Color_Black,        // TokenGetField,
         Color_Black,        // TokenCaret,
+        Color_Black,        // TokenTilde,
+        Color_Black,        // TokenBitwiseLeft,
+        Color_Black,        // TokenBitwiseRight,
+        Color_Black,        // TokenDereference,
+        Color_Black,        // TokenGetField,
         Color_Black,        // TokenSharp,
         Color_Black,        // TokenPlus,
         Color_Black,        // TokenMinus,
         Color_Black,        // TokenMult,
         Color_Black,        // TokenDiv,
+        Color_Black,        // TokenMod,
         Color_Black,        // TokenLess,
         Color_Black,        // TokenGreater,
         Color_Black,        // TokenEqual,
+        Color_Black,        // TokenLessEqual,
+        Color_Black,        // TokenGreaterEqual,
+        Color_Black,        // TokenNotEqual,
         Color_DarkGreen,    // TokenInteger,
         Color_DarkCyan,     // TokenChar,
         Color_Red,          // TokenString,

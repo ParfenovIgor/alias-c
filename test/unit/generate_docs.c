@@ -24,11 +24,11 @@ void parse(int section_id, char *filename, int fd) {
                 bad = false;
                 break;
             }
-            if (buffer[len] == '<') {
+            if (buffer[len] == '<' && code) {
                 _strcpy(buffer + len, "&lt");
                 len += 2;
             }
-            if (buffer[len] == '>') {
+            if (buffer[len] == '>' && code) {
                 _strcpy(buffer + len, "&gt");
                 len += 2;
             }
@@ -70,7 +70,7 @@ void parse(int section_id, char *filename, int fd) {
                 local_header = false;
             }
             else {
-                _fputs3(fd, "<p>", line, "</p>\n");
+                _fputs2(fd, line, "\n");
             }
         }
         else {
