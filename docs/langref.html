@@ -105,47 +105,55 @@
 <li><a href="#6.1">Simple lambda functions</a></li>
 <li><a href="#6.2">Higher order functions</a></li>
 </ul></li>
-<li><a href="#7">Structs</a>
+<li><a href="#7">Operators</a>
 <ul>
-<li><a href="#7.1">Definition of structs</a></li>
-<li><a href="#7.2">Structs layout</a></li>
+<li><a href="#7.1">Logic operators</a></li>
+<li><a href="#7.2">Bitwise operators</a></li>
+<li><a href="#7.3">Operator precendence</a></li>
 </ul></li>
-<li><a href="#8">Typedef</a>
+<li><a href="#8">Structs</a>
 <ul>
-<li><a href="#8.1">Int type</a></li>
-<li><a href="#8.2">Function type</a></li>
+<li><a href="#8.1">Definition of structs</a></li>
+<li><a href="#8.2">Structs layout</a></li>
 </ul></li>
-<li><a href="#9">While</a>
+<li><a href="#9">Typedef</a>
 <ul>
-<li><a href="#9.1">While statement</a></li>
-<li><a href="#9.2">While expression</a></li>
-<li><a href="#9.3">While else block</a></li>
-<li><a href="#9.4">While continue statement</a></li>
-<li><a href="#9.5">While control with labels</a></li>
+<li><a href="#9.1">Int type</a></li>
+<li><a href="#9.2">Function type</a></li>
+</ul></li>
+<li><a href="#10">While</a>
+<ul>
+<li><a href="#10.1">While statement</a></li>
+<li><a href="#10.2">While expression</a></li>
+<li><a href="#10.3">While else block</a></li>
+<li><a href="#10.4">While continue statement</a></li>
+<li><a href="#10.5">While control with labels</a></li>
 </ul></li>
 </ul></nav></div>
 <div id="contents-wrapper"><main id="contents">
 <h2 id="1">Arithmetic</h2>
 <h3 id="1.1">Addition and subtraction</h3>
-<p>We can add with <code>+</code> operator and subtract with <code>-</code> operator.</p>
+We can add with <code>+</code> operator and subtract with <code>-</code> operator.
 <pre><code>test demo_addition_and_subtraction {
-    def a := 4 + 15 // now `a` is equal to 19
-    def b := a - 3 // now `b` is equal to 16
+    def a := 4 + 15             // now `a` is equal to 19
+    def b := a - 3              // now `b` is equal to 16
     def c := -4 + a - 5 - b + 9 // now `c` is equal to 3
     return test_equal(c, 3)
 }
 
 </code></pre>
 <h3 id="1.2">Multiplication and division</h3>
-<p>We can multiply with <code>*</code> operator, divide with <code>/</code> operator and take modulo with <code>%</code> operator. These operators have higher precedence, than operators <code>+</code> and <code>-</code>.</p>
+We can multiply with <code>*</code> operator, divide with <code>/</code> operator and take modulo with <code>%</code> operator. These operators have higher precedence, than operators <code>+</code> and <code>-</code>.
 <pre><code>test demo_multiplication_and_division {
-    def a := 4 + 3 * 9 + 6 * 2
-    return test_equal(a, 43)
+    def a := 4 + 3 * 9 + 6 * 2  // now `a` is equal to 43
+    def b := 46 / 7             // now `b` is equal to 6
+    def c := 46 % 7             // now `c` is equal to 4
+    return test_equal(a + b + c, 53)
 }
 
 </code></pre>
 <h3 id="1.3">Parenthesis</h3>
-<p>We can set higher precedence to expression by enclosing it into parenthesis.</p>
+We can set higher precedence to expression by enclosing it into parenthesis.
 <pre><code>test demo_parenthesis {
     def a := (4 + 3) * (9 + 6) * 2
     return test_equal(a, 210)
@@ -153,7 +161,7 @@
 
 </code></pre>
 <h3 id="1.4">Unary minus</h3>
-<p>We can use <code>-</code> as a unary operator.</p>
+We can use <code>-</code> as a unary operator.
 <pre><code>test demo_unary_minus {
     def a := 5
     def b := -(4 + -a) * 3
@@ -162,7 +170,7 @@
 </code></pre>
 <h2 id="2">Block Expressions</h2>
 <h3 id="2.1">Return with expression</h3>
-<p>We can return value from a block using <code>return</code> statement. All return expressions have to have equal types.</p>
+We can return value from a block using <code>return</code> statement. All return expressions have to have equal types.
 <pre><code>test demo_return_with_expression {
     def a := {
         return 4
@@ -172,7 +180,7 @@
 
 </code></pre>
 <h3 id="2.2">Return to label</h3>
-<p>We can return to specific block using a label.</p>
+We can return to specific block using a label.
 <pre><code>test demo_return_to_label {
     def a := { .foo
         eval {
@@ -184,7 +192,7 @@
 
 </code></pre>
 <h3 id="2.3">Return void</h3>
-<p>The expression <code>{}</code> is a block, which returns type <code>#V</code>. We can use it to break from blocks, which are used as statements (don't return anything and have type <code>#V</code>).</p>
+The expression <code>{}</code> is a block, which returns type <code>#V</code>. We can use it to break from blocks, which are used as statements (don't return anything and have type <code>#V</code>).
 <pre><code>test demo_return_from_block {
     def a := 3
     eval {
@@ -197,7 +205,7 @@
 </code></pre>
 <h2 id="3">Definitions</h2>
 <h3 id="3.1">Definition</h3>
-<p>Use <code>def</code> to define a local variable. The variable must have an initial value after <code>:=</code> operator.</p>
+Use <code>def</code> to define a local variable. The variable must have an initial value after <code>:=</code> operator.
 <pre><code>test demo_definition {
     def a := 5 // this is variable `a`, which has type `integer`
     def b := '4' // this is variable `b`, which has type `char`
@@ -206,7 +214,7 @@
 
 </code></pre>
 <h3 id="3.2">Types</h3>
-<p>We can write types of local variables explicitly. The types begin with symbol <code>#</code>.</p>
+We can write types of local variables explicitly. The types begin with symbol <code>#</code>.
 <pre><code>test demo_types {
     def a #I := 5 // `#I` is an `integer` type
     def b #C := '4' // `#C` is a `char` type
@@ -215,17 +223,17 @@
 
 </code></pre>
 <h3 id="3.3">Type size</h3>
-<p>Operator <code>^</code> returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.</p>
+Operator <code>^</code> returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.
 <pre><code>test demo_type_size { .foo
-    eval if (^#I = 8) {} else { return .foo 1 } // The size of `#I` is 8 bytes
-    eval if (^#C = 1) {} else { return .foo 1 } // The size of `#C` is 1 byte
+    eval if ($#I = 8) {} else { return .foo 1 } // The size of `#I` is 8 bytes
+    eval if ($#C = 1) {} else { return .foo 1 } // The size of `#C` is 1 byte
     return 0
 }
 </code></pre>
 <h2 id="4">Functions</h2>
 <h3 id="4.1">Functions introduction</h3>
-<p>We can create and call functions.</p>
-<pre><code>func .add_one(x #I) -&gt #I {
+We can create and call functions.
+<pre><code>func .add_one(x #I) -> #I {
     return x + 1
 }
 
@@ -235,7 +243,7 @@ test demo_functions {
 </code></pre>
 <h2 id="5">If</h2>
 <h3 id="5.1">If statement</h3>
-<p>The <code>if</code> statement consists of set of blocks and conditions. The last block may be without a condition.</p>
+The <code>if</code> statement consists of set of blocks and conditions. The last block may be without a condition.
 <pre><code>test demo_if_statement {
     def a := 3
     eval if (a = 2) {
@@ -252,7 +260,7 @@ test demo_functions {
 
 </code></pre>
 <h3 id="5.2">If expression</h3>
-<p>The <code>if</code> can be used as expression. All branches of <code>if</code> have to return equal types, and also <code>if</code> has to have an <code>else</code> block, if it returns not <code>#V</code>.</p>
+The <code>if</code> can be used as expression. All branches of <code>if</code> have to return equal types, and also <code>if</code> has to have an <code>else</code> block, if it returns not <code>#V</code>.
 <pre><code>test demo_if_expression {
     def a := 3
     a := if (a = 2)
@@ -266,7 +274,7 @@ test demo_functions {
 </code></pre>
 <h2 id="6">Lambda Functions</h2>
 <h3 id="6.1">Simple lambda functions</h3>
-<p>The lambda functions don't require to have name. But we can assign them to variables.</p>
+The lambda functions don't require to have name. But we can assign them to variables.
 <pre><code>test demo_lambda_functions {
     def f := \(x #I) -&gt #I {
         return x + 1
@@ -276,7 +284,7 @@ test demo_functions {
 
 </code></pre>
 <h3 id="6.2">Higher order functions</h3>
-<p>We can pass lambda functions to function calls.</p>
+We can pass lambda functions to function calls.
 <pre><code>test demo_higher_order_functions {
     def twice := \(f #F(#I) -&gt #I, x #I) -&gt #I {
         return f(f(x))
@@ -284,9 +292,90 @@ test demo_functions {
     return test_equal(twice(\(x #I) -&gt #I x * x, 2), 16)
 }
 </code></pre>
-<h2 id="7">Structs</h2>
-<h3 id="7.1">Definition of structs</h3>
-<p>This way we can declare structs.</p>
+<h2 id="7">Operators</h2>
+<h3 id="7.1">Logic operators</h3>
+There are following logic operators: binary <code>and</code>, binary <code>or</code>, unary <code>not</code>. In any case both branches will be evaluated.
+<pre><code>test demo_logic_operators {
+    def a := 1 and 1    // now `a` is equal to 1
+    def b := 0 and 1    // now `b` is equal to 0
+    def c := 0 or 1     // now `c` is equal to 1
+    def d := 0 or 0     // now `d` is equal to 0
+    def e := not 1      // now `e` is equal to 0
+    def f := not 0      // now `f` is equal to 1
+    return test_equal(a = 1 and b = 0 and c = 1 and d = 0 and e = 0 and f = 1, 1)
+}
+
+</code></pre>
+<h3 id="7.2">Bitwise operators</h3>
+There are following bitwise operators: binary and <code>&</code>, binary or <code>|</code>, binary xor <code>^</code>, unary not <code>~</code>. In any case both branches will be evaluated.
+<pre><code>test demo_bitwise_operators {
+    def a := 14 & 7     // now `a` is equal 6
+    def b := 9 | 12     // now `b` is equal to 13
+    def c := 9 ^ 12     // now `c` is equal to 5
+    def d := ~32        // now `d` is equal to -33
+    return test_equal(a = 6 and b = 13 and c = 5 and d = -33, 1)
+}
+
+</code></pre>
+<h3 id="7.3">Operator precendence</h3>
+All operators are left-associative. The operators have following precedence.
+<table>
+  <tr>
+    <th>Precedence</th>
+    <th>Operators</th>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>Unary <code>-</code>, <code>~</code>, <code>not</code></td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><code>*</code>, <code>/</code>, <code>%</code></td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td><code>+</code>, <code>-</code></td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td><code><<</code>, <code>>></code></td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td><code><</code>, <code>></code>, <code><=</code>, <code>>=</code></td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td><code>=</code>, <code><></code></td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td><code>&</code></td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td><code>^</code></td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td><code>|</code></td>
+  </tr>
+  <tr>
+    <td>11</td>
+    <td><code>and</code></td>
+  </tr>
+  <tr>
+    <td>12</td>
+    <td><code>or</code></td>
+  </tr>
+  <tr>
+    <td>13</td>
+    <td><code>(</code></td>
+  </tr>
+</table>
+<h2 id="8">Structs</h2>
+<h3 id="8.1">Definition of structs</h3>
+This way we can declare structs.
 <pre><code>typedef Pt := #S{ x: #I, y: #I }
 
 test demo_local_struct { .foo
@@ -301,12 +390,12 @@ test demo_local_struct { .foo
 }
 
 </code></pre>
-<h3 id="7.2">Structs layout</h3>
-<p>Structs are packed.</p>
+<h3 id="8.2">Structs layout</h3>
+Structs are packed.
 <pre><code>typedef Str := #S{ a: #C, b: #C, c: #I, d: #C, e: #I }
 
 test demo_struct_layout { .foo
-    eval if (^#Str = 19) {} else { return .foo 1 }
+    eval if ($#Str = 19) {} else { return .foo 1 }
 
     def str1 := .{
         a := 'a',
@@ -352,9 +441,9 @@ test demo_struct_layout { .foo
     return 0
 }
 </code></pre>
-<h2 id="8">Typedef</h2>
-<h3 id="8.1">Int type</h3>
-<p>We can give names to types.</p>
+<h2 id="9">Typedef</h2>
+<h3 id="9.1">Int type</h3>
+We can give names to types.
 <pre><code>typedef T := #I
 
 func .add_one(x #T) -&gt #T {
@@ -366,9 +455,9 @@ test demo_typedef_int {
 }
 
 </code></pre>
-<h3 id="8.2">Function type</h3>
-<p>The function is also a type.</p>
-<pre><code>typedef K := #F(#I) -&gt #I
+<h3 id="9.2">Function type</h3>
+The function is also a type.
+<pre><code>typedef K := #F(#I) -> #I
 
 func .apply(f #K, a #T) -&gt #T {
     return f(a)
@@ -378,9 +467,9 @@ test demo_typedef_function {
     return test_equal(apply(add_one, 1), 2)
 }
 </code></pre>
-<h2 id="9">While</h2>
-<h3 id="9.1">While statement</h3>
-<p>The while statement consists of block an condition.</p>
+<h2 id="10">While</h2>
+<h3 id="10.1">While statement</h3>
+The while statement consists of block an condition.
 <pre><code>test demo_while_statement {
     def i := 0
     def sum := 0
@@ -392,8 +481,8 @@ test demo_typedef_function {
 }
 
 </code></pre>
-<h3 id="9.2">While expression</h3>
-<p>The <code>while</code> can be used as expression. All <code>break</code> in <code>while</code> and an <code>else</code> block have to return equal types, and also <code>while</code> has to have an <code>else</code> block, if it returns not <code>#V</code>.</p>
+<h3 id="10.2">While expression</h3>
+The <code>while</code> can be used as expression. All <code>break</code> in <code>while</code> and an <code>else</code> block have to return equal types, and also <code>while</code> has to have an <code>else</code> block, if it returns not <code>#V</code>.
 <pre><code>test demo_while_expression {
     def i := 0
     def sum := 0
@@ -407,8 +496,8 @@ test demo_typedef_function {
 }
 
 </code></pre>
-<h3 id="9.3">While else block</h3>
-<p>The <code>else</code> block will be executed, if we exit the loop when checking a condition, which is false.</p>
+<h3 id="10.3">While else block</h3>
+The <code>else</code> block will be executed, if we exit the loop when checking a condition, which is false.
 <pre><code>test demo_while_else_block {
     def i := 0
     def sum := 0
@@ -422,8 +511,8 @@ test demo_typedef_function {
 }
 
 </code></pre>
-<h3 id="9.4">While continue statement</h3>
-<p>We can jump to the start of the loop using a <code>continue</code> statement.</p>
+<h3 id="10.4">While continue statement</h3>
+We can jump to the start of the loop using a <code>continue</code> statement.
 <pre><code>test demo_while_continue_statement {
     def i := 0
     def sum := 0
@@ -438,8 +527,8 @@ test demo_typedef_function {
 }
 
 </code></pre>
-<h3 id="9.5">While control with labels</h3>
-<p>We can use <code>break</code> and <code>continue</code> not only to nearest loop, but also to given labeled loop.</p>
+<h3 id="10.5">While control with labels</h3>
+We can use <code>break</code> and <code>continue</code> not only to nearest loop, but also to given labeled loop.
 <pre><code>test demo_while_control_with_labels {
     def a := while .foo (1) {
         eval while (1) {

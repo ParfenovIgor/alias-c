@@ -25,7 +25,7 @@ test demo_local_struct { .foo
 typedef Str := #S{ a: #C, b: #C, c: #I, d: #C, e: #I }
 
 test demo_struct_layout { .foo
-    eval if (^#Str = 19) {} else { return .foo 1 }
+    eval if ($#Str = 19) {} else { return .foo 1 }
 
     def str1 := .{
         a := 'a',

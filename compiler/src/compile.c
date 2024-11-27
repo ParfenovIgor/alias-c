@@ -767,46 +767,6 @@ struct TypeNode *CompileDereference(struct Node *node, struct Dereference *this,
     return _type;
 }
 
-struct TypeNode *CompileGetField(struct Node *node, struct GetField *this, struct CPContext *context) {
-    struct TypeNode *type = CompileNode(this->left, context);
-    if (type->degree != 1 || type->node_type != TypeNodeStruct) {
-        error_semantic("Pointer to structure expected", node);
-    }
-    struct TypeStruct *_type = type->node_ptr;
-
-    int sz = vsize(&_type->names);
-    int phase = 0;
-    struct TypeNode *field_type = NULL;
-    for (int i = 0; i < sz; i++) {
-        if (!_strcmp(this->field, _type->names.ptr[i])) {
-            field_type = _type->types.ptr[i];
-            break;
-        }
-        phase += type_size(_type->types.ptr[i], context);
-    }
-
-    if (!field_type) {
-        error_semantic("Structure doesn't have corresponding field", node);
-    }
-    
-    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
-    if (!this->address) {    
-        _fputsi(context->fd_text, "mov rbx, [rax + ", phase, "]\n");
-        _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
-        const char *dst = concat3("[rsp - ", _itoa(align_to_word(type_size(field_type, context))), "]");
-        const char *src = concat3("[rax + ", _itoa(phase), "]");
-        CompileMemcpy(dst, src, align_to_word(type_size(field_type, context)), context);
-    }
-    else {
-        _fputsi(context->fd_text, "lea rbx, [rax + ", phase, "]\n");
-        _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
-        field_type = type_copy_node(field_type);
-        field_type->degree++;
-    }
-
-    return field_type;
-}
-
 struct TypeNode *CompileIndex(struct Node *node, struct Index *this, struct CPContext *context) {
     struct TypeNode *_type1 = CompileNode(this->left, context);
     if (_type1->degree == 0) error_semantic("Pointer expected in indexation", node);
@@ -850,6 +810,46 @@ struct TypeNode *CompileIndex(struct Node *node, struct Index *this, struct CPCo
     return _type1;
 }
 
+struct TypeNode *CompileGetField(struct Node *node, struct GetField *this, struct CPContext *context) {
+    struct TypeNode *type = CompileNode(this->left, context);
+    if (type->degree != 1 || type->node_type != TypeNodeStruct) {
+        error_semantic("Pointer to structure expected", node);
+    }
+    struct TypeStruct *_type = type->node_ptr;
+
+    int sz = vsize(&_type->names);
+    int phase = 0;
+    struct TypeNode *field_type = NULL;
+    for (int i = 0; i < sz; i++) {
+        if (!_strcmp(this->field, _type->names.ptr[i])) {
+            field_type = _type->types.ptr[i];
+            break;
+        }
+        phase += type_size(_type->types.ptr[i], context);
+    }
+
+    if (!field_type) {
+        error_semantic("Structure doesn't have corresponding field", node);
+    }
+    
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    if (!this->address) {    
+        _fputsi(context->fd_text, "mov rbx, [rax + ", phase, "]\n");
+        _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
+        const char *dst = concat3("[rsp - ", _itoa(align_to_word(type_size(field_type, context))), "]");
+        const char *src = concat3("[rax + ", _itoa(phase), "]");
+        CompileMemcpy(dst, src, align_to_word(type_size(field_type, context)), context);
+    }
+    else {
+        _fputsi(context->fd_text, "lea rbx, [rax + ", phase, "]\n");
+        _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
+        field_type = type_copy_node(field_type);
+        field_type->degree++;
+    }
+
+    return field_type;
+}
+
 struct TypeNode *CompileArithmetic(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {    
     struct TypeNode *_type1 = NULL;
     if (this->left) {
@@ -879,6 +879,108 @@ struct TypeNode *CompileArithmetic(struct Node *node, struct BinaryOperator *thi
     return _type2;
 }
 
+struct TypeNode *CompileAnd(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    int idx = context->branch_index;
+    context->branch_index += 2;
+
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "sub rax, 0\n");
+    _fputsi(context->fd_text, "je _L", idx, "\n");
+    _fputs(context->fd_text, "mov rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "sub rax, 0\n");
+    _fputsi(context->fd_text, "je _L", idx, "\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
+    _fputsi(context->fd_text, "jmp _L", idx + 1, "\n");
+    _fputsi(context->fd_text, "_L", idx, ":\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 0\n");
+    _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    return _type;
+}
+
+struct TypeNode *CompileOr(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    int idx = context->branch_index;
+    context->branch_index += 2;
+
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "sub rax, 0\n");
+    _fputsi(context->fd_text, "jne _L", idx, "\n");
+    _fputs(context->fd_text, "mov rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "sub rax, 0\n");
+    _fputsi(context->fd_text, "jne _L", idx, "\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 0\n");
+    _fputsi(context->fd_text, "jmp _L", idx + 1, "\n");
+    _fputsi(context->fd_text, "_L", idx, ":\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
+    _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    return _type;
+}
+
+struct TypeNode *CompileNot(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    int idx = context->branch_index;
+    context->branch_index += 2;
+
+    _fputs(context->fd_text, "mov rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "sub rax, 0\n");
+    _fputsi(context->fd_text, "je _L", idx, "\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 0\n");
+    _fputsi(context->fd_text, "jmp _L", idx + 1, "\n");
+    _fputsi(context->fd_text, "_L", idx, ":\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
+    _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    return _type;
+}
+
+struct TypeNode *CompileBitwiseAnd(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "and rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+    return _type;
+}
+
+struct TypeNode *CompileBitwiseOr(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "or rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+    return _type;
+}
+
+struct TypeNode *CompileBitwiseXor(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "xor rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+    return _type;
+}
+
+struct TypeNode *CompileBitwiseNot(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "not rax\n");
+    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+    return _type;
+}
+
+struct TypeNode *CompileBitwiseLeft(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "shl rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+    return _type;
+}
+
+struct TypeNode *CompileBitwiseRight(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "shr rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+    return _type;
+}
+
 struct TypeNode *CompileAddition(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct TypeNode *_type = CompileArithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
@@ -889,12 +991,8 @@ struct TypeNode *CompileAddition(struct Node *node, struct BinaryOperator *this,
 
 struct TypeNode *CompileSubtraction(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct TypeNode *_type = CompileArithmetic(node, this, context);
-    if (this->left) {
-        _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
-    }
-    else {
-        _fputs(context->fd_text, "mov rax, 0\n");
-    }
+    if (this->left) _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    else _fputs(context->fd_text, "mov rax, 0\n");
     _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
     return _type;
@@ -915,6 +1013,16 @@ struct TypeNode *CompileDivision(struct Node *node, struct BinaryOperator *this,
     _fputs(context->fd_text, "mov rdx, 0\n");
     _fputs(context->fd_text, "div qword [rsp - 16]\n");
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+    return _type;
+}
+
+struct TypeNode *CompileModulo(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "mov rdx, 0\n");
+    _fputs(context->fd_text, "div qword [rsp - 16]\n");
+    _fputs(context->fd_text, "mov [rsp - 8], rdx\n");
+    return _type;
 }
 
 struct TypeNode *CompileLess(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -929,6 +1037,22 @@ struct TypeNode *CompileLess(struct Node *node, struct BinaryOperator *this, str
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    return _type;
+}
+
+struct TypeNode *CompileGreater(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
+    int idx = context->branch_index;
+    context->branch_index += 2;
+    _fputsi(context->fd_text, "jg _L", idx, "\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 0\n");
+    _fputsi(context->fd_text, "jmp _L", idx + 1, "\n");
+    _fputsi(context->fd_text, "_L", idx, ":\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
+    _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    return _type;
 }
 
 struct TypeNode *CompileEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -937,12 +1061,58 @@ struct TypeNode *CompileEqual(struct Node *node, struct BinaryOperator *this, st
     _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
     int idx = context->branch_index;
     context->branch_index += 2;
-    _fputsi(context->fd_text, "jz _L", idx, "\n");
+    _fputsi(context->fd_text, "je _L", idx, "\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 0\n");
     _fputsi(context->fd_text, "jmp _L", idx + 1, "\n");
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    return _type;
+}
+
+struct TypeNode *CompileLessEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
+    int idx = context->branch_index;
+    context->branch_index += 2;
+    _fputsi(context->fd_text, "jle _L", idx, "\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 0\n");
+    _fputsi(context->fd_text, "jmp _L", idx + 1, "\n");
+    _fputsi(context->fd_text, "_L", idx, ":\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
+    _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    return _type;
+}
+
+struct TypeNode *CompileGreaterEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
+    int idx = context->branch_index;
+    context->branch_index += 2;
+    _fputsi(context->fd_text, "jge _L", idx, "\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 0\n");
+    _fputsi(context->fd_text, "jmp _L", idx + 1, "\n");
+    _fputsi(context->fd_text, "_L", idx, ":\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
+    _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    return _type;
+}
+
+struct TypeNode *CompileNotEqual(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+    struct TypeNode *_type = CompileArithmetic(node, this, context);
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "sub rax, [rsp - 16]\n");
+    int idx = context->branch_index;
+    context->branch_index += 2;
+    _fputsi(context->fd_text, "jne _L", idx, "\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 0\n");
+    _fputsi(context->fd_text, "jmp _L", idx + 1, "\n");
+    _fputsi(context->fd_text, "_L", idx, ":\n");
+    _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
+    _fputsi(context->fd_text, "_L", idx + 1, ":\n");
+    return _type;
 }
 
 struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
@@ -1062,6 +1232,43 @@ struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
         _fputs(context->fd_text, "get field\n");
         return CompileGetField(node, (struct GetField*)node->node_ptr, context);
     }
+
+    else if (node->node_type == NodeAnd) {
+        _fputs(context->fd_text, "addition\n");
+        return CompileAnd(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeOr) {
+        _fputs(context->fd_text, "addition\n");
+        return CompileOr(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeNot) {
+        _fputs(context->fd_text, "addition\n");
+        return CompileNot(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeBitwiseAnd) {
+        _fputs(context->fd_text, "addition\n");
+        return CompileBitwiseAnd(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeBitwiseOr) {
+        _fputs(context->fd_text, "addition\n");
+        return CompileBitwiseOr(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeBitwiseXor) {
+        _fputs(context->fd_text, "addition\n");
+        return CompileBitwiseXor(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeBitwiseNot) {
+        _fputs(context->fd_text, "addition\n");
+        return CompileBitwiseNot(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeBitwiseLeft) {
+        _fputs(context->fd_text, "addition\n");
+        return CompileBitwiseLeft(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeBitwiseRight) {
+        _fputs(context->fd_text, "addition\n");
+        return CompileBitwiseRight(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
     else if (node->node_type == NodeAddition) {
         _fputs(context->fd_text, "addition\n");
         return CompileAddition(node, (struct BinaryOperator*)node->node_ptr, context);
@@ -1078,13 +1285,33 @@ struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
         _fputs(context->fd_text, "division\n");
         return CompileDivision(node, (struct BinaryOperator*)node->node_ptr, context);
     }
+    else if (node->node_type == NodeModulo) {
+        _fputs(context->fd_text, "modulo\n");
+        return CompileModulo(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
     else if (node->node_type == NodeLess) {
         _fputs(context->fd_text, "less\n");
         return CompileLess(node, (struct BinaryOperator*)node->node_ptr, context);
     }
+    else if (node->node_type == NodeGreater) {
+        _fputs(context->fd_text, "greater\n");
+        return CompileGreater(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
     else if (node->node_type == NodeEqual) {
         _fputs(context->fd_text, "equal\n");
         return CompileEqual(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeLessEqual) {
+        _fputs(context->fd_text, "less or equal\n");
+        return CompileLessEqual(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeGreaterEqual) {
+        _fputs(context->fd_text, "greater or equal\n");
+        return CompileGreaterEqual(node, (struct BinaryOperator*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeNotEqual) {
+        _fputs(context->fd_text, "not equal\n");
+        return CompileNotEqual(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     return NULL;
 }

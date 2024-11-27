@@ -25,7 +25,7 @@ test demo_types {
 //* Operator `^` returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.
 
 test demo_type_size { .foo
-    eval if (^#I = 8) {} else { return .foo 1 } // The size of `#I` is 8 bytes
-    eval if (^#C = 1) {} else { return .foo 1 } // The size of `#C` is 1 byte
+    eval if ($#I = 8) {} else { return .foo 1 } // The size of `#I` is 8 bytes
+    eval if ($#C = 1) {} else { return .foo 1 } // The size of `#C` is 1 byte
     return 0
 }

@@ -7,8 +7,8 @@ func .test_equal(a #I, b #I) -> #I
 //* We can add with `+` operator and subtract with `-` operator.
 
 test demo_addition_and_subtraction {
-    def a := 4 + 15 // now `a` is equal to 19
-    def b := a - 3 // now `b` is equal to 16
+    def a := 4 + 15             // now `a` is equal to 19
+    def b := a - 3              // now `b` is equal to 16
     def c := -4 + a - 5 - b + 9 // now `c` is equal to 3
     return test_equal(c, 3)
 }
@@ -17,8 +17,10 @@ test demo_addition_and_subtraction {
 //* We can multiply with `*` operator, divide with `/` operator and take modulo with `%` operator. These operators have higher precedence, than operators `+` and `-`.
 
 test demo_multiplication_and_division {
-    def a := 4 + 3 * 9 + 6 * 2
-    return test_equal(a, 43)
+    def a := 4 + 3 * 9 + 6 * 2  // now `a` is equal to 43
+    def b := 46 / 7             // now `b` is equal to 6
+    def c := 46 % 7             // now `c` is equal to 4
+    return test_equal(a + b + c, 53)
 }
 
 //* Parenthesis

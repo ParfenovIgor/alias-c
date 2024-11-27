@@ -12,11 +12,11 @@ func ^._start() -> #V {
     def str1 := "abacaba"
     eval _puts(str1);
     
-    def str2 := _malloc(10 * ^#C) as #1C
+    def str2 := _malloc(10 * $#C) as #1C
     eval strcpy_(str2, str1) as #I
     eval _puts(str2);
 
-    def str3 := _malloc(10 * ^#C) as #1C
+    def str3 := _malloc(10 * $#C) as #1C
     eval strncpy_(str3, str1, 3) as #I
     eval _puts(str3);
 
