@@ -51,17 +51,17 @@ int _fputi(int fd, int n) {
     return res;
 }
 
-int _sputs(char *dest, const char *src) {
+int _sputs(char *dst, const char *src) {
     int i;
     for (i = 0; src[i] != '\0'; i++) {
-        dest[i] = src[i];
+        dst[i] = src[i];
     }
     return i;
 }
 
-int _sputi(char *dest, int n) {
+int _sputi(char *dst, int n) {
     char *str = _itoa(n);
-    _sputs(dest, str);
+    _sputs(dst, str);
     int res = _strlen(str);
     _free(str);
     return res;

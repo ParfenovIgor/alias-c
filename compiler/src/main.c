@@ -18,10 +18,10 @@ void help() {
     _puts("  -o <file>                 Set output file name.");
 }
 
-struct Settings *build_settings() {
+struct Settings *build_settings(int argc, char **argv, char **envp) {
     struct Settings *settings = (struct Settings*)_malloc(sizeof(struct Settings));
     settings->language_server = false;
-    settings->states = false;
+    settings->validate = false;
     settings->compile = false;
     settings->assemble = false;
     settings->link = false;
@@ -31,65 +31,87 @@ struct Settings *build_settings() {
     settings->filename_input = NULL;
     settings->filename_output = NULL;
     settings->filename_compile_output = NULL;
+    settings->calias_directory = "/";
+
+    for (int i = 1; i < argc; i++) {
+        const char *arg = argv[i];
+        if (_strcmp(arg, "-ls") == 0) {
+            settings->language_server = true;
+        }
+        else if(_strcmp(arg, "-v") == 0) {
+            settings->validate = true;
+        }
+        else if(_strcmp(arg, "-c") == 0) {
+            settings->compile = true;
+        }
+        else if(_strcmp(arg, "-a") == 0) {
+            settings->assemble = true;
+        }
+        else if (_strcmp(arg, "-l") == 0) {
+            settings->link = true;
+        }
+        else if (_strcmp(arg, "-i") == 0) {
+            if (i + 2 >= argc) {
+                _puts("Name and path expected after -i flag");
+                return NULL;
+            }
+            vpush(&settings->include_names, _strdup(argv[i + 1]));
+            vpush(&settings->include_paths, _strdup(argv[i + 2]));
+            i += 2;
+        }
+        else if (_strcmp(arg, "-o") == 0) {
+            if (i + 1 == argc) {
+                _puts("Filename expected after -o flag");
+                return NULL;
+            }
+            const char *str = _strdup(argv[i + 1]);
+            settings->filename_output = str;
+            i++;
+        }
+        else if (_strcmp(arg, "-t") == 0) {
+            settings->testing = true;
+        }
+        else {
+            settings->filename_input = _strdup(arg);
+        }
+    }
+    for (int x = 0; envp[x]; x++) {
+        const char *str = envp[x];
+        int delim = -1;
+        int n = _strlen(str);
+        for (int i = 0; i < n; i++) {
+            if (str[i] == '=') {
+                delim = i;
+                break;
+            }
+        }
+        if (delim == -1) continue;
+        if (_strncmp(str, "CALIAS_DIR", delim) == 0) {
+            settings->calias_directory = _strdup(str + delim + 1);
+            break;
+        }
+    }
+
+    if (settings->language_server) {
+        language_server(settings);
+    }
+
+    if (!settings->filename_input) {
+        return NULL;
+    }
+    return settings;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[], char *envp[]) {
     if (argc < 2) {
         help();
         return 0;
     }
     else {
-        struct Settings *settings = build_settings();
-        for (int i = 1; i < argc; i++) {
-            const char *arg = argv[i];
-            if (_strcmp(arg, "-ls") == 0) {
-                settings->language_server = true;
-            }
-            else if (_strcmp(arg, "-s") == 0) {
-                settings->states = true;
-            }
-            else if(_strcmp(arg, "-c") == 0) {
-                settings->compile = true;
-            }
-            else if(_strcmp(arg, "-a") == 0) {
-                settings->assemble = true;
-            }
-            else if (_strcmp(arg, "-l") == 0) {
-                settings->link = true;
-            }
-            else if (_strcmp(arg, "-i") == 0) {
-                if (i + 2 >= argc) {
-                    _puts("Name and path expected after -i flag");
-                    return 1;
-                }
-                vpush(&settings->include_names, _strdup(argv[i + 1]));
-                vpush(&settings->include_paths, _strdup(argv[i + 2]));
-                i += 2;
-            }
-            else if (_strcmp(arg, "-o") == 0) {
-                if (i + 1 == argc) {
-                    _puts("Filename expected after -o flag");
-                    return 1;
-                }
-                const char *str = _strdup(argv[i + 1]);
-                settings->filename_output = str;
-                i++;
-            }
-            else if (_strcmp(arg, "-t") == 0) {
-                settings->testing = true;
-            }
-            else {
-                settings->filename_input = _strdup(arg);
-            }
-        }
-
-        if (settings->language_server) {
-            language_server();
-        }
-
-        if (!settings->filename_input) {
+        struct Settings *settings = build_settings(argc, argv, envp);
+        if (!settings) {
             help();
-            return 0;
+            return 1;
         }
 
         return process(settings);

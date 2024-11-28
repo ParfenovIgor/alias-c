@@ -18,7 +18,7 @@
 static int listenfd;
 int *clients;
 static void start_server(const char *);
-static void respond(int);
+static void respond(int, struct Settings*);
 
 static char *buf;
 
@@ -31,7 +31,7 @@ char *method, // "GET" or "POST"
 
 int payload_size;
 
-void serve_forever(const char *PORT) {
+void serve_forever(const char *PORT, struct Settings *settings) {
   struct sockaddr_in clientaddr;
   socklen_t addrlen;
 
@@ -64,7 +64,7 @@ void serve_forever(const char *PORT) {
     } else {
       if (fork() == 0) {
         close(listenfd);
-        respond(slot);
+        respond(slot, settings);
         close(clients[slot]);
         clients[slot] = -1;
         exit(0);
@@ -158,7 +158,7 @@ static void uri_unescape(char *uri) {
 }
 
 // client connection
-void respond(int slot) {
+void respond(int slot, struct Settings *settings) {
   int rcvd;
 
   buf = malloc(BUF_SIZE);
@@ -225,7 +225,7 @@ void respond(int slot) {
     close(clientfd);
 
     // call router
-    route();
+    route(settings);
 
     // tidy up
     fflush(stdout);

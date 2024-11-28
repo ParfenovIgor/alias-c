@@ -1,6 +1,7 @@
 #include <lexer.h>
 #include <exception.h>
 #include <algorithm.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -449,9 +450,6 @@ const char *TokenColor(enum TokenType type,
     }
     return ColorToString(colors[type]);
 }
-
-#include <stdio.h>
-#include <sys/time.h>
 
 const char *lexer_highlight(const char *str) {
     struct TokenStream *token_stream = lexer_process(str, "");

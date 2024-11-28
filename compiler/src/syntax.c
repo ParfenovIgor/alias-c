@@ -408,10 +408,7 @@ struct Node *syntax_process_expression(struct TokenStream *ts, struct Settings *
         error_syntax("Incorrect expression", tokenstream_get(ts));
     }
 
-    struct Node *res = primaries.ptr[0];
-    //vdrop(&primaries);
-    //vdrop(&operations);
-    
+    struct Node *res = primaries.ptr[0];    
 
     if (tokenstream_get(ts).type == TokenAs) {
         struct Node *node = (struct Node*)_malloc(sizeof(struct Node));
