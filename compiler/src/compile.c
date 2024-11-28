@@ -139,7 +139,9 @@ void compile_process(struct Node *node, struct Settings *settings) {
     char *program = concat(tmp, str_text);
     _free(tmp);
     _free(str_text);
-    write_file(settings->filename_compile_output, program);
+    if (settings->filename_compile_output) {
+        write_file(settings->filename_compile_output, program);
+    }
 }
 
 struct TypeNode *CompileBlock(struct Node *node, struct Block *this, struct CPContext *context) {

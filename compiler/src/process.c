@@ -62,7 +62,7 @@ int process(struct Settings *settings) {
     // generate AST
     struct Node *node = process_parse(settings->filename_input, settings);
 
-    if (settings->compile || settings->assemble || settings->link) {
+    if (settings->validate || settings->compile || settings->assemble || settings->link) {
         // choose the filename of the result of compilation
         char *compile_out_filename;
         if (settings->compile && settings->filename_output) {
@@ -74,7 +74,9 @@ int process(struct Settings *settings) {
 
         // open file and call the compiler
         posix_unlink(compile_out_filename);
-        settings->filename_compile_output = compile_out_filename; // posix_open(compile_out_filename, 0001 | 0100, 0400 | 0200);
+        if (!settings->validate) {
+            settings->filename_compile_output = compile_out_filename;
+        }
         compile_process(node, settings);
         _free(compile_out_filename);
 

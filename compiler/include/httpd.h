@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+struct Settings;
+
 // Client request
 extern char *method, // "GET" or "POST"
     *uri,            // "/index.html" things before '?'
@@ -13,7 +15,7 @@ extern char *method, // "GET" or "POST"
 extern int payload_size;
 
 // Server control functions
-void serve_forever(const char *PORT);
+void serve_forever(const char *PORT, struct Settings*);
 
 char *request_header(const char *name);
 

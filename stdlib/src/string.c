@@ -11,7 +11,7 @@ bool _isdigit(char c) {
     return (c >= '0' && c <= '9');
 }
 
-char *_strcpy(char *a, char *b) {
+char *_strcpy(char *a, const char *b) {
     for (int i = 0; ; i++) {
         a[i] = b[i];
         if (b[i] == '\0') {
@@ -21,7 +21,7 @@ char *_strcpy(char *a, char *b) {
     return a;
 }
 
-char *_strncpy(char *a, char *b, int n) {
+char *_strncpy(char *a, const char *b, int n) {
     for (int i = 0; i < n; i++) {
         a[i] = b[i];
         if (b[i] == '\0') {
