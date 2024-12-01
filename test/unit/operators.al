@@ -17,14 +17,16 @@ test demo_logic_operators {
 }
 
 //* Bitwise operators
-//* There are following bitwise operators: binary and `&`, binary or `|`, binary xor `^`, unary not `~`. In any case both branches will be evaluated.
+//* There are following bitwise operators: binary and `&`, binary or `|`, binary xor `^`, unary not `~`, binary shift left `<<`, binary shift right `>>`. In any case both branches will be evaluated.
 
 test demo_bitwise_operators {
     def a := 14 & 7     // now `a` is equal 6
     def b := 9 | 12     // now `b` is equal to 13
     def c := 9 ^ 12     // now `c` is equal to 5
     def d := ~32        // now `d` is equal to -33
-    return test_equal(a = 6 and b = 13 and c = 5 and d = -33, 1)
+    def e := 11 << 2    // now `e` is equal to 44
+    def f := 11 >> 2    // now `f` is equal to 2
+    return test_equal(a = 6 and b = 13 and c = 5 and d = -33 and e = 44 and f = 2, 1)
 }
 
 //* Operator precendence
