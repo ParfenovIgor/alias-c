@@ -1018,7 +1018,8 @@ struct TypeNode *CompileBitwiseNot(struct Node *node, struct BinaryOperator *thi
 struct TypeNode *CompileBitwiseLeft(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct TypeNode *_type = CompileArithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
-    _fputs(context->fd_text, "shl rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "mov rcx, [rsp - 16]\n");
+    _fputs(context->fd_text, "shl rax, cl\n");
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
     return _type;
 }
@@ -1026,7 +1027,8 @@ struct TypeNode *CompileBitwiseLeft(struct Node *node, struct BinaryOperator *th
 struct TypeNode *CompileBitwiseRight(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct TypeNode *_type = CompileArithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
-    _fputs(context->fd_text, "shr rax, [rsp - 16]\n");
+    _fputs(context->fd_text, "mov rcx, [rsp - 16]\n");
+    _fputs(context->fd_text, "shr rax, cl\n");
     _fputs(context->fd_text, "mov [rsp - 8], rax\n");
     return _type;
 }
