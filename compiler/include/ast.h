@@ -29,6 +29,7 @@ enum NodeType {
     NodeLambdaFunction,
     NodeSizeof,
     NodeFunctionCall,
+    NodeMethodCall,
     NodeDereference,
     NodeIndex,
     NodeGetField,
@@ -83,6 +84,7 @@ struct Sizeof;
 struct Alloc;
 struct Free;
 struct FunctionCall;
+struct MethodCall;
 struct Dereference;
 struct Index;
 struct GetField;
@@ -129,7 +131,7 @@ struct While {
 };
 
 struct FunctionDefinition {
-    const char *struct_name;
+    struct TypeNode *caller_type;
     const char *name;
     struct FunctionSignature *signature;
     struct Node *block;
@@ -137,7 +139,7 @@ struct FunctionDefinition {
 };
 
 struct Prototype {
-    const char *struct_name;
+    struct TypeNode *caller_type;
     const char *name;
     struct FunctionSignature *signature;
 };
@@ -217,6 +219,12 @@ struct Sizeof {
 
 struct FunctionCall {
     struct Node *function;
+    struct Vector arguments;
+};
+
+struct MethodCall {
+    struct Node *caller;
+    const char *function;
     struct Vector arguments;
 };
 

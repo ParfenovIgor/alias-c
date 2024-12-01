@@ -1,5 +1,6 @@
 #include <type.h>
 #include <stdlib.h>
+#include <memory.h>
 #include <string.h>
 
 bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *context) {
@@ -56,7 +57,7 @@ struct TypeNode *type_get_function(struct TypeNode *n, struct CPContext *context
         n = context_find_type(context, _n->identifier)->type;
     }
 
-    if (n->node_type == TypeNodeFunction) {
+    if (n->node_type == TypeNodeFunction && n->degree + sum_degree == 0) {
         return n;
     }
     else {
@@ -91,4 +92,73 @@ struct TypeNode *type_copy_node(struct TypeNode *n1) {
     n2->node_type = n1->node_type;
     n2->degree = n1->degree;
     return n2;
+}
+
+int type_mangle_helper(struct TypeNode *n, struct CPContext *context, char *buffer, int pos) {
+    int sum_degree = 0;
+    while (n->node_type == TypeNodeIdentifier) {
+        sum_degree += n->degree;
+        struct TypeIdentifier *_n = n->node_ptr;
+        n = context_find_type(context, _n->identifier)->type;
+    }
+    const char *ptr_str = _itoa(sum_degree);
+    _strcpy(buffer + pos, ptr_str);
+    pos += _strlen(ptr_str);
+
+    if (n->node_type == TypeNodeVoid) {
+        buffer[pos++] = 'V';
+        return pos;
+    }
+    if (n->node_type == TypeNodeInt) {
+        buffer[pos++] = 'I';
+        return pos;
+    }
+    if (n->node_type == TypeNodeChar) {
+        buffer[pos++] = 'C';
+        return pos;
+    }
+    if (n->node_type == TypeNodeStruct) {
+        buffer[pos++] = 'S';
+        struct TypeStruct *_n = n->node_ptr;
+
+        int sz = vsize(&_n->names);
+        const char *ptr_str = _itoa(sz);
+        int len = _strlen(ptr_str);
+        for (int i = 0; i < len; i++) buffer[pos++] = ptr_str[i];
+
+        for (int i = 0; i < sz; i++) {
+            buffer[pos++] = '_';
+            _strcpy(buffer + pos, _n->names.ptr[i]);
+            pos += _strlen(_n->names.ptr[i]);
+            buffer[pos++] = '_';
+            pos = type_mangle_helper(_n->types.ptr[i], context, buffer, pos);
+        }
+        return pos;
+    }
+    if (n->node_type == TypeNodeFunction) {
+        buffer[pos++] = 'F';
+        struct TypeFunction *_n = n->node_ptr;
+
+        int sz = vsize(&_n->types);
+        const char *ptr_str = _itoa(sz);
+        int len = _strlen(ptr_str);
+        for (int i = 0; i < len; i++) buffer[pos++] = ptr_str[i];
+
+        for (int i = 0; i < sz; i++) {
+            buffer[pos++] = '_';
+            pos = type_mangle_helper(_n->types.ptr[i], context, buffer, pos);
+        }
+        buffer[pos++] = '_';
+        pos = type_mangle_helper(_n->return_type, context, buffer, pos);
+        return pos;
+    }
+}
+
+const char *type_mangle(struct TypeNode *type, struct CPContext *context) {
+    char *buffer = (char*)_malloc(1024 * sizeof(char));
+    _memset(buffer, 0, 1024 * sizeof(char));
+    buffer[0] = '_';
+    buffer[1] = 'T';
+    type_mangle_helper(type, context, buffer, 2);
+    return buffer;
 }
