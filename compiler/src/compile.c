@@ -347,14 +347,16 @@ struct TypeNode *from_signature_to_type(struct FunctionSignature *signature) {
 }
 
 void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) { 
-    char *identifier_front, *identifier_back, *identifier_end;
-    if (this->struct_name) {
-        identifier_front = concat(this->struct_name, this->name);
-        identifier_back = concat(this->struct_name, this->name);
-    }
-    else if (this->external) {
-        identifier_front = _strdup(this->name);
-        identifier_back = _strdup(this->name);
+    const char *identifier_front, *identifier_back, *identifier_end;
+    if (this->external) {
+        if (this->caller_type) {
+            identifier_front = this->name;
+            identifier_back = concat(type_mangle(this->caller_type, context), this->name);
+        }
+        else {
+            identifier_front = this->name;
+            identifier_back = this->name;
+        }
     }
     else {
         identifier_front = _strdup(this->name);
@@ -366,10 +368,11 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
     struct FunctionInfo *function_info = (struct FunctionInfo*)_malloc(sizeof(struct FunctionInfo));
     function_info->name_front = identifier_front;
     function_info->name_back = identifier_back;
+    function_info->caller_type = this->caller_type;
     function_info->type = from_signature_to_type(this->signature);
     vpush(&context->functions, function_info);
 
-    if (this->external || this->struct_name) {
+    if (this->external) {
         if (context->header) {
             _fputs3(context->fd_text, "extern ", identifier_back, "\n");
             return;
@@ -379,20 +382,15 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
         }
     }
 
-    if (this->struct_name) {
+    if (this->caller_type) {
         if (vsize(&this->signature->identifiers)) {
-            struct TypeNode *type1 = this->signature->types.ptr[0];
-            type1->degree--;
-            struct TypeNode *type2 = context_find_type(context, this->struct_name)->type;
-            if (!type2) {
-                error_semantic("Type identifier was not declared in method", node);
+            if (!type_equal(this->signature->types.ptr[0], this->caller_type, context)) {
+                error_semantic("Caller type and first argument type in method have to be equal", node);
             }
-            if (!type_equal(type1, type2, context)) {
-                error_semantic("Pointer to type expected as first argument in method", node);
-            }
-            type1->degree++;
         }
-        else error_semantic("Pointer to type expected as first argument in method", node);
+        else {
+            error_semantic("Caller type and first argument type in method have to be equal", node);
+        }
     }
 
     struct TypeNode *_type = CompileFunctionSignature(node, this->signature, context, this->block, identifier_back, identifier_end);
@@ -403,10 +401,10 @@ void CompileFunctionDefinition(struct Node *node, struct FunctionDefinition *thi
 
 void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContext *context) {
     const char *identifier;
-    if (this->struct_name) {
-        identifier = concat(this->struct_name, this->name);
+    if (this->caller_type) {
+        identifier = concat(type_mangle(this->caller_type, context), this->name);
     }
-    else {
+    else{
         identifier = this->name;
     }
     _fputs3(context->fd_text, "extern ", identifier, "\n");
@@ -415,7 +413,19 @@ void CompilePrototype(struct Node *node, struct Prototype *this, struct CPContex
     function_info->name_front = identifier;
     function_info->name_back = identifier;
     function_info->type = from_signature_to_type(this->signature);
+    function_info->caller_type = this->caller_type;
     vpush(&context->functions, function_info);
+
+    if (this->caller_type) {
+        if (vsize(&this->signature->identifiers)) {
+            if (!type_equal(this->signature->types.ptr[0], this->caller_type, context)) {
+                error_semantic("Caller type and first argument type in method have to be equal", node);
+            }
+        }
+        else {
+            error_semantic("Caller type and first argument type in method have to be equal", node);
+        }
+    }
 }
 
 void CompileDefinition(struct Node *node, struct Definition *this, struct CPContext *context) {
@@ -716,6 +726,20 @@ struct TypeNode *CompileSizeof(struct Node *node, struct Sizeof *this, struct CP
     return type;
 }
 
+void CompileCallFinish(struct CPContext *context, int sz) {
+    _fputsi(context->fd_text, "add rsp, ", WORD * (sz + 1), "\n");
+    context->sf_pos += WORD * (sz + 1);
+
+    for (int i = 0; i < sz; i++) {
+        _fputs3(context->fd_text, "mov ", regs[i], ", ");
+        _fputsi(context->fd_text, "[rsp - ", WORD * (i + 2), "]\n");
+    }
+
+    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
+    _fputs(context->fd_text, "call rax\n");
+    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+}
+
 struct TypeNode *CompileFunctionCall(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
     struct TypeNode *type = CompileNode(this->function, context);
     _fputs(context->fd_text, "sub rsp, 8\n");
@@ -739,18 +763,42 @@ struct TypeNode *CompileFunctionCall(struct Node *node, struct FunctionCall *thi
         _fputs(context->fd_text, "sub rsp, 8\n");
         context->sf_pos -= WORD;
     }
-    _fputsi(context->fd_text, "add rsp, ", WORD * (sz + 1), "\n");
-    context->sf_pos += WORD * (sz + 1);
 
-    for (int i = 0; i < sz; i++) {
-        _fputs3(context->fd_text, "mov ", regs[i], ", ");
-        _fputsi(context->fd_text, "[rsp - ", WORD * (i + 2), "]\n");
+    CompileCallFinish(context, sz);
+    return _type->return_type;
+}
+
+struct TypeNode *CompileMethodCall(struct Node *node, struct MethodCall *this, struct CPContext *context) {
+    _fputs(context->fd_text, "sub rsp, 8\n");
+    context->sf_pos -= WORD;
+    struct TypeNode *type_caller = CompileNode(this->caller, context);
+    _fputs(context->fd_text, "sub rsp, 8\n");
+    context->sf_pos -= WORD;
+
+    struct TypeNode *type_function;
+    struct FunctionInfo *function_info = context_find_method(context, this->function, type_caller);
+    if (function_info) {
+        type_function = function_info->type;
+        _fputs3(context->fd_text, "mov rax, ", function_info->name_back, "\n");
+        _fputs(context->fd_text, "mov [rsp + 8], rax\n");
     }
 
-    _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
-    _fputs(context->fd_text, "call rax\n");
-    _fputs(context->fd_text, "mov [rsp - 8], rax\n");
-    
+    struct TypeFunction *_type = type_function->node_ptr;
+    int sz = vsize(&_type->types);
+    if (sz != vsize(&this->arguments) + 1) {
+        error_semantic("Incorrect number of arguments in function call", node);
+    }
+
+    for (int i = 1; i < sz; i++) {
+        struct TypeNode *type_arg = CompileNode(this->arguments.ptr[i - 1], context);
+        if (!type_equal(type_arg, _type->types.ptr[i], context)) {
+            error_semantic("Passing to function value of incorrect type", node);
+        }
+        _fputs(context->fd_text, "sub rsp, 8\n");
+        context->sf_pos -= WORD;
+    }
+
+    CompileCallFinish(context, sz);
     return _type->return_type;
 }
 
@@ -1221,6 +1269,10 @@ struct TypeNode *CompileNode(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodeFunctionCall) {
         _fputs(context->fd_text, "function call\n");
         return CompileFunctionCall(node, (struct FunctionCall*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeMethodCall) {
+        _fputs(context->fd_text, "method call\n");
+        return CompileMethodCall(node, (struct MethodCall*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDereference) {
         _fputs(context->fd_text, "dereference\n");

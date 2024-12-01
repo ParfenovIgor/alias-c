@@ -581,9 +581,41 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
     else {
         error_syntax("Unexpected symbol in primary", tokenstream_get(ts));
     }
+    finish_node(node, ts);
 
     while (true) {
-        if (tokenstream_get(ts).type == TokenParenthesisOpen) {
+        if (tokenstream_get(ts).type == TokenDot) {
+            struct Node *prv_node = node;
+            node = (struct Node*)_malloc(sizeof(struct Node));
+            node->line_begin = prv_node->line_begin;
+            node->position_begin = prv_node->position_begin;
+            node->filename = _strdup(prv_node->filename);
+            tokenstream_next(ts);
+
+            struct MethodCall *this = (struct MethodCall*)_malloc(sizeof(struct MethodCall));
+            node->node_ptr = this;
+            node->node_type = NodeMethodCall;
+            this->caller = prv_node;
+            check_next(ts, TokenIdentifier, "Identifier expected in method call");
+            this->function = tokenstream_get(ts).value_string;
+            tokenstream_next(ts);
+            check_next(ts, TokenParenthesisOpen, "( expected in method call");
+            tokenstream_next(ts);
+            this->arguments = vnew();
+            while (true) {
+                if (tokenstream_get(ts).type == TokenParenthesisClose) {
+                    break;
+                }
+                vpush(&this->arguments, syntax_process_expression(ts, st));
+                if (tokenstream_get(ts).type == TokenParenthesisClose) {
+                    break;
+                }
+                pass_next(ts, TokenComma, ", expected in function call");
+            }
+            tokenstream_next(ts);
+            finish_node(node, ts);
+        }
+        else if (tokenstream_get(ts).type == TokenParenthesisOpen) {
             struct Node *prv_node = node;
             node = (struct Node*)_malloc(sizeof(struct Node));
             node->line_begin = prv_node->line_begin;
@@ -675,7 +707,6 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         else break;
     }
 
-    finish_node(node, ts);
     return node;
 }
 
@@ -770,12 +801,11 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
             this->external = true;
             tokenstream_next(ts);
         }
-        if (tokenstream_get(ts).type == TokenIdentifier) {
-            this->struct_name = _strdup(tokenstream_get(ts).value_string);
-            tokenstream_next(ts);
+        if (tokenstream_get(ts).type == TokenSharp) {
+            this->caller_type = syntax_process_type(ts, st);
         }
         else {
-            this->struct_name = NULL;
+            this->caller_type = NULL;
         }
         pass_next(ts, TokenDot, ". exprected in function definition");
         check_next(ts, TokenIdentifier, "Identifier exprected in function definition");
@@ -790,12 +820,11 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         node->node_ptr = this;
         node->node_type = NodePrototype;
         tokenstream_next(ts);
-        if (tokenstream_get(ts).type == TokenIdentifier) {
-            this->struct_name = _strdup(tokenstream_get(ts).value_string);
-            tokenstream_next(ts);
+        if (tokenstream_get(ts).type == TokenSharp) {
+            this->caller_type = syntax_process_type(ts, st);
         }
         else {
-            this->struct_name = NULL;
+            this->caller_type = NULL;
         }
         pass_next(ts, TokenDot, ". exprected in function prototype");
         check_next(ts, TokenIdentifier, "Identifier exprected in function prototype");

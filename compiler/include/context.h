@@ -18,6 +18,7 @@ struct TypeInfo {
 struct FunctionInfo {
     const char *name_front;
     const char *name_back;
+    struct TypeNode *caller_type;
     struct TypeNode *type;
 };
 
@@ -59,5 +60,6 @@ struct CPContext {
 struct VariableInfo *context_find_variable      (struct CPContext*, const char*);
 struct TypeInfo     *context_find_type          (struct CPContext*, const char*);
 struct FunctionInfo *context_find_function      (struct CPContext*, const char*);
+struct FunctionInfo *context_find_method        (struct CPContext*, const char*, struct TypeNode*);
 struct LabelInfo    *context_find_block_label   (struct CPContext*, const char*);
 struct LabelInfo    *context_find_loop_label    (struct CPContext*, const char*);

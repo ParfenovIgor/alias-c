@@ -7,7 +7,7 @@ _memcpy:
 
 global _memset
 _memset:
-    mov rsi, rax
+    mov rax, rsi
     mov rcx, rdx
     rep stosb
     mov rax, rdi
