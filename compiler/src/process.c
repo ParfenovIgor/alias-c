@@ -69,7 +69,7 @@ int process(struct Settings *settings) {
             compile_out_filename = _strdup(settings->filename_output);
         }
         else {
-            compile_out_filename = concat(filename, ".asm");
+            compile_out_filename = _concat(filename, ".asm");
         }
 
         // open file and call the compiler
@@ -83,12 +83,12 @@ int process(struct Settings *settings) {
         if (settings->assemble || settings->link) {
             // choose the filename of the result of assembly
             char *assemble_in_filename, *assemble_out_filename;
-            assemble_in_filename = concat(filename, ".asm");
+            assemble_in_filename = _concat(filename, ".asm");
             if (settings->assemble && settings->filename_output) {
                 assemble_out_filename = _strdup(settings->filename_output);
             }
             else {
-                assemble_out_filename = concat(filename, ".o");
+                assemble_out_filename = _concat(filename, ".o");
             }
 
             // call the NASM assembler
@@ -101,7 +101,7 @@ int process(struct Settings *settings) {
             if (settings->link) {
                 // choose the filename of the result of linking
                 char *link_in_filename, *link_out_filename;
-                link_in_filename = concat(filename, ".o");
+                link_in_filename = _concat(filename, ".o");
                 if (!settings->link && settings->filename_output) {
                     link_out_filename = _strdup(settings->filename_output);
                 }

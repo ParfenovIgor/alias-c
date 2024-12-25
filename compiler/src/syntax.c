@@ -764,11 +764,11 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         }
         pass_next(ts, TokenDot, ". expected in include");
         check_next(ts, TokenString, "String literal expected in include");
-        char *filename = concat(include_path, tokenstream_get(ts).value_string);
+        char *filename = _concat(include_path, tokenstream_get(ts).value_string);
         tokenstream_next(ts);
         int fd = posix_open(filename, 0, 0);
         if (fd <= 0) {
-            const char *buffer = concat("Could not open file ", filename);
+            const char *buffer = _concat("Could not open file ", filename);
             error_syntax(buffer, tokenstream_get(ts));
         }
         else {

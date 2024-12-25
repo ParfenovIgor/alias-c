@@ -89,7 +89,7 @@ int _strlen(const char *a) {
     }
 }
 
-char *concat(const char *a, const char *b) {
+char *_concat(const char *a, const char *b) {
     int s_a = _strlen(a);
     int s_b = _strlen(b);
     char *buf = (char*)_malloc(s_a + s_b + 1);
@@ -103,7 +103,7 @@ char *concat(const char *a, const char *b) {
     return buf;
 }
 
-char *concat3(const char *a, const char *b, const char *c) {
+char *_concat3(const char *a, const char *b, const char *c) {
     int s_a = _strlen(a);
     int s_b = _strlen(b);
     int s_c = _strlen(c);
@@ -121,7 +121,7 @@ char *concat3(const char *a, const char *b, const char *c) {
     return buf;
 }
 
-const char *substr(const char *a, int n) {
+const char *_substr(const char *a, int n) {
     int m = _strlen(a);
     if (m <= n) {
         n = m;

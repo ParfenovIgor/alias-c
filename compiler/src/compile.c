@@ -133,10 +133,10 @@ void compile_process(struct Node *node, struct Settings *settings) {
     posix_close(fd_text_out);
     posix_close(fd_data_out);
     posix_close(fd_bss_out);
-    char *tmp = concat(str_bss, str_data);
+    char *tmp = _concat(str_bss, str_data);
     _free(str_bss);
     _free(str_data);
-    char *program = concat(tmp, str_text);
+    char *program = _concat(tmp, str_text);
     _free(tmp);
     _free(str_text);
     if (settings->filename_compile_output) {
@@ -150,8 +150,8 @@ struct TypeNode *compile_block(struct Node *node, struct Block *this, struct CPC
     else label_info->name = NULL;
     int idx = context->branch_index;
     context->branch_index += 2;
-    label_info->name_begin = concat("_L", _itoa(idx));
-    label_info->name_end = concat("_L", _itoa(idx + 1));
+    label_info->name_begin = _concat("_L", _itoa(idx));
+    label_info->name_end = _concat("_L", _itoa(idx + 1));
     label_info->type = NULL;
     label_info->sf_pos = context->sf_pos;
     vpush(&context->block_labels, label_info);
@@ -215,9 +215,9 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
             struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
             var_info->name = this->identifiers.ptr[i];
             var_info->type = this->types.ptr[i];
-            int sz = align_to_word(type_size(var_info->type, context));
-            var_info->sf_phase = context->sf_pos - sz;
-            context->sf_pos -= sz;
+            int size = align_to_word(type_size(var_info->type, context));
+            var_info->sf_phase = context->sf_pos - size;
+            context->sf_pos -= size;
             vpush(&context->variables, var_info);
         }
     }
@@ -242,7 +242,7 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
 
 void compile_test(struct Node *node, struct Test *this, struct CPContext *context) {
     vpush(&context->test_names, (void*)this->name);
-    char *identifier_end = concat("_T", this->name);
+    char *identifier_end = _concat("_T", this->name);
 
     if (context->header) {
         _fputs3(context->fd_text, "extern ", this->name, "\n");
@@ -294,8 +294,8 @@ struct TypeNode *compile_while(struct Node *node, struct While *this, struct CPC
     else label_info->name = NULL;
     int idx = context->branch_index;
     context->branch_index += 3;
-    label_info->name_begin = concat("_L", _itoa(idx));
-    label_info->name_end = concat("_L", _itoa(idx + 2));
+    label_info->name_begin = _concat("_L", _itoa(idx));
+    label_info->name_end = _concat("_L", _itoa(idx + 2));
     label_info->type = NULL;
     label_info->sf_pos = context->sf_pos;
     vpush(&context->loop_labels, label_info);
@@ -322,6 +322,12 @@ struct TypeNode *compile_while(struct Node *node, struct While *this, struct CPC
     else if (label_info->type && this->else_block &&
             type_equal(label_info->type, type_else, context)) {
         type = label_info->type;
+    }
+    else if (label_info->type && !this->else_block) {
+        return label_info->type;
+    }
+    else if(!label_info->type && this->else_block) {
+        return type_else;
     }
     else {
         error_semantic("While branches types do not equal", node);
@@ -351,7 +357,7 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
     if (this->external) {
         if (this->caller_type) {
             identifier_front = this->name;
-            identifier_back = concat(type_mangle(this->caller_type, context), this->name);
+            identifier_back = _concat(type_mangle(this->caller_type, context), this->name);
         }
         else {
             identifier_front = this->name;
@@ -360,10 +366,10 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
     }
     else {
         identifier_front = _strdup(this->name);
-        identifier_back = concat("_Z", _itoa(context->function_index));
+        identifier_back = _concat("_Z", _itoa(context->function_index));
         context->function_index++;
     }
-    identifier_end = concat("_E", identifier_back);
+    identifier_end = _concat("_E", identifier_back);
 
     struct FunctionInfo *function_info = (struct FunctionInfo*)_malloc(sizeof(struct FunctionInfo));
     function_info->name_front = identifier_front;
@@ -402,7 +408,7 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
 void compile_prototype(struct Node *node, struct Prototype *this, struct CPContext *context) {
     const char *identifier;
     if (this->caller_type) {
-        identifier = concat(type_mangle(this->caller_type, context), this->name);
+        identifier = _concat(type_mangle(this->caller_type, context), this->name);
     }
     else{
         identifier = this->name;
@@ -467,12 +473,10 @@ void compile_return(struct Node *node, struct Return *this, struct CPContext *co
         }
     }
 
-    _fputs(context->fd_text, "; BEGIN\n");
     int tsize = type_size(_type, context);
-    const char *dst = concat3("[rbp + ", _itoa(label_info->sf_pos - align_to_word(tsize)), "]");
-    const char *src = concat3("[rbp + ", _itoa(context->sf_pos - align_to_word(tsize)), "]");
+    const char *dst = _concat3("[rbp + ", _itoa(label_info->sf_pos - align_to_word(tsize)), "]");
+    const char *src = _concat3("[rbp + ", _itoa(context->sf_pos - align_to_word(tsize)), "]");
     compile_memcpy(dst, src, tsize, context);
-    _fputs(context->fd_text, "; END\n");
 
     _fputsi(context->fd_text, "add rsp, ", label_info->sf_pos - context->sf_pos, "\n");
     _fputs3(context->fd_text, "jmp ", label_info->name_end, "\n");
@@ -526,8 +530,8 @@ void compile_assignment(struct Node *node, struct Assignment *this, struct CPCon
     }
 
     int tsize = type_size(_type1, context);
-    const char *dst = concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
-    const char *src = concat3("[rsp - ", _itoa(align_to_word(tsize)), "]");
+    const char *dst = _concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
+    const char *src = _concat3("[rsp - ", _itoa(align_to_word(tsize)), "]");
     compile_memcpy(dst, src, tsize, context);
 }
 
@@ -551,8 +555,8 @@ void compile_movement(struct Node *node, struct Movement *this, struct CPContext
     int tsize = align_to_word(type_size(_type2, context));
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     const char *dst = "[rax]";
-    const char *src = concat3("[rsp - ", _itoa(tsize + WORD), "]");
-    compile_memcpy(dst, src, tsize, context);
+    const char *src = _concat3("[rsp - ", _itoa(tsize + WORD), "]");
+    compile_memcpy(dst, src, type_size(_type2, context), context);
 }
 
 struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, struct CPContext *context) {
@@ -577,8 +581,8 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
             }
             else {
                 _type = var_info->type;
-                const char *dst = concat3("[rsp - ", _itoa(align_to_word(type_size(_type, context))), "]");
-                const char *src = concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
+                const char *dst = _concat3("[rsp - ", _itoa(align_to_word(type_size(_type, context))), "]");
+                const char *src = _concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
                 compile_memcpy(dst, src, align_to_word(type_size(_type, context)), context);
             }
         }
@@ -682,16 +686,16 @@ struct TypeNode *compile_struct_instance(struct Node *node, struct StructInstanc
     int ptr1 = 0;
     int ptr2 = 0;
     for (int i = 0; i < sz; i++) {
-        const char *dst = concat3("[rsp - ", _itoa(orig_struct_size + packed_struct_size - ptr1), "]");
-        const char *src = concat3("[rsp - ", _itoa(orig_struct_size - ptr2), "]");
+        const char *dst = _concat3("[rsp - ", _itoa(orig_struct_size + packed_struct_size - ptr1), "]");
+        const char *src = _concat3("[rsp - ", _itoa(orig_struct_size - ptr2), "]");
         int tsize = type_size(type->types.ptr[i], context);
         compile_memcpy(dst, src, tsize, context);
         ptr1 += tsize;
         ptr2 += align_to_word(tsize);
     }
 
-    const char *dst = concat3("[rsp - ", _itoa(align_to_word(packed_struct_size)), "]");
-    const char *src = concat3("[rsp - ", _itoa(orig_struct_size + packed_struct_size), "]");
+    const char *dst = _concat3("[rsp - ", _itoa(align_to_word(packed_struct_size)), "]");
+    const char *src = _concat3("[rsp - ", _itoa(orig_struct_size + packed_struct_size), "]");
     compile_memcpy(dst, src, packed_struct_size, context);
 
     context->sf_pos = old_sf_pos;
@@ -699,9 +703,9 @@ struct TypeNode *compile_struct_instance(struct Node *node, struct StructInstanc
 }
 
 struct TypeNode *compile_lambda_function(struct Node *node, struct LambdaFunction *this, struct CPContext *context) {
-    char *identifier_back = concat("_Z", _itoa(context->function_index));
+    char *identifier_back = _concat("_Z", _itoa(context->function_index));
     context->function_index++;
-    char *identifier_end = concat("_E", identifier_back);
+    char *identifier_end = _concat("_E", identifier_back);
 
     struct TypeNode *type = from_signature_to_type(this->signature);
 
@@ -810,7 +814,7 @@ struct TypeNode *compile_dereference(struct Node *node, struct Dereference *this
     int _type_size = type_size(_type, context);
 
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
-    const char *dst = concat3("[rsp - ", _itoa(align_to_word(_type_size)), "]");
+    const char *dst = _concat3("[rsp - ", _itoa(align_to_word(_type_size)), "]");
     const char *src = "[rax]";
     compile_memcpy(dst, src, align_to_word(_type_size), context);
 
@@ -862,7 +866,8 @@ struct TypeNode *compile_index(struct Node *node, struct Index *this, struct CPC
 
 struct TypeNode *compile_get_field(struct Node *node, struct GetField *this, struct CPContext *context) {
     struct TypeNode *type = compile_node(this->left, context);
-    if (type->degree != 1 || type->node_type != TypeNodeStruct) {
+    type = type_get_struct_pointer(type, context);
+    if (!type) {
         error_semantic("Pointer to structure expected", node);
     }
     struct TypeStruct *_type = type->node_ptr;
@@ -886,8 +891,8 @@ struct TypeNode *compile_get_field(struct Node *node, struct GetField *this, str
     if (!this->address) {    
         _fputsi(context->fd_text, "mov rbx, [rax + ", phase, "]\n");
         _fputs(context->fd_text, "mov [rsp - 8], rbx\n");
-        const char *dst = concat3("[rsp - ", _itoa(align_to_word(type_size(field_type, context))), "]");
-        const char *src = concat3("[rax + ", _itoa(phase), "]");
+        const char *dst = _concat3("[rsp - ", _itoa(align_to_word(type_size(field_type, context))), "]");
+        const char *src = _concat3("[rax + ", _itoa(phase), "]");
         compile_memcpy(dst, src, align_to_word(type_size(field_type, context)), context);
     }
     else {

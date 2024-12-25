@@ -8,12 +8,16 @@ bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *cont
     while (n1->node_type == TypeNodeIdentifier) {
         sum_degree1 += n1->degree;
         struct TypeIdentifier *_n1 = n1->node_ptr;
-        n1 = context_find_type(context, _n1->identifier)->type;
+        struct TypeInfo *ti = context_find_type(context, _n1->identifier);
+        if (!ti) return false;
+        n1 = ti->type;
     }
     while (n2->node_type == TypeNodeIdentifier) {
-        sum_degree1 += n2->degree;
+        sum_degree2 += n2->degree;
         struct TypeIdentifier *_n2 = n2->node_ptr;
-        n2 = context_find_type(context, _n2->identifier)->type;
+        struct TypeInfo *ti = context_find_type(context, _n2->identifier);
+        if (!ti) return false;
+        n2 = ti->type;
     }
 
     if (n1->node_type != n2->node_type ||
@@ -49,6 +53,24 @@ bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *cont
     return false;
 }
 
+struct TypeNode *type_get_struct_pointer(struct TypeNode *n, struct CPContext *context) {
+    int sum_degree = 0;
+    while (n->node_type == TypeNodeIdentifier) {
+        sum_degree += n->degree;
+        struct TypeIdentifier *_n = n->node_ptr;
+        n = context_find_type(context, _n->identifier)->type;
+    }
+
+    if (n->node_type == TypeNodeStruct && n->degree + sum_degree == 1) {
+        struct TypeNode *type = type_copy_node(n);
+        type->degree = 1;
+        return type;
+    }
+    else {
+        return NULL;
+    }
+}
+
 struct TypeNode *type_get_function(struct TypeNode *n, struct CPContext *context) {
     int sum_degree = 0;
     while (n->node_type == TypeNodeIdentifier) {
@@ -66,6 +88,7 @@ struct TypeNode *type_get_function(struct TypeNode *n, struct CPContext *context
 }
 
 int type_size(struct TypeNode *n, struct CPContext *context) {
+    if (n->degree > 0) return 8;
     if (n->node_type == TypeNodeVoid) return 0;
     if (n->node_type == TypeNodeInt) return 8;
     if (n->node_type == TypeNodeChar) return 1;

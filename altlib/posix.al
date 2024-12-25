@@ -1,5 +1,5 @@
-proto .posix_read(fd #I, buffer #1I, count #I) -> #I
-proto .posix_write(fd #I, buffer #1I, count #I) -> #I
+proto .posix_read(fd #I, buffer #1C, count #I) -> #I
+proto .posix_write(fd #I, buffer #1C, count #I) -> #I
 proto .posix_open(filename #1C, flags #I, mode #I) -> #I
 proto .posix_close(fd #I) -> #I
 proto .posix_mmap(start #1I, length #I, prot #I, flags #I, fd #I, offset #I) -> #1I

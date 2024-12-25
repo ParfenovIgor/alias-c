@@ -198,12 +198,12 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         else if (append_token(str, N, &i, "*", TokenMult, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "/", TokenDiv, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "%", TokenMod, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "<", TokenLess, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ">", TokenGreater, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "=", TokenEqual, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "<=", TokenLessEqual, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, ">=", TokenGreaterEqual, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "<>", TokenNotEqual, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "<", TokenLess, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, ">", TokenGreater, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "=", TokenEqual, true, line, &position, filename, token_stream)) {}
         else if (_isdigit(str[i])) {
             int l = i;
             i++;
