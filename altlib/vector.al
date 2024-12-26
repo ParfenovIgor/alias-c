@@ -2,11 +2,11 @@ include altlib."memory.al"
 include altlib."stdio.al"
 include altlib."stdlib.al"
 
-typedef Vector := #S{
+typedef Vector := #S {
     data: #1I,
     size: #I,
     reserved: #I
-};
+}
 
 func ^.vector_init() -> #1Vector {
     def this #1Vector := _malloc($#Vector) as #1Vector

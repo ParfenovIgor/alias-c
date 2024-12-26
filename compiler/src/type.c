@@ -124,7 +124,7 @@ int type_mangle_helper(struct TypeNode *n, struct CPContext *context, char *buff
         struct TypeIdentifier *_n = n->node_ptr;
         n = context_find_type(context, _n->identifier)->type;
     }
-    const char *ptr_str = _itoa(sum_degree);
+    const char *ptr_str = _itoa(sum_degree + n->degree);
     _strcpy(buffer + pos, ptr_str);
     pos += _strlen(ptr_str);
 

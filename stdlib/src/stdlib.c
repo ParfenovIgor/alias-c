@@ -57,13 +57,7 @@ void _free(void *ptr) {
     free_heap(heap, ptr);
 }
 
-unsigned int next = 1;
-
-int _rand() {
-    next = next * 1103515245 + 12345;
-    return (next / 65536) % 32768;
-}
-
-void _srand(unsigned int seed) {
-    next = seed;
+int _rand(int seed) {
+    seed = seed * 1103515245 + 12345;
+    return (seed / 65536) % 32768;
 }

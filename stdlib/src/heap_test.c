@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 void heap_test() {
-    _srand(123);
     const int SZ = 100000;
     void *arr[SZ];
     int sizes[SZ];
@@ -14,10 +13,13 @@ void heap_test() {
     heap_t *heap = create_heap(heap_size, heap_index_size);
     int memoryUsed = 0;
     int mallocAttempts = 0, mallocSucceeded = 0;
+    int seed = 123;
     for (int op = 1; op <= 1000000; op++) {
-        if (_rand() % 3) {
+        int seed = _rand(seed);
+        if (seed % 3) {
             mallocAttempts++;
-            int x = (_rand() % 9 + 1) * 4;
+            seed = _rand(seed);
+            int x = (seed % 9 + 1) * 4;
             void *ptr = malloc_heap(heap, x);
             if (ptr != 0) {
                 mallocSucceeded++;
@@ -33,7 +35,8 @@ void heap_test() {
         }
         else {
             for (int i = 0; i < 10; i++) {
-                int j = _rand() % SZ;
+                seed = _rand(seed);
+                int j = seed % SZ;
                 if (arr[j] != 0) {
                     free_heap(heap, arr[j]);
                     memoryUsed -= sizes[j];

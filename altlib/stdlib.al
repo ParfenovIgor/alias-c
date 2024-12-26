@@ -40,3 +40,8 @@ func ^.itoa_(n #I) -> #1C {
         return str
     }
 }
+
+func ^.rand_(seed #I) -> #I {
+    seed := seed * 1103515245 + 12345
+    return (seed / 65536) % 32768
+}

@@ -1,6 +1,3 @@
-proto ._puts(n #1C) -> #I
-proto ._puti(n #I) -> #I
-
 include altlib."posix.al"
 include altlib."stdio.al"
 include altlib."stdlib.al"

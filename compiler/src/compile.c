@@ -786,6 +786,9 @@ struct TypeNode *compile_method_call(struct Node *node, struct MethodCall *this,
         _fputs3(context->fd_text, "mov rax, ", function_info->name_back, "\n");
         _fputs(context->fd_text, "mov [rsp + 8], rax\n");
     }
+    else {
+        error_semantic("Method was not declared", node);
+    }
 
     struct TypeFunction *_type = type_function->node_ptr;
     int sz = vsize(&_type->types);
