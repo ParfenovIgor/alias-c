@@ -1,5 +1,7 @@
 include altlib."stdlib.al"
 
+//* string
+//* todo
 func ^.strcpy_(a #1C, b #1C) -> #1C {
     def i := 0
     return while (1) {

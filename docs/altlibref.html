@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta http-equip="Context-Type" context="text/html">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <title>Altlib Reference</title>
+    <style>
+      :root{
+         --nav-width: 26em;
+         --nav-margin-l: 1em;
+      }
+      body{
+        font-family: system-ui, -apple-system, Roboto, "Segoe UI", sans-serif;
+        margin: 0;
+        line-height: 1.5;
+      }
+
+      #contents {
+        max-width: 60em;
+        margin: auto;
+        padding: 0 1em;
+      }
+      #navigation {
+        padding: 0 1em;
+      }
+
+      @media screen and (min-width: 1025px) {
+        header {
+          margin-left: calc(var(--nav-width) + var(--nav-margin-l));
+        }
+        header h1 {
+          margin: auto;
+          max-width: 30em;
+        }
+        #navigation {
+          overflow: auto;
+          width: var(--nav-width);
+          height: 100vh;
+          position: fixed;
+          top:0;
+          left:0;
+          bottom:0;
+          padding: unset;
+          margin-left: var(--nav-margin-l);
+        }
+        #navigation nav ul {
+          padding-left: 1em;
+        }
+        #contents-wrapper {
+          margin-left: calc(var(--nav-width) + var(--nav-margin-l));
+        }
+      }
+
+      code {
+        background: #f8f8f8;
+        border: 1px dotted silver;
+        padding-left: 0.3em;
+        padding-right: 0.3em;
+      }
+      pre > code {
+        display: block;
+        overflow: auto;
+        padding: 0.5em;
+        border: 1px solid #eee;
+        line-height: normal;
+      }
+    </style>
+</head>
+<body>
+<header><h1>Altlib Reference</h1></header>
+<div id="navigation"><nav>
+<h2>Table of Contents</h2>
+<ul><li><a href="#1">algorithm</a>
+<ul>
+<li><a href="#1.1">min_</a></li>
+<li><a href="#1.2">max_</a></li>
+</ul></li>
+<li><a href="#2">cassert</a>
+<ul>
+<li><a href="#2.1">assert_</a></li>
+</ul></li>
+<li><a href="#3">memory</a>
+<ul>
+<li><a href="#3.1">_memcpy</a></li>
+<li><a href="#3.2">_memset</a></li>
+</ul></li>
+<li><a href="#4">posix</a>
+<ul>
+<li><a href="#4.1">todo</a></li>
+</ul></li>
+<li><a href="#5">stdio</a>
+<ul>
+<li><a href="#5.1">fputs_</a></li>
+<li><a href="#5.2">fputs2_</a></li>
+<li><a href="#5.3">fputs3_</a></li>
+<li><a href="#5.4">fputi_</a></li>
+<li><a href="#5.5">fputsi_</a></li>
+<li><a href="#5.6">puts_</a></li>
+<li><a href="#5.7">puti_</a></li>
+<li><a href="#5.8">sputs_</a></li>
+<li><a href="#5.9">sputi_</a></li>
+<li><a href="#5.10">freadc_</a></li>
+<li><a href="#5.11">freads_</a></li>
+<li><a href="#5.12">freadi_</a></li>
+<li><a href="#5.13">readc_</a></li>
+<li><a href="#5.14">reads_</a></li>
+<li><a href="#5.15">readi_</a></li>
+</ul></li>
+<li><a href="#6">stdlib</a>
+<ul>
+<li><a href="#6.1">todo</a></li>
+</ul></li>
+<li><a href="#7">string</a>
+<ul>
+<li><a href="#7.1">todo</a></li>
+</ul></li>
+<li><a href="#8">test_allocator</a>
+<ul>
+<li><a href="#8.1">todo</a></li>
+</ul></li>
+<li><a href="#9">vector</a>
+<ul>
+<li><a href="#9.1">todo</a></li>
+</ul></li>
+</ul></nav></div>
+<div id="contents-wrapper"><main id="contents">
+<h2 id="1">algorithm</h2>
+<h3 id="1.1">min_</h3>
+Gets two integer values and returns the minimum one.
+<pre><code>func ^.min_(a #I, b #I) -> #I
+    if (a &lt b) a else b
+
+</code></pre>
+<h3 id="1.2">max_</h3>
+Gets two integer values and returns the maximum one.
+<pre><code>func ^.max_(a #I, b #I) -> #I
+    if (a &lt b) b else a
+</code></pre>
+<h2 id="2">cassert</h2>
+<h3 id="2.1">assert_</h3>
+Gets one integer value and stop execution with return code <code>3</code>, if the value is <code>0</code>.
+<pre><code>func ^.assert_(x #I) -> #V {
+    eval if (not x) { eval posix_exit(3) }
+}
+</code></pre>
+<h2 id="3">memory</h2>
+<h3 id="3.1">_memcpy</h3>
+Copies the data of length <code>sz</code> bytes from <code>src</code> pointer to <code>dest</code> pointer.
+<pre><code>proto ._memcpy(dest #1I, src #1I, sz #I) -> #1I
+
+</code></pre>
+<h3 id="3.2">_memset</h3>
+Sets the data of length <code>count</code> bytes to <code>dest</code> pointer with value <code>ch</code>. Important: only the lowest byte in <code>ch</code> argument is used.
+<pre><code>proto ._memset(dest #1I, ch #I, count #I) -> #1I
+</code></pre>
+<h2 id="4">posix</h2>
+<h3 id="4.1">todo</h3>
+<pre><code>proto .posix_read(fd #I, buffer #1C, count #I) -> #I
+proto .posix_write(fd #I, buffer #1C, count #I) -&gt #I
+proto .posix_open(filename #1C, flags #I, mode #I) -&gt #I
+proto .posix_close(fd #I) -&gt #I
+proto .posix_mmap(start #1I, length #I, prot #I, flags #I, fd #I, offset #I) -&gt #1I
+proto .posix_munmap(start #1I, length #I) -&gt #I
+proto .posix_fork() -&gt #I
+proto .posix_execve(filename #1I, argv #2C, envp #2C) -&gt #I
+proto .posix_exit(error_code #I) -&gt #I
+proto .posix_wait4(pid #I, stat_addr #1I, options #I, rusage #1I) -&gt #I
+proto .posix_unlink(pathname #1I) -&gt #I
+</code></pre>
+<h2 id="5">stdio</h2>
+<h3 id="5.1">fputs_</h3>
+Prints the string <code>str</code> to the descriptor <code>fd</code>. Returns length of the string printed.
+<pre><code>func ^.fputs_(fd #I, str #1C) -> #I
+    posix_write(fd, str, strlen_(str))
+
+</code></pre>
+<h3 id="5.2">fputs2_</h3>
+Prints the strings <code>str1</code> and <code>str2</code> to the descriptor <code>fd</code>. Returns length of the string printed.
+<pre><code>func ^.fputs2_(fd #I, str1 #1C, str2 #1C) -> #I
+    fputs_(fd, str1) + fputs_(fd, str2)
+
+
+</code></pre>
+<h3 id="5.3">fputs3_</h3>
+Prints the strings <code>str1</code>, <code>str2</code> and <code>str3</code> to the descriptor <code>fd</code>. Returns length of the string printed.
+<pre><code>func ^.fputs3_(fd #I, str1 #1C, str2 #1C, str3 #1C) -> #I
+    fputs_(fd, str1) + fputs_(fd, str2) + fputs_(fd, str3)
+
+</code></pre>
+<h3 id="5.4">fputi_</h3>
+Prints the integer <code>n</code> to the descriptor <code>fd</code>. Returns length of the string printed.
+<pre><code>func ^.fputi_(fd #I, n #I) -> #I {
+    def str := itoa_(n)
+    def res := posix_write(fd, str, strlen_(str))
+    eval _free(str as #1I)
+    return res
+}
+
+</code></pre>
+<h3 id="5.5">fputsi_</h3>
+Prints the string <code>str1</code>, integer <code>x</code> and string <code>str2</code> to the descriptor <code>fd</code>. Returns length of the string printed.
+<pre><code>func ^.fputsi_(fd #I, str1 #1C, x #I, str2 #1C) -> #I
+    fputs_(fd, str1) + fputi_(fd, x) + fputs_(fd, str2)
+
+</code></pre>
+<h3 id="5.6">puts_</h3>
+Prints the string <code>str</code> to the standard output descriptor. Returns length of the string printed.
+<pre><code>func ^.puts_(str #1C) -> #I {
+    def STDOUT := 1
+    return fputs_(STDOUT, str) + fputs_(STDOUT, "\n")
+}
+
+</code></pre>
+<h3 id="5.7">puti_</h3>
+Prints the integer <code>n</code> to the standard output descriptor. Returns length of the string printed.
+<pre><code>func ^.puti_(n #I) -> #I {
+    def STDOUT := 1
+    return fputi_(STDOUT, n) + fputs_(STDOUT, "\n")
+}
+
+</code></pre>
+<h3 id="5.8">sputs_</h3>
+Copies the string <code>src</code> to string <code>dst</code>. Doesn't check for the length. Returns length of the string.
+<pre><code>func ^.sputs_(dst #1C, src #1C) -> #I {
+    def i := 0
+    return while (src[i] &lt&gt '\0') {
+        dst[i]& &lt- src[i]
+        i := i + 1
+    }
+    else i
+}
+
+</code></pre>
+<h3 id="5.9">sputi_</h3>
+Prints the integer <code>n</code> to the string <code>dst</code>. Doesn't check for the length. Returns length of the string printed.
+<pre><code>func ^.sputi_(dst #1C, n #I) -> #I {
+    def str := itoa_(n)
+    eval sputs_(dst, str)
+    def res := strlen_(str)
+    eval _free(str as #1I)
+    return res
+}
+
+</code></pre>
+<h3 id="5.10">freadc_</h3>
+Reads and returns one character from the descriptor <code>fd</code>.
+<pre><code>func ^.freadc_(fd #I) -> #C {
+    def c := '\0'
+    return if (posix_read(fd, c&, 1) = 0) '\0' else c
+}
+
+</code></pre>
+<h3 id="5.11">freads_</h3>
+Reads a string from the descriptor <code>fd</code> to the string <code>dst</code>. Doesn't check for the length. Returns the length of the string. <b>Vulnerable function!</b>
+<pre><code>func ^.freads_(fd #I, dst #1C) -> #I {
+    def i := 0
+    def dsti := dst as #I
+    eval while (1) {
+        def size := posix_read(fd, (dsti + i) as #1C, 1)
+        eval if (size = 0) { break {} }
+        def ch := dst[i]
+        eval if (ch = ' ' or ch = '\n') {
+            eval if (i = 0) {
+                i := i - 1
+            }
+            else {
+                break {}
+            }
+        }
+        i := i + 1
+    }
+    dst[i]& &lt- '\0'
+    return i
+}
+
+</code></pre>
+<h3 id="5.12">freadi_</h3>
+Reads and returns a non-negative integer from the descriptor <code>fd</code>. Doesn't check for overflow.
+<pre><code>func ^.freadi_(fd #I) -> #I {
+    def x := 0
+    def start := 0
+    return while (1) {
+        def c := freadc_(fd)
+        eval if ((c = ' ' or c = '\n') and start = 0) { continue }
+        start := 1
+        eval if (not (c &gt= '0' and c &lt= '9')) { break x }
+        def d := (c - '0') as #I
+        x := x * 10 + d
+    }
+    else 0
+}
+
+</code></pre>
+<h3 id="5.13">readc_</h3>
+Reads and returns a character from the stardard input descriptor.
+<pre><code>func ^.readc_() -> #C {
+    def STDIN := 0
+    return freadc_(STDIN)
+}
+
+</code></pre>
+<h3 id="5.14">reads_</h3>
+Reads a string character from the stardard input descriptor to <code>dst</code>. Returns size of the string. <b>Vulnerable function!</b>
+<pre><code>func ^.reads_(dst #1C) -> #I {
+    def STDIN := 0
+    return freads_(STDIN, dst)
+}
+
+</code></pre>
+<h3 id="5.15">readi_</h3>
+Reads and returns an integer from the stardard input descriptor.
+<pre><code>func ^.readi_() -> #I {
+    def STDIN := 0
+    return freadi_(STDIN)
+}
+</code></pre>
+<h2 id="6">stdlib</h2>
+<h3 id="6.1">todo</h3>
+<pre><code>proto ._malloc(sz #I) -> #1I
+proto ._free(ptr #1I) -&gt #V
+
+func ^.itoa_(n #I) -&gt #1C {
+    return if (n = 0) {
+        def str := _malloc(2 * $#C) as #1C
+        str[0]& &lt- '0'
+        str[1]& &lt- '\0'
+        return str
+    }
+    else {
+        def sign := 1
+        eval if (n &lt 0) {
+            sign := -1
+            n := -n
+        }
+
+        def len := 0
+        def m := n
+        eval while (m) {
+            len := len + 1
+            m := m / 10
+        }
+        eval if (sign = -1) {
+            len := len + 1
+        }
+
+        def str := _malloc((len + 1) * $#C) as #1C
+            eval if (sign = -1) {
+            str[0]& &lt- '-'
+        }
+        str[len]& &lt- '\0'
+        len := len - 1
+        eval while (n) {
+            def val := n % 10 as #C
+            str[len]& &lt- val + '0'
+            n := n / 10
+            len := len - 1
+        }
+        return str
+    }
+}
+
+/* func ^.atoi_(str #1C) -&gt #I {
+    def i := strlen_(str) - 1
+    def x := 0
+    eval while (i &gt= 0) {
+        def ch := (str[i] - '0') as #I
+        x := x * 10 + ch
+        i := i - 1
+    }
+    return x
+} */
+
+func ^.rand_(seed #I) -&gt #I {
+    seed := seed * 1103515245 + 12345
+    return (seed / 65536) % 32768
+}
+</code></pre>
+<h2 id="7">string</h2>
+<h3 id="7.1">todo</h3>
+<pre><code>func ^.strcpy_(a #1C, b #1C) -> #1C {
+    def i := 0
+    return while (1) {
+        a[i]& &lt- b[i]
+        eval if (b[i] = '\0') { break a }
+        i := i + 1
+    } else a
+}
+
+func ^.strncpy_(a #1C, b #1C, n #I) -&gt #1C {
+    def i := 0
+    return while (i &lt n) {
+        a[i]& &lt- b[i]
+        eval if (b[i] = '\0') { break a }
+        i := i + 1
+    } else a
+}
+
+func ^.strcmp_(a #1C, b #1C) -&gt #I {
+    def i := 0
+    return while (1) {
+        eval if (a[i] &lt b[i]) { break -1 }
+        eval if (b[i] &lt a[i]) { break 1 }
+        eval if (a[i] = '\0' or b[i] = '\0') { break 0 }
+        i := i + 1
+    } else 0
+}
+
+func ^.strncmp_(a #1C, b #1C, n #I) -&gt #I {
+    def i := 0
+    return while (i &lt n) {
+        eval if (a[i] &lt b[i]) { break -1 }
+        eval if (b[i] &lt a[i]) { break 1 }
+        eval if (a[i] = '\0' or b[i] = '\0') { break 0 }
+        i := i + 1
+    } else 0
+}
+
+func ^.strlen_(a #1C) -&gt #I {
+    def i := 0
+    return while (1) {
+        eval if (a[i] = '\0') { break i }
+        i := i + 1
+    } else 0
+}
+
+func ^.concat_(a #1C, b #1C) -&gt #1C {
+    def s_a := strlen_(a)
+    def s_b := strlen_(b)
+    def buf := _malloc(s_a + s_b + 1) as #1C
+    def i := 0
+    eval while (i &lt s_a) {
+        buf[i]& &lt- a[i]
+        i := i + 1
+    }
+    i := 0
+    eval while (i &lt s_b) {
+        buf[s_a + i]& &lt- b[i]
+        i := i + 1
+    }
+    buf[s_a + s_b]& &lt- '\0'
+    return buf
+}
+
+func ^.concat3_(a #1C, b #1C, c #1C) -&gt #1C {
+    def s_a := strlen_(a)
+    def s_b := strlen_(b)
+    def s_c := strlen_(c)
+    def buf := _malloc(s_a + s_b + s_c + 1) as #1C
+    def i := 0
+    eval while (i &lt s_a) {
+        buf[i]& &lt- a[i]
+        i := i + 1
+    }
+    i := 0
+    eval while (i &lt s_b) {
+        buf[s_a + i]& &lt- b[i]
+        i := i + 1
+    }
+    i := 0
+    eval while (i &lt s_c) {
+        buf[s_a + s_b + i]& &lt- c[i]
+        i := i + 1
+    }
+    buf[s_a + s_b + s_c]& &lt- '\0'
+    return buf
+}
+
+func ^.substr_(a #1C, n #I) -&gt #1C {
+    def m := strlen_(a)
+    eval if (m &lt= n) {
+        n := m
+    }
+    def b := _malloc(n + 1) as #1C
+    def i := 0
+    eval while (i &lt n) {
+        b[i]& &lt- a[i]
+        i := i + 1
+    }
+    b[n]& &lt- '\0'
+    return b
+}
+</code></pre>
+<h2 id="8">test_allocator</h2>
+<h3 id="8.1">todo</h3>
+<pre><code>typedef TestAllocator := #S {
+    data: #1I,
+    size: #I,
+    reserved: #I
+};
+
+func ^#1TestAllocator.init(this #1TestAllocator, size #I) -&gt #V {
+    def PROT_READ := 1
+    def PROT_WRITE := 2
+    def MAP_PRIVATE := 2
+    def MAP_ANONYMOUS := 32
+    this-&gtdata& &lt- posix_mmap(0 as #1I, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+    this-&gtsize& &lt- 0
+    this-&gtreserved& &lt- size
+}
+
+func ^#1TestAllocator.deinit(this #1TestAllocator) -&gt #V {
+    eval posix_munmap(this-&gtdata, this-&gtreserved)
+}
+
+func ^#1TestAllocator.alloc(this #1TestAllocator, size #I) -&gt #1I {
+    return if (this-&gtsize + size &lt= this-&gtreserved) {
+        def x := this-&gtdata as #I
+        def ptr := (x + this-&gtsize) as #1I
+        this-&gtsize& &lt- this-&gtsize + size
+        return ptr
+    }
+    else 0 as #1I
+}
+</code></pre>
+<h2 id="9">vector</h2>
+<h3 id="9.1">todo</h3>
+<pre><code>typedef Vector := #S {
+    data: #1I,
+    size: #I,
+    reserved: #I
+}
+
+func ^.vector_init() -&gt #1Vector {
+    def this #1Vector := _malloc($#Vector) as #1Vector
+    this-&gtsize& &lt- 0 
+    this-&gtreserved& &lt- 10
+    this-&gtdata& &lt- _malloc(this-&gtreserved * $#I)
+    return this
+}
+
+func ^#1Vector.push(this #1Vector, x #I) -&gt #V {
+    eval if (this-&gtsize = this-&gtreserved) {
+        def buffer #1I := _malloc(this-&gtreserved * 2 * $#I)
+        eval puti_(this-&gtdata as #I)
+        eval _memcpy(buffer, this-&gtdata, this-&gtsize * $#I)
+        eval _free(this-&gtdata)
+        this-&gtdata& &lt- buffer
+        this-&gtreserved& &lt- this-&gtreserved * 2
+    }
+    this-&gtdata[this-&gtsize]& &lt- x
+    this-&gtsize& &lt- this-&gtsize + 1
+}
+
+func ^#1Vector.pop(this #1Vector) -&gt #I {
+    return if (this-&gtsize = 0) { return 0 }
+    else {
+        this-&gtsize& &lt- this-&gtsize - 1
+        return 1
+    }
+}
+
+func ^#1Vector.get(this #1Vector, x #I) -&gt #I {
+    return this-&gtdata[x]
+}
+</code></pre>
+</main></div></body></html>

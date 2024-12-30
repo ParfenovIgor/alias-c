@@ -4,7 +4,9 @@ A system programming language
 
 ## Documentation
 
-[Language Reference](https://htmlpreview.github.io/?https://github.com/ParfenovIgor/alias-c/blob/main/docs/langref.html)
+[Alias Language Reference](https://htmlpreview.github.io/?https://github.com/ParfenovIgor/alias-c/blob/main/docs/langref.html)
+
+[Altlib Reference](https://htmlpreview.github.io/?https://github.com/ParfenovIgor/alias-c/blob/main/docs/altlibref.html)
 
 ## Installation
 

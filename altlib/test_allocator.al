@@ -1,5 +1,8 @@
 include altlib."posix.al"
 
+//* test_allocator
+
+//* todo
 typedef TestAllocator := #S {
     data: #1I,
     size: #I,

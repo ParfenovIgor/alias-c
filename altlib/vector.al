@@ -2,6 +2,9 @@ include altlib."memory.al"
 include altlib."stdio.al"
 include altlib."stdlib.al"
 
+//* vector
+
+//* todo
 typedef Vector := #S {
     data: #1I,
     size: #I,
