@@ -496,6 +496,12 @@ void compile_break(struct Node *node, struct Break *this, struct CPContext *cont
             error_semantic("Break values types do not equal", node);
         }
     }
+
+    int tsize = type_size(_type, context);
+    const char *dst = _concat3("[rbp + ", _itoa(label_info->sf_pos - align_to_word(tsize)), "]");
+    const char *src = _concat3("[rbp + ", _itoa(context->sf_pos - align_to_word(tsize)), "]");
+    compile_memcpy(dst, src, tsize, context);
+
     _fputsi(context->fd_text, "add rsp, ", label_info->sf_pos - context->sf_pos, "\n");
     _fputs3(context->fd_text, "jmp ", label_info->name_end, "\n");
 }
@@ -953,7 +959,7 @@ struct TypeNode *compile_and(struct Node *node, struct BinaryOperator *this, str
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 0\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
-    return _type;
+    return context->node_int;
 }
 
 struct TypeNode *compile_or(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -972,7 +978,7 @@ struct TypeNode *compile_or(struct Node *node, struct BinaryOperator *this, stru
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
-    return _type;
+    return context->node_int;
 }
 
 struct TypeNode *compile_not(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -988,7 +994,7 @@ struct TypeNode *compile_not(struct Node *node, struct BinaryOperator *this, str
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
-    return _type;
+    return context->node_int;
 }
 
 struct TypeNode *compile_bitwise_and(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -1097,7 +1103,7 @@ struct TypeNode *compile_less(struct Node *node, struct BinaryOperator *this, st
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
-    return _type;
+    return context->node_int;
 }
 
 struct TypeNode *compile_greater(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -1112,7 +1118,7 @@ struct TypeNode *compile_greater(struct Node *node, struct BinaryOperator *this,
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
-    return _type;
+    return context->node_int;
 }
 
 struct TypeNode *compile_equal(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -1127,7 +1133,7 @@ struct TypeNode *compile_equal(struct Node *node, struct BinaryOperator *this, s
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
-    return _type;
+    return context->node_int;
 }
 
 struct TypeNode *compile_less_equal(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -1142,7 +1148,7 @@ struct TypeNode *compile_less_equal(struct Node *node, struct BinaryOperator *th
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
-    return _type;
+    return context->node_int;
 }
 
 struct TypeNode *compile_greater_equal(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -1157,7 +1163,7 @@ struct TypeNode *compile_greater_equal(struct Node *node, struct BinaryOperator 
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
-    return _type;
+    return context->node_int;
 }
 
 struct TypeNode *compile_not_equal(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
@@ -1172,7 +1178,7 @@ struct TypeNode *compile_not_equal(struct Node *node, struct BinaryOperator *thi
     _fputsi(context->fd_text, "_L", idx, ":\n");
     _fputs(context->fd_text, "mov qword [rsp - 8], 1\n");
     _fputsi(context->fd_text, "_L", idx + 1, ":\n");
-    return _type;
+    return context->node_int;
 }
 
 struct TypeNode *compile_node(struct Node *node, struct CPContext *context) {

@@ -48,15 +48,9 @@ func ^.sputi_(dst #1C, n #I) -> #I {
     return res
 }
 
-func ^.atoi_(str #1C) -> #I {
-    def i := strlen_(str) - 1
-    def x := 0
-    eval while (i >= 0) {
-        def ch := (str[i] - '0') as #I
-        x := x * 10 + ch
-        i := i - 1
-    }
-    return x
+func ^.freadc_(fd #I) -> #C {
+    def c := '\0'
+    return if (posix_read(fd, c&, 1) = 0) '\0' else c
 }
 
 func ^.freads_(fd #I, dst #1C) -> #I {
@@ -80,9 +74,23 @@ func ^.freads_(fd #I, dst #1C) -> #I {
     return i
 }
 
-func ^.freadi_(fd #I, dst #1C) -> #I {
-    eval freads_(fd, dst)
-    return atoi_(dst)
+func ^.freadi_(fd #I) -> #I {
+    def x := 0
+    def start := 0
+    return while (1) {
+        def c := freadc_(fd)
+        eval if ((c = ' ' or c = '\n') and start = 0) { continue }
+        start := 1
+        eval if (not (c >= '0' and c <= '9')) { break x }
+        def d := (c - '0') as #I
+        x := x * 10 + d
+    }
+    else 0
+}
+
+func ^.readc_() -> #C {
+    def STDIN := 0
+    return freadc_(STDIN)
 }
 
 func ^.reads_(dst #1C) -> #I {
@@ -90,7 +98,7 @@ func ^.reads_(dst #1C) -> #I {
     return freads_(STDIN, dst)
 }
 
-func ^.readi_(dst #1C) -> #I {
+func ^.readi_() -> #I {
     def STDIN := 0
-    return freadi_(STDIN, dst)
+    return freadi_(STDIN)
 }

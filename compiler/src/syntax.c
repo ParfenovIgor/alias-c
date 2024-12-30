@@ -353,7 +353,7 @@ struct Node *syntax_process_expression(struct TokenStream *ts, struct Settings *
             CurrentState = State_ParenthesisOpen;
         }
         else if (tokenstream_get(ts).type == TokenParenthesisClose) {
-            if (CurrentState != State_Identifier) {
+            if (CurrentState != State_Identifier && CurrentState != State_ParenthesisClose) {
                 error_syntax("Unexpected ) in expression", tokenstream_get(ts));
             }
             while (vsize(&operations) != NULL && ((struct Token*)vback(&operations))->type != TokenParenthesisOpen) {

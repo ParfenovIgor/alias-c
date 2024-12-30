@@ -1,17 +1,13 @@
 ALFLAGS=-i altlib ../../altlib/
 LDFLAGS=-z noexecstack
 
-SRCS_AL := $(wildcard *.al)
-EXES_AL := $(patsubst %.al, $(BUILD_DIR)/test/algo/%, $(SRCS_AL))
+SRCS_AL := $(wildcard */main.al)
+DIRS := $(patsubst %/main.al, $(BUILD_DIR)/test/algo/%, $(SRCS_AL))
 
-OBJS_STDLIB := $(wildcard $(BUILD_DIR)/stdlib/*.o)
-OBJS_ALTLIB := $(wildcard $(BUILD_DIR)/altlib/*.o)
+all: $(DIRS)
 
-all: $(EXES_AL)
-
-$(BUILD_DIR)/test/algo/%: %.al make_dir
-	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $(patsubst %, %.o, $@)
-	ld $(LDFLAGS) -o $@ $(patsubst %, %.o, $@) $(OBJS_STDLIB) $(OBJS_ALTLIB)
+$(BUILD_DIR)/test/algo/%: % make_dir
+	$(MAKE) -C $< BUILD_DIR=$(BUILD_DIR) WORKING_DIR=$(BUILD_DIR)/test/algo/$<
 
 make_dir:
 	mkdir -p $(BUILD_DIR)/test/algo

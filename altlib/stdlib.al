@@ -41,6 +41,17 @@ func ^.itoa_(n #I) -> #1C {
     }
 }
 
+/* func ^.atoi_(str #1C) -> #I {
+    def i := strlen_(str) - 1
+    def x := 0
+    eval while (i >= 0) {
+        def ch := (str[i] - '0') as #I
+        x := x * 10 + ch
+        i := i - 1
+    }
+    return x
+} */
+
 func ^.rand_(seed #I) -> #I {
     seed := seed * 1103515245 + 12345
     return (seed / 65536) % 32768
