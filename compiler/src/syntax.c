@@ -68,11 +68,10 @@ struct Node *syntax_process_block(struct TokenStream *ts, struct Settings *st, b
     }
 
     while (tokenstream_get(ts).type != TokenEof && tokenstream_get(ts).type != TokenBraceClose) {
-        if (tokenstream_get(ts).type == TokenSemicolon) {
-            tokenstream_next(ts);
-            continue;
+        struct Node *node = syntax_process_statement(ts, st);
+        if (node) {
+            vpush(&this->statement_list, node);
         }
-        vpush(&this->statement_list, syntax_process_statement(ts, st));
         if (one_statement) break;
     }
     if (braces && !one_statement) {
@@ -737,6 +736,10 @@ struct FunctionSignature *syntax_process_function_signature(struct TokenStream *
 }
 
 struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *st) {
+    if (tokenstream_get(ts).type == TokenSemicolon) {
+        tokenstream_next(ts);
+        return NULL;
+    }
     if (tokenstream_get(ts).type == TokenEval) {
         tokenstream_next(ts);
         return syntax_process_expression(ts, st);
@@ -764,22 +767,41 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         }
         pass_next(ts, TokenDot, ". expected in include");
         check_next(ts, TokenString, "String literal expected in include");
-        char *filename = _concat(include_path, tokenstream_get(ts).value_string);
+        char *path = _concat(include_path, tokenstream_get(ts).value_string);
         tokenstream_next(ts);
-        int fd = posix_open(filename, 0, 0);
-        if (fd <= 0) {
-            const char *buffer = _concat("Could not open file ", filename);
-            error_syntax(buffer, tokenstream_get(ts));
+        bool good = true;
+
+        const char *filename = _strrchr(path, '/');
+        if (!filename) filename = path;
+        else filename++;
+
+        int sz = vsize(&st->included_files);
+        for (int i = 0; i < sz; i++) {
+            if (_strcmp(filename, st->included_files.ptr[i]) == 0) {
+                good = false;
+                break;
+            }
+        }
+        if (good) {
+            vpush(&st->included_files, (char*)filename);
+            int fd = posix_open(path, 0, 0);
+            if (fd <= 0) {
+                const char *buffer = _concat("Could not open file ", path);
+                error_syntax(buffer, tokenstream_get(ts));
+            }
+            else {
+                posix_close(fd);
+            }
+            struct Node *_node = process_parse(path, st);
+            struct Block *inc_block = (struct Block*)_node->node_ptr;
+            this->statement_list = inc_block->statement_list;
+            _free(inc_block);
+            _free(_node);
         }
         else {
-            posix_close(fd);
+            _free(node);
+            return NULL;
         }
-        struct Node *_node = process_parse(filename, st);
-        struct Block *inc_block = (struct Block*)_node->node_ptr;
-        this->statement_list = inc_block->statement_list;
-        _free(filename);
-        _free(inc_block);
-        _free(_node);
     }
     else if (tokenstream_get(ts).type == TokenTest) {
         struct Test *this = (struct Test*)_malloc(sizeof(struct Test));

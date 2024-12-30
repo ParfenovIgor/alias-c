@@ -12,3 +12,4 @@ proto .posix_execve(filename #1I, argv #2C, envp #2C) -> #I
 proto .posix_exit(error_code #I) -> #I
 proto .posix_wait4(pid #I, stat_addr #1I, options #I, rusage #1I) -> #I
 proto .posix_unlink(pathname #1I) -> #I
+proto .posix_getcwd(buf #1C, size #I) -> #1C

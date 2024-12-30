@@ -11,6 +11,26 @@ bool _isdigit(char c) {
     return (c >= '0' && c <= '9');
 }
 
+char *_strchr(const char *s, int c) {
+    int n = _strlen(s);
+    for (int i = 0; i < n; i++) {
+        if (s[i] == c) {
+            return (char*)&s[i];
+        }
+    }
+    return NULL;
+}
+
+char *_strrchr(const char *s, int c) {
+    int n = _strlen(s);
+    for (int i = n - 1; i >= 0; i--) {
+        if (s[i] == c) {
+            return (char*)&s[i];
+        }
+    }
+    return NULL;
+}
+
 char *_strcpy(char *a, const char *b) {
     for (int i = 0; ; i++) {
         a[i] = b[i];
@@ -83,6 +103,14 @@ int _strncmp(const char *a, const char *b, int num) {
 
 int _strlen(const char *a) {
     for (int i = 0; ; i++) {
+        if (a[i] == '\0') {
+            return i;
+        }
+    }
+}
+
+int _strnlen(const char *a, int n) {
+    for (int i = 0; i < n; i++) {
         if (a[i] == '\0') {
             return i;
         }

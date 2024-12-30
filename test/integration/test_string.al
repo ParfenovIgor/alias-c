@@ -35,17 +35,20 @@ func ^._start() -> #V {
     def n6 := strlen_(str1)
     eval puti_(n6)
 
-    def n7 := strlen_(str3)
+    def n7 := strnlen_(str1, 4)
     eval puti_(n7)
+
+    def n8 := strlen_(str3)
+    eval puti_(n8)
 
     def str4 := concat_(str1, str2)
     def str5 := "abac"
-    def n8 := strncmp_(str4, str5, 4)
-    eval puti_(n8)
+    def n9 := strncmp_(str4, str5, 4)
+    eval puti_(n9)
 
     def str6 := substr_(str1, 3)
-    def n9 := strcmp_(str6, str3)
-    eval puti_(n9)
+    def n10 := strcmp_(str6, str3)
+    eval puti_(n10)
 
     eval posix_exit(0)
 }

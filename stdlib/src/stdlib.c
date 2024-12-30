@@ -1,5 +1,8 @@
-#include <stdlib.h>
 #include <heap.h>
+#include <memory.h>
+#include <posix.h>
+#include <stdlib.h>
+#include <string.h>
 
 char *_itoa(int n) {
     if (n == 0) {

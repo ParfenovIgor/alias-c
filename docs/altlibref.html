@@ -84,7 +84,8 @@
 <li><a href="#3">memory</a>
 <ul>
 <li><a href="#3.1">_memcpy</a></li>
-<li><a href="#3.2">_memset</a></li>
+<li><a href="#3.2">_memmove</a></li>
+<li><a href="#3.3">_memset</a></li>
 </ul></li>
 <li><a href="#4">posix</a>
 <ul>
@@ -151,7 +152,12 @@ Copies the data of length <code>sz</code> bytes from <code>src</code> pointer to
 <pre><code>proto ._memcpy(dest #1I, src #1I, sz #I) -> #1I
 
 </code></pre>
-<h3 id="3.2">_memset</h3>
+<h3 id="3.2">_memmove</h3>
+Copies the data of length <code>sz</code> bytes from <code>src</code> pointer to <code>dest</code> pointer. Handles possible overlapping
+<pre><code>proto ._memmove(dest #1I, src #1I, sz #I) -> #1I
+
+</code></pre>
+<h3 id="3.3">_memset</h3>
 Sets the data of length <code>count</code> bytes to <code>dest</code> pointer with value <code>ch</code>. Important: only the lowest byte in <code>ch</code> argument is used.
 <pre><code>proto ._memset(dest #1I, ch #I, count #I) -> #1I
 </code></pre>
@@ -168,6 +174,7 @@ proto .posix_execve(filename #1I, argv #2C, envp #2C) -&gt #I
 proto .posix_exit(error_code #I) -&gt #I
 proto .posix_wait4(pid #I, stat_addr #1I, options #I, rusage #1I) -&gt #I
 proto .posix_unlink(pathname #1I) -&gt #I
+proto .posix_getcwd(buf #1C, size #I) -&gt #1C
 </code></pre>
 <h2 id="5">stdio</h2>
 <h3 id="5.1">fputs_</h3>
@@ -361,7 +368,7 @@ func ^.itoa_(n #I) -&gt #1C {
     }
 }
 
-/* func ^.atoi_(str #1C) -&gt #I {
+func ^.atoi_(str #1C) -&gt #I {
     def i := strlen_(str) - 1
     def x := 0
     eval while (i &gt= 0) {
@@ -370,7 +377,7 @@ func ^.itoa_(n #I) -&gt #1C {
         i := i - 1
     }
     return x
-} */
+}
 
 func ^.rand_(seed #I) -&gt #I {
     seed := seed * 1103515245 + 12345
@@ -423,6 +430,14 @@ func ^.strlen_(a #1C) -&gt #I {
         eval if (a[i] = '\0') { break i }
         i := i + 1
     } else 0
+}
+
+func ^.strnlen_(a #1C, n #I) -&gt #I {
+    def i := 0
+    return while (i &lt n) {
+        eval if (a[i] = '\0') { break i }
+        i := i + 1
+    } else n
 }
 
 func ^.concat_(a #1C, b #1C) -&gt #1C {

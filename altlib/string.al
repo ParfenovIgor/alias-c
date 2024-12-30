@@ -48,6 +48,14 @@ func ^.strlen_(a #1C) -> #I {
     } else 0
 }
 
+func ^.strnlen_(a #1C, n #I) -> #I {
+    def i := 0
+    return while (i < n) {
+        eval if (a[i] = '\0') { break i }
+        i := i + 1
+    } else n
+}
+
 func ^.concat_(a #1C, b #1C) -> #1C {
     def s_a := strlen_(a)
     def s_b := strlen_(b)

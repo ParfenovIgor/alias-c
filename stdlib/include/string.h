@@ -11,6 +11,8 @@
 
 bool _isalpha(char c);
 bool _isdigit(char c);
+char *_strchr(const char *s, int c);
+char *_strrchr(const char *s, int c);
 
 char *_strcpy(char *a, const char *b);
 char *_strncpy(char *a, const char *b, int n);
@@ -19,6 +21,7 @@ char *_strndup(const char *a, int n);
 int _strcmp(const char *a, const char *b);
 int _strncmp(const char *a, const char *b, int num);
 int _strlen(const char *a);
+int _strnlen(const char *a, int n);
 char *_concat(const char *a, const char *b);
 char *_concat3(const char *a, const char *b, const char *c);
 const char *_substr(const char *a, int n);
