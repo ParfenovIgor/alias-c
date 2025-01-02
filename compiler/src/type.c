@@ -1,6 +1,7 @@
 #include <type.h>
-#include <stdlib.h>
 #include <memory.h>
+#include <panic.h>
+#include <stdlib.h>
 #include <string.h>
 
 bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *context) {
@@ -8,16 +9,20 @@ bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *cont
     while (n1->node_type == TypeNodeIdentifier) {
         sum_degree1 += n1->degree;
         struct TypeIdentifier *_n1 = n1->node_ptr;
-        struct TypeInfo *ti = context_find_type(context, _n1->identifier);
-        if (!ti) return false;
-        n1 = ti->type;
+        struct TypeInfo *info = context_find_type(context, _n1->identifier);
+        if (!info) {
+            _panic("Type identifier not found");
+        }
+        n1 = info->type;
     }
     while (n2->node_type == TypeNodeIdentifier) {
         sum_degree2 += n2->degree;
         struct TypeIdentifier *_n2 = n2->node_ptr;
-        struct TypeInfo *ti = context_find_type(context, _n2->identifier);
-        if (!ti) return false;
-        n2 = ti->type;
+        struct TypeInfo *info = context_find_type(context, _n2->identifier);
+        if (!info) {
+            _panic("Type identifier not found");
+        }
+        n2 = info->type;
     }
 
     if (n1->node_type != n2->node_type ||
@@ -122,6 +127,10 @@ int type_mangle_helper(struct TypeNode *n, struct CPContext *context, char *buff
     while (n->node_type == TypeNodeIdentifier) {
         sum_degree += n->degree;
         struct TypeIdentifier *_n = n->node_ptr;
+        struct TypeInfo *info = context_find_type(context, _n->identifier);
+        if (!info) {
+            _panic("Type identifier not found");
+        }
         n = context_find_type(context, _n->identifier)->type;
     }
     const char *ptr_str = _itoa(sum_degree + n->degree);
