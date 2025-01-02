@@ -80,8 +80,4 @@ test demo_bitwise_operators {
 //*     <td>12</td>
 //*     <td>`or`</td>
 //*   </tr>
-//*   <tr>
-//*     <td>13</td>
-//*     <td>`(`</td>
-//*   </tr>
 //* </table>

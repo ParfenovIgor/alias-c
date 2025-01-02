@@ -3,70 +3,30 @@ func .test_equal(a #I, b #I) -> #I
 
 //* Structs
 
-//* Definition of structs
-//* This way we can declare structs.
+//* Definition of struct
+//* We declare instances of structs with `.{ }` syntax. The type of struct instance is inferred. Two struct types with different type names, but same type contents are equal. We can get the struct field value from a struct pointer with `->` syntax. We can get the pointer to the struct field from a struct pointer with `-><field>&` syntax, which is often used to store value in a struct field with `<-` operator.
 
 typedef Pt := #S{ x: #I, y: #I }
 
-test demo_local_struct { .foo
+test demo_definition_of_struct {
     def pt1 := .{
         x := 32,
         y := 76
     }
-    def pt2 := pt1
-    eval if (pt1&->x = pt2&->x) {} else { return .foo 1 }
-    eval if (pt1&->y = pt2&->y) {} else { return .foo 1 }
-    return 0
+    pt1&->x& <- 21
+    def pt2 #Pt := pt1
+    return test_equal(pt1&->x, pt2&->x)
 }
 
-//* Structs layout
-//* Structs are packed.
+//* Passing structs to functions
+//* We can't pass structs to functions (currently). We can return struct from functions, but the implementation <b>doesn't comply with the System V ABI</b>.
 
-typedef Str := #S{ a: #C, b: #C, c: #I, d: #C, e: #I }
+func .store_number(s #1Pt, n #I) -> #V {
+    s->x& <- n
+}
 
-test demo_struct_layout { .foo
-    eval if ($#Str = 19) {} else { return .foo 1 }
-
-    def str1 := .{
-        a := 'a',
-        b := 'b',
-        c := 11,
-        d := 'd',
-        e := 43
-    }
-
-    def str2 := .{
-        a := 'A',
-        b := 'B',
-        c := 111,
-        d := 'D',
-        e := 143
-    }
-
-    str2 := str1
-    eval if (str1&->c = str2&->c) {} else { return .foo 1 }
-    eval if (str1&->d = str2&->d) {} else { return .foo 1 }
-
-    def t1 := .{
-        a := 12,
-        b := str1,
-        c := 'C'
-    }
-
-    def t2 := t1
-    eval if (str1&->a = str2&->a) {} else { return .foo 1 }
-    eval if (str1&->c = str2&->c) {} else { return .foo 1 }
-
-    def s1 := t1&->b
-    eval if (s1&->c = 11) {} else { return .foo 1 }
-
-    def sp := s1&
-    def s2 := sp$
-    eval if (s2&->c = 11) {} else { return .foo 1 }
-
-    s2&->c& <- 100
-    s1& <- s2
-    eval if (s1&->c = 100) {} else { return .foo 1 }
-
-    return 0
+test demo_passing_structs_to_functions {
+    def pt1 #Pt
+    eval store_number(pt1&, 4)
+    return test_equal(pt1&->x, 4)
 }

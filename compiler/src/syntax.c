@@ -863,14 +863,16 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         check_next(ts, TokenIdentifier, "Identifier expected in definition statement");
         this->identifier = _strdup(tokenstream_get(ts).value_string);
         tokenstream_next(ts);
+
+        this->type = NULL;
+        this->value = NULL;
         if (tokenstream_get(ts).type == TokenSharp) {
             this->type = syntax_process_type(ts, st);
         }
-        else {
-            this->type = NULL;
+        if (tokenstream_get(ts).type == TokenAssign) {
+            tokenstream_next(ts);
+            this->value = syntax_process_expression(ts, st);
         }
-        pass_next(ts, TokenAssign, ":= expected in definition statement");
-        this->value = syntax_process_expression(ts, st);
     }
     else if (tokenstream_get(ts).type == TokenTypedef) {
         struct TypeDefinition *this = (struct TypeDefinition*)_malloc(sizeof(struct TypeDefinition));

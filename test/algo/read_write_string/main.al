@@ -3,11 +3,7 @@ include altlib."stdio.al"
 include altlib."test_allocator.al"
 
 func ^._start() -> #V {
-    def allocator := .{
-        data := 0 as #1I,
-        size := 0,
-        reserved := 0
-    }
+    def allocator #TestAllocator
     eval allocator&.init(1024)
 
     def buffer := allocator&.alloc(256) as #1C

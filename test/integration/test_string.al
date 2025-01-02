@@ -1,7 +1,7 @@
+include altlib."algorithm.al"
 include altlib."posix.al"
 include altlib."stdio.al"
 include altlib."stdlib.al"
-include altlib."algorithm.al"
 include altlib."string.al"
 
 func ^._start() -> #V {

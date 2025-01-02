@@ -435,7 +435,24 @@ void compile_prototype(struct Node *node, struct Prototype *this, struct CPConte
 }
 
 void compile_definition(struct Node *node, struct Definition *this, struct CPContext *context) {
-    struct TypeNode *_type = compile_node(this->value, context);
+    struct TypeNode *_type;
+    
+    if (this->type && this->value) {
+         _type = compile_node(this->value, context);
+         if (this->type && !type_equal(_type, this->type, context)) {
+            error_semantic("Declared and inferred types are not equal", node);
+        }
+    }
+    if (this->type && !this->value) {
+        _type = this->type;
+    }
+    if (!this->type && this->value) {
+        _type = compile_node(this->value, context);
+    }
+    if (!this->type && !this->value) {
+        error_semantic("Undefined type in definition", node);
+    }
+
     struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
     var_info->name = _strdup(this->identifier);
     var_info->type = _type;
@@ -443,11 +460,6 @@ void compile_definition(struct Node *node, struct Definition *this, struct CPCon
     var_info->sf_phase = context->sf_pos - sz;
     vpush(&context->variables, var_info);
     context->sf_pos -= sz;
-
-    if (this->type && !type_equal(_type, this->type, context)) {
-        error_semantic("Declared and inferred types are not equal", node);
-    }
-
     _fputsi(context->fd_text, "sub rsp, ", sz, "\n");
 }
 
