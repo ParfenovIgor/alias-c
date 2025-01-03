@@ -45,6 +45,7 @@ struct Node *syntax_process_block(struct TokenStream *ts, struct Settings *st, b
     struct Block *this = (struct Block*)_malloc(sizeof(struct Block));
     node->node_ptr = this;
     this->statement_list = vnew();
+    struct Vector reverse_statement_list = vnew();
     node->node_type = NodeBlock;
 
     bool one_statement = false;
@@ -68,9 +69,17 @@ struct Node *syntax_process_block(struct TokenStream *ts, struct Settings *st, b
     }
 
     while (tokenstream_get(ts).type != TokenEof && tokenstream_get(ts).type != TokenBraceClose) {
+        bool defer = false;
+        if (tokenstream_get(ts).type == TokenDefer) {
+            tokenstream_next(ts);
+            defer = true;
+        }
         struct Node *node = syntax_process_statement(ts, st);
         if (node) {
-            vpush(&this->statement_list, node);
+            if (!defer)
+                vpush(&this->statement_list, node);
+            else
+                vpush(&reverse_statement_list, node);
         }
         if (one_statement) break;
     }
@@ -79,6 +88,10 @@ struct Node *syntax_process_block(struct TokenStream *ts, struct Settings *st, b
             error_syntax("} expected after block", tokenstream_get(ts));
         }
         tokenstream_next(ts);
+    }
+    int sz = vsize(&reverse_statement_list);
+    for (int i = sz - 1; i >= 0; i--) {
+        vpush(&this->statement_list, reverse_statement_list.ptr[i]);
     }
     finish_node(node, ts);
     return node;

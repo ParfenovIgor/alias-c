@@ -4,6 +4,7 @@ typedef int TokenType;
 
 enum TokenType {
     TokenInclude,
+    TokenDefer,
     TokenIf,
     TokenElse,
     TokenWhile,

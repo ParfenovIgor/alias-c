@@ -5,6 +5,7 @@ include altlib."test_allocator.al"
 func ^._start() -> #V {
     def allocator #TestAllocator
     eval allocator&.init(1024)
+    defer eval allocator&.deinit()
 
     def buffer1 := allocator&.alloc(256) as #I
     def buffer2 := allocator&.alloc(256) as #I
@@ -16,6 +17,5 @@ func ^._start() -> #V {
     eval puti_(buffer4 - buffer3)
     eval puti_(buffer5)
 
-    eval allocator&.deinit()
     eval posix_exit(0)
 }

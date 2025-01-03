@@ -7,6 +7,7 @@ include altlib."vector.al"
 func ^._start() -> #V {
     def allocator #TestAllocator
     eval allocator&.init(1024)
+    defer eval allocator&.deinit()
 
     def vec #Vector
     eval vec&.init(allocator&)
@@ -30,6 +31,5 @@ func ^._start() -> #V {
     eval puti_(vec&.get(2))
     eval puti_(vec&.get(3))
 
-    eval allocator&.deinit()
     eval posix_exit(0)
 }

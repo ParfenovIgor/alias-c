@@ -138,6 +138,7 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
             i = _min(i + 2, N);
         }
         else if (append_token(str, N, &i, "include", TokenInclude, false, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "defer", TokenDefer, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "if", TokenIf, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "else", TokenElse, false, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "while", TokenWhile, false, line, &position, filename, token_stream)) {}
@@ -361,6 +362,7 @@ const char *TokenColor(enum TokenType type,
     int *bracket_level) {
     enum Color colors[] = {
         Color_DarkGreen,    // TokenInclude,
+        Color_DarkGreen,    // TokenDefer,
         Color_Blue,         // TokenIf,
         Color_Blue,         // TokenElse,
         Color_Blue,         // TokenWhile,

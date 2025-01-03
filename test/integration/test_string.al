@@ -8,6 +8,7 @@ include altlib."test_allocator.al"
 func ^._start() -> #V {
     def allocator #TestAllocator
     eval allocator&.init(1024)
+    defer eval allocator&.deinit()
 
     def str1 := "abacaba"
     eval puts_(str1);
@@ -30,6 +31,5 @@ func ^._start() -> #V {
     eval puti_(strnlen_(str1, 4))
     eval puti_(strlen_(str3))
 
-    eval allocator&.deinit()
     eval posix_exit(0)
 }

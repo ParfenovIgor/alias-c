@@ -34,6 +34,7 @@ func .merge_sort(a #1I, lx #I, rx #I, allocator #1TestAllocator) -> #V {
 func ^._start() -> #V {
     def allocator #TestAllocator
     eval allocator&.init(1024 * 1024)
+    defer eval allocator&.deinit()
 
     def n := readi_()
     def a := allocator&.alloc(n * $#I) as #1I
@@ -51,6 +52,5 @@ func ^._start() -> #V {
         i := i + 1
     }
 
-    eval allocator&.deinit()
     eval posix_exit(0)
 }
