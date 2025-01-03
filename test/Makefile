@@ -12,6 +12,3 @@ unit:
 
 integration:
 	$(MAKE) -C integration BUILD_DIR=$(BUILD_DIR)
-
-clean:
-	rm -r build

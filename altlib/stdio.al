@@ -23,10 +23,35 @@ func ^.fputs3_(fd #I, str1 #1C, str2 #1C, str3 #1C) -> #I
 //* fputi_
 //* Prints the integer `n` to the descriptor `fd`. Returns length of the string printed.
 func ^.fputi_(fd #I, n #I) -> #I {
-    def str := itoa_(n)
-    def res := posix_write(fd, str, strlen_(str))
-    eval _free(str as #1I)
-    return res
+    return if (n = 0) {
+        def ch := '0'
+        return posix_write(fd, ch&, 1)
+    }
+    else {
+        def neg := 0
+        eval if (n < 0) {
+            neg := 1
+            def ch := '-'
+            eval posix_write(fd, ch&, 1)
+            n := -n
+        }
+        def len := 1
+        def mod := 1
+        eval while (mod * 10 <= n) {
+            mod := mod * 10
+            len := len + 1
+        }
+        def i := len - 1
+        eval while (i >= 0) {
+            def ch := (n / mod) as #C
+            ch := ch + '0'
+            n := n % mod
+            mod := mod / 10
+            eval posix_write(fd, ch&, 1)
+            i := i - 1
+        }
+        return len + neg
+    }
 }
 
 //* fputsi_
@@ -62,11 +87,8 @@ func ^.sputs_(dst #1C, src #1C) -> #I {
 //* sputi_
 //* Prints the integer `n` to the string `dst`. Doesn't check for the length. Returns length of the string printed.
 func ^.sputi_(dst #1C, n #I) -> #I {
-    def str := itoa_(n)
-    eval sputs_(dst, str)
-    def res := strlen_(str)
-    eval _free(str as #1I)
-    return res
+    eval itoa_(n, dst, 10)
+    return strlen_(dst)
 }
 
 //* freadc_

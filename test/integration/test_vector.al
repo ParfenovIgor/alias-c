@@ -5,26 +5,31 @@ include altlib."stdlib.al"
 include altlib."vector.al"
 
 func ^._start() -> #V {
-    def vec1 #1Vector := vector_init()
-    eval vec1.push(1)
-    eval vec1.push(2)
-    eval vec1.push(3)
-    eval vec1.push(4)
+    def allocator #TestAllocator
+    eval allocator&.init(1024)
 
-    eval puti_(vec1.get(0))
-    eval puti_(vec1.get(1))
-    eval puti_(vec1.get(2))
-    eval puti_(vec1.get(3))
+    def vec #Vector
+    eval vec&.init(allocator&)
+    eval vec&.push(1)
+    eval vec&.push(2)
+    eval vec&.push(3)
+    eval vec&.push(4)
 
-    eval vec1.pop()
-    eval vec1.pop()
-    eval vec1.push(5)
-    eval vec1.push(6)
+    eval puti_(vec&.get(0))
+    eval puti_(vec&.get(1))
+    eval puti_(vec&.get(2))
+    eval puti_(vec&.get(3))
 
-    eval puti_(vec1.get(0))
-    eval puti_(vec1.get(1))
-    eval puti_(vec1.get(2))
-    eval puti_(vec1.get(3))
+    eval vec&.pop()
+    eval vec&.pop()
+    eval vec&.push(5)
+    eval vec&.push(6)
 
+    eval puti_(vec&.get(0))
+    eval puti_(vec&.get(1))
+    eval puti_(vec&.get(2))
+    eval puti_(vec&.get(3))
+
+    eval allocator&.deinit()
     eval posix_exit(0)
 }

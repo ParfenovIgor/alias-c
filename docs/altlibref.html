@@ -199,10 +199,35 @@ Prints the strings <code>str1</code>, <code>str2</code> and <code>str3</code> to
 <h3 id="5.4">fputi_</h3>
 Prints the integer <code>n</code> to the descriptor <code>fd</code>. Returns length of the string printed.
 <pre><code>func ^.fputi_(fd #I, n #I) -> #I {
-    def str := itoa_(n)
-    def res := posix_write(fd, str, strlen_(str))
-    eval _free(str as #1I)
-    return res
+    return if (n = 0) {
+        def ch := '0'
+        return posix_write(fd, ch&, 1)
+    }
+    else {
+        def neg := 0
+        eval if (n &lt 0) {
+            neg := 1
+            def ch := '-'
+            eval posix_write(fd, ch&, 1)
+            n := -n
+        }
+        def len := 1
+        def mod := 1
+        eval while (mod * 10 &lt= n) {
+            mod := mod * 10
+            len := len + 1
+        }
+        def i := len - 1
+        eval while (i &gt= 0) {
+            def ch := (n / mod) as #C
+            ch := ch + '0'
+            n := n % mod
+            mod := mod / 10
+            eval posix_write(fd, ch&, 1)
+            i := i - 1
+        }
+        return len + neg
+    }
 }
 
 </code></pre>
@@ -243,11 +268,8 @@ Copies the string <code>src</code> to string <code>dst</code>. Doesn't check for
 <h3 id="5.9">sputi_</h3>
 Prints the integer <code>n</code> to the string <code>dst</code>. Doesn't check for the length. Returns length of the string printed.
 <pre><code>func ^.sputi_(dst #1C, n #I) -> #I {
-    def str := itoa_(n)
-    eval sputs_(dst, str)
-    def res := strlen_(str)
-    eval _free(str as #1I)
-    return res
+    eval itoa_(n, dst, 10)
+    return strlen_(dst)
 }
 
 </code></pre>
@@ -325,15 +347,10 @@ Reads and returns an integer from the stardard input descriptor.
 </code></pre>
 <h2 id="6">stdlib</h2>
 <h3 id="6.1">todo</h3>
-<pre><code>proto ._malloc(sz #I) -> #1I
-proto ._free(ptr #1I) -&gt #V
-
-func ^.itoa_(n #I) -&gt #1C {
-    return if (n = 0) {
-        def str := _malloc(2 * $#C) as #1C
-        str[0]& &lt- '0'
-        str[1]& &lt- '\0'
-        return str
+<pre><code>func ^.itoa_(n #I, dst #1C, radix #I) -> #1C {
+    eval if (n = 0) {
+        dst[0]& &lt- '0'
+        dst[1]& &lt- '\0'
     }
     else {
         def sign := 1
@@ -346,26 +363,25 @@ func ^.itoa_(n #I) -&gt #1C {
         def m := n
         eval while (m) {
             len := len + 1
-            m := m / 10
+            m := m / radix
         }
         eval if (sign = -1) {
             len := len + 1
         }
 
-        def str := _malloc((len + 1) * $#C) as #1C
-            eval if (sign = -1) {
-            str[0]& &lt- '-'
+        eval if (sign = -1) {
+            dst[0]& &lt- '-'
         }
-        str[len]& &lt- '\0'
+        dst[len]& &lt- '\0'
         len := len - 1
         eval while (n) {
-            def val := n % 10 as #C
-            str[len]& &lt- val + '0'
-            n := n / 10
+            def val := n % radix as #C
+            dst[len]& &lt- val + '0'
+            n := n / radix
             len := len - 1
         }
-        return str
     }
+    return dst
 }
 
 func ^.atoi_(str #1C) -&gt #I {
@@ -439,63 +455,6 @@ func ^.strnlen_(a #1C, n #I) -&gt #I {
         i := i + 1
     } else n
 }
-
-func ^.concat_(a #1C, b #1C) -&gt #1C {
-    def s_a := strlen_(a)
-    def s_b := strlen_(b)
-    def buf := _malloc(s_a + s_b + 1) as #1C
-    def i := 0
-    eval while (i &lt s_a) {
-        buf[i]& &lt- a[i]
-        i := i + 1
-    }
-    i := 0
-    eval while (i &lt s_b) {
-        buf[s_a + i]& &lt- b[i]
-        i := i + 1
-    }
-    buf[s_a + s_b]& &lt- '\0'
-    return buf
-}
-
-func ^.concat3_(a #1C, b #1C, c #1C) -&gt #1C {
-    def s_a := strlen_(a)
-    def s_b := strlen_(b)
-    def s_c := strlen_(c)
-    def buf := _malloc(s_a + s_b + s_c + 1) as #1C
-    def i := 0
-    eval while (i &lt s_a) {
-        buf[i]& &lt- a[i]
-        i := i + 1
-    }
-    i := 0
-    eval while (i &lt s_b) {
-        buf[s_a + i]& &lt- b[i]
-        i := i + 1
-    }
-    i := 0
-    eval while (i &lt s_c) {
-        buf[s_a + s_b + i]& &lt- c[i]
-        i := i + 1
-    }
-    buf[s_a + s_b + s_c]& &lt- '\0'
-    return buf
-}
-
-func ^.substr_(a #1C, n #I) -&gt #1C {
-    def m := strlen_(a)
-    eval if (m &lt= n) {
-        n := m
-    }
-    def b := _malloc(n + 1) as #1C
-    def i := 0
-    eval while (i &lt n) {
-        b[i]& &lt- a[i]
-        i := i + 1
-    }
-    b[n]& &lt- '\0'
-    return b
-}
 </code></pre>
 <h2 id="8">test_allocator</h2>
 <h3 id="8.1">todo</h3>
@@ -534,23 +493,22 @@ func ^#1TestAllocator.alloc(this #1TestAllocator, size #I) -&gt #1I {
 <pre><code>typedef Vector := #S {
     data: #1I,
     size: #I,
-    reserved: #I
+    reserved: #I,
+    allocator: #1TestAllocator
 }
 
-func ^.vector_init() -&gt #1Vector {
-    def this #1Vector := _malloc($#Vector) as #1Vector
+func ^#1Vector.init(this #1Vector, allocator #1TestAllocator) -&gt #V {
     this-&gtsize& &lt- 0 
     this-&gtreserved& &lt- 10
-    this-&gtdata& &lt- _malloc(this-&gtreserved * $#I)
-    return this
+    this-&gtdata& &lt- allocator.alloc(this-&gtreserved * $#I)
+    this-&gtallocator& &lt- allocator
 }
 
 func ^#1Vector.push(this #1Vector, x #I) -&gt #V {
     eval if (this-&gtsize = this-&gtreserved) {
-        def buffer #1I := _malloc(this-&gtreserved * 2 * $#I)
+        def buffer #1I := this-&gtallocator.alloc(this-&gtreserved * 2 * $#I)
         eval puti_(this-&gtdata as #I)
         eval _memcpy(buffer, this-&gtdata, this-&gtsize * $#I)
-        eval _free(this-&gtdata)
         this-&gtdata& &lt- buffer
         this-&gtreserved& &lt- this-&gtreserved * 2
     }

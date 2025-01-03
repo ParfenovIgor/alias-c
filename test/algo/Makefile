@@ -1,6 +1,3 @@
-ALFLAGS=-i altlib ../../altlib/
-LDFLAGS=-z noexecstack
-
 SRCS_AL := $(wildcard */main.al)
 DIRS := $(patsubst %/main.al, $(BUILD_DIR)/test/algo/%, $(SRCS_AL))
 
@@ -11,6 +8,3 @@ $(BUILD_DIR)/test/algo/%: % make_dir
 
 make_dir:
 	mkdir -p $(BUILD_DIR)/test/algo
-
-clean:
-	rm -r $(BUILD_DIR)/test
