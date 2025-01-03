@@ -89,7 +89,18 @@
 </ul></li>
 <li><a href="#4">posix</a>
 <ul>
-<li><a href="#4.1">todo</a></li>
+<li><a href="#4.1">posix_read</a></li>
+<li><a href="#4.2">posix_write</a></li>
+<li><a href="#4.3">posix_open</a></li>
+<li><a href="#4.4">posix_close</a></li>
+<li><a href="#4.5">posix_mmap</a></li>
+<li><a href="#4.6">posix_munmap</a></li>
+<li><a href="#4.7">posix_fork</a></li>
+<li><a href="#4.8">posix_execve</a></li>
+<li><a href="#4.9">posix_exit</a></li>
+<li><a href="#4.10">posix_wait4</a></li>
+<li><a href="#4.11">posix_getcwd</a></li>
+<li><a href="#4.12">posix_unlink</a></li>
 </ul></li>
 <li><a href="#5">stdio</a>
 <ul>
@@ -111,19 +122,31 @@
 </ul></li>
 <li><a href="#6">stdlib</a>
 <ul>
-<li><a href="#6.1">todo</a></li>
+<li><a href="#6.1">itoa_</a></li>
+<li><a href="#6.2">atoi_</a></li>
+<li><a href="#6.3">rand_</a></li>
 </ul></li>
 <li><a href="#7">string</a>
 <ul>
-<li><a href="#7.1">todo</a></li>
+<li><a href="#7.1">strcpy_</a></li>
+<li><a href="#7.2">strncpy_</a></li>
+<li><a href="#7.3">strcmp_</a></li>
+<li><a href="#7.4">strncmp_</a></li>
+<li><a href="#7.5">strlen_</a></li>
+<li><a href="#7.6">strnlen_</a></li>
 </ul></li>
 <li><a href="#8">test_allocator</a>
 <ul>
-<li><a href="#8.1">todo</a></li>
+<li><a href="#8.1">#1TestAllocator.init</a></li>
+<li><a href="#8.2">#1TestAllocator.deinit</a></li>
+<li><a href="#8.3">#1TestAllocator.alloc</a></li>
 </ul></li>
 <li><a href="#9">vector</a>
 <ul>
-<li><a href="#9.1">todo</a></li>
+<li><a href="#9.1">#1Vector.init</a></li>
+<li><a href="#9.2">#1Vector.push</a></li>
+<li><a href="#9.3">#1Vector.pop</a></li>
+<li><a href="#9.4">#1Vector.get</a></li>
 </ul></li>
 </ul></nav></div>
 <div id="contents-wrapper"><main id="contents">
@@ -140,6 +163,9 @@ Gets two integer values and returns the maximum one.
     if (a &lt b) b else a
 </code></pre>
 <h2 id="2">cassert</h2>
+<pre><code>include altlib."posix.al"
+
+</code></pre>
 <h3 id="2.1">assert_</h3>
 Gets one integer value and stop execution with return code <code>3</code>, if the value is <code>0</code>.
 <pre><code>func ^.assert_(x #I) -> #V {
@@ -162,21 +188,71 @@ Sets the data of length <code>count</code> bytes to <code>dest</code> pointer wi
 <pre><code>proto ._memset(dest #1I, ch #I, count #I) -> #1I
 </code></pre>
 <h2 id="4">posix</h2>
-<h3 id="4.1">todo</h3>
+<h3 id="4.1">posix_read</h3>
+System call. Reads <code>count</code> bytes from descriptor <code>fd</code> into <code>buffer</code>. Return number of bytes read.
 <pre><code>proto .posix_read(fd #I, buffer #1C, count #I) -> #I
-proto .posix_write(fd #I, buffer #1C, count #I) -&gt #I
-proto .posix_open(filename #1C, flags #I, mode #I) -&gt #I
-proto .posix_close(fd #I) -&gt #I
-proto .posix_mmap(start #1I, length #I, prot #I, flags #I, fd #I, offset #I) -&gt #1I
-proto .posix_munmap(start #1I, length #I) -&gt #I
-proto .posix_fork() -&gt #I
-proto .posix_execve(filename #1I, argv #2C, envp #2C) -&gt #I
-proto .posix_exit(error_code #I) -&gt #I
-proto .posix_wait4(pid #I, stat_addr #1I, options #I, rusage #1I) -&gt #I
-proto .posix_unlink(pathname #1I) -&gt #I
-proto .posix_getcwd(buf #1C, size #I) -&gt #1C
+
+</code></pre>
+<h3 id="4.2">posix_write</h3>
+System call. Writes <code>count</code> bytes from <code>buffer</code> into descriptor <code>fd</code>. Return number of bytes written.
+<pre><code>proto .posix_write(fd #I, buffer #1C, count #I) -> #I
+
+</code></pre>
+<h3 id="4.3">posix_open</h3>
+System call. Opens a file and returns the descriptor. Read external documentation.
+<pre><code>proto .posix_open(filename #1C, flags #I, mode #I) -> #I
+
+</code></pre>
+<h3 id="4.4">posix_close</h3>
+System call. Closes the descriptor <code>fd</code>. Returns <code>0</code> on success.
+<pre><code>proto .posix_close(fd #I) -> #I
+
+</code></pre>
+<h3 id="4.5">posix_mmap</h3>
+System call. Perform memory mapping. Read external documentation.
+<pre><code>proto .posix_mmap(start #1I, length #I, prot #I, flags #I, fd #I, offset #I) -> #1I
+
+</code></pre>
+<h3 id="4.6">posix_munmap</h3>
+System call. Performs memory unmapping from address <code>start</code> with size <code>length</code>.
+<pre><code>proto .posix_munmap(start #1I, length #I) -> #I
+
+</code></pre>
+<h3 id="4.7">posix_fork</h3>
+System call. Starts a new process. Returns the <code>PID</code> of the child for the parent and <code>0</code> for the child.
+<pre><code>proto .posix_fork() -> #I
+
+</code></pre>
+<h3 id="4.8">posix_execve</h3>
+System call. Starts a program in file <code>filename</code> with arguments <code>args</code> and environmental variables <code>envp</code>. Returns "never type".
+<pre><code>proto .posix_execve(filename #1I, argv #2C, envp #2C) -> #I
+
+</code></pre>
+<h3 id="4.9">posix_exit</h3>
+System call. Terminates the process with exit code <code>error_code</code>. Returns "never type".
+<pre><code>proto .posix_exit(error_code #I) -> #I
+
+</code></pre>
+<h3 id="4.10">posix_wait4</h3>
+System call. Locks the process until a condition on process <code>pid</code> is satisfied. Read external documentation.
+<pre><code>proto .posix_wait4(pid #I, stat_addr #1I, options #I, rusage #1I) -> #I
+
+</code></pre>
+<h3 id="4.11">posix_getcwd</h3>
+System call. Writes the current working directory to a buffer <code>buf</code> with size <code>size</code>. Returns <code>buf</code>.
+<pre><code>proto .posix_getcwd(buf #1C, size #I) -> #1C
+
+</code></pre>
+<h3 id="4.12">posix_unlink</h3>
+System call. Unlinks the file <code>pathname</code>. Returns <code>0</code> on success.
+<pre><code>proto .posix_unlink(pathname #1I) -> #I
 </code></pre>
 <h2 id="5">stdio</h2>
+<pre><code>include altlib."posix.al"
+include altlib."stdlib.al"
+include altlib."string.al"
+
+</code></pre>
 <h3 id="5.1">fputs_</h3>
 Prints the string <code>str</code> to the descriptor <code>fd</code>. Returns length of the string printed.
 <pre><code>func ^.fputs_(fd #I, str #1C) -> #I
@@ -346,7 +422,11 @@ Reads and returns an integer from the stardard input descriptor.
 }
 </code></pre>
 <h2 id="6">stdlib</h2>
-<h3 id="6.1">todo</h3>
+<pre><code>include altlib."string.al"
+
+</code></pre>
+<h3 id="6.1">itoa_</h3>
+Prints the integer <code>n</code> into buffer <code>dst</code> in ascii format in radix <code>radix</code>. Returns the length of the string. Doesn't check for the length of the buffer.
 <pre><code>func ^.itoa_(n #I, dst #1C, radix #I) -> #1C {
     eval if (n = 0) {
         dst[0]& &lt- '0'
@@ -384,7 +464,10 @@ Reads and returns an integer from the stardard input descriptor.
     return dst
 }
 
-func ^.atoi_(str #1C) -&gt #I {
+</code></pre>
+<h3 id="6.2">atoi_</h3>
+Converts the integer written in buffer <code>str</code> in ascii format into an integer and returns it.
+<pre><code>func ^.atoi_(str #1C) -> #I {
     def i := strlen_(str) - 1
     def x := 0
     eval while (i &gt= 0) {
@@ -395,13 +478,20 @@ func ^.atoi_(str #1C) -&gt #I {
     return x
 }
 
-func ^.rand_(seed #I) -&gt #I {
+</code></pre>
+<h3 id="6.3">rand_</h3>
+Gets a seed <code>seed</code> and return the next pseudorandom integer.
+<pre><code>func ^.rand_(seed #I) -> #I {
     seed := seed * 1103515245 + 12345
     return (seed / 65536) % 32768
 }
 </code></pre>
 <h2 id="7">string</h2>
-<h3 id="7.1">todo</h3>
+<pre><code>include altlib."stdlib.al"
+
+</code></pre>
+<h3 id="7.1">strcpy_</h3>
+Copies the string <code>b</code> into buffer <code>a</code>. Returns <code>a</code>.
 <pre><code>func ^.strcpy_(a #1C, b #1C) -> #1C {
     def i := 0
     return while (1) {
@@ -411,7 +501,10 @@ func ^.rand_(seed #I) -&gt #I {
     } else a
 }
 
-func ^.strncpy_(a #1C, b #1C, n #I) -&gt #1C {
+</code></pre>
+<h3 id="7.2">strncpy_</h3>
+Copies at most <code>n</code> bytes from string <code>b</code> into buffer <code>a</code>. Returns <code>a</code>.
+<pre><code>func ^.strncpy_(a #1C, b #1C, n #I) -> #1C {
     def i := 0
     return while (i &lt n) {
         a[i]& &lt- b[i]
@@ -420,7 +513,10 @@ func ^.strncpy_(a #1C, b #1C, n #I) -&gt #1C {
     } else a
 }
 
-func ^.strcmp_(a #1C, b #1C) -&gt #I {
+</code></pre>
+<h3 id="7.3">strcmp_</h3>
+Compares strings <code>a</code> and <code>b</code> lexicographically. Returns <code>-1</code> if <code>a < b</code>. Returns <code>1</code> if <code>a > b</code>. Returns <code>0</code> if <code>a = b</code>.
+<pre><code>func ^.strcmp_(a #1C, b #1C) -> #I {
     def i := 0
     return while (1) {
         eval if (a[i] &lt b[i]) { break -1 }
@@ -430,7 +526,10 @@ func ^.strcmp_(a #1C, b #1C) -&gt #I {
     } else 0
 }
 
-func ^.strncmp_(a #1C, b #1C, n #I) -&gt #I {
+</code></pre>
+<h3 id="7.4">strncmp_</h3>
+Compares at most <code>n</code> bytes of strings <code>a</code> and <code>b</code> lexicographically. Returns <code>-1</code> if <code>a < b</code>. Returns <code>1</code> if <code>a > b</code>. Returns <code>0</code> if <code>a = b</code>. Here at most <code>n</code> bytes of strings <code>a</code> and <code>b</code> are meant.
+<pre><code>func ^.strncmp_(a #1C, b #1C, n #I) -> #I {
     def i := 0
     return while (i &lt n) {
         eval if (a[i] &lt b[i]) { break -1 }
@@ -440,7 +539,10 @@ func ^.strncmp_(a #1C, b #1C, n #I) -&gt #I {
     } else 0
 }
 
-func ^.strlen_(a #1C) -&gt #I {
+</code></pre>
+<h3 id="7.5">strlen_</h3>
+Calculates the length of string <code>a</code> and returns it.
+<pre><code>func ^.strlen_(a #1C) -> #I {
     def i := 0
     return while (1) {
         eval if (a[i] = '\0') { break i }
@@ -448,7 +550,10 @@ func ^.strlen_(a #1C) -&gt #I {
     } else 0
 }
 
-func ^.strnlen_(a #1C, n #I) -&gt #I {
+</code></pre>
+<h3 id="7.6">strnlen_</h3>
+Calculates the length of string <code>a</code>, but checks at most <code>n</code> bytes. Returns the length of <code>a</code> or <code>n</code> if it is smaller than length of <code>a</code>.
+<pre><code>func ^.strnlen_(a #1C, n #I) -> #I {
     def i := 0
     return while (i &lt n) {
         eval if (a[i] = '\0') { break i }
@@ -457,14 +562,18 @@ func ^.strnlen_(a #1C, n #I) -&gt #I {
 }
 </code></pre>
 <h2 id="8">test_allocator</h2>
-<h3 id="8.1">todo</h3>
-<pre><code>typedef TestAllocator := #S {
+<pre><code>include altlib."posix.al"
+
+typedef TestAllocator := #S {
     data: #1I,
     size: #I,
     reserved: #I
 };
 
-func ^#1TestAllocator.init(this #1TestAllocator, size #I) -&gt #V {
+</code></pre>
+<h3 id="8.1">#1TestAllocator.init</h3>
+Initializes an allocator with size <code>size</code> and allocates a buffer.
+<pre><code>func ^#1TestAllocator.init(this #1TestAllocator, size #I) -> #V {
     def PROT_READ := 1
     def PROT_WRITE := 2
     def MAP_PRIVATE := 2
@@ -474,11 +583,17 @@ func ^#1TestAllocator.init(this #1TestAllocator, size #I) -&gt #V {
     this-&gtreserved& &lt- size
 }
 
-func ^#1TestAllocator.deinit(this #1TestAllocator) -&gt #V {
+</code></pre>
+<h3 id="8.2">#1TestAllocator.deinit</h3>
+Deallocates the buffer of allocator.
+<pre><code>func ^#1TestAllocator.deinit(this #1TestAllocator) -> #V {
     eval posix_munmap(this-&gtdata, this-&gtreserved)
 }
 
-func ^#1TestAllocator.alloc(this #1TestAllocator, size #I) -&gt #1I {
+</code></pre>
+<h3 id="8.3">#1TestAllocator.alloc</h3>
+Allocates memory of size <code>size</code>. Returns the pointer to the memory, or <code>0</code> if the buffer has run out.
+<pre><code>func ^#1TestAllocator.alloc(this #1TestAllocator, size #I) -> #1I {
     return if (this-&gtsize + size &lt= this-&gtreserved) {
         def x := this-&gtdata as #I
         def ptr := (x + this-&gtsize) as #1I
@@ -489,22 +604,32 @@ func ^#1TestAllocator.alloc(this #1TestAllocator, size #I) -&gt #1I {
 }
 </code></pre>
 <h2 id="9">vector</h2>
-<h3 id="9.1">todo</h3>
-<pre><code>typedef Vector := #S {
+<pre><code>include altlib."memory.al"
+include altlib."stdio.al"
+include altlib."stdlib.al"
+include altlib."test_allocator.al"
+
+typedef Vector := #S {
     data: #1I,
     size: #I,
     reserved: #I,
     allocator: #1TestAllocator
 }
 
-func ^#1Vector.init(this #1Vector, allocator #1TestAllocator) -&gt #V {
+</code></pre>
+<h3 id="9.1">#1Vector.init</h3>
+Initializes a vector. The vector will use allocator <code>allocator</code> to expand.
+<pre><code>func ^#1Vector.init(this #1Vector, allocator #1TestAllocator) -> #V {
     this-&gtsize& &lt- 0 
     this-&gtreserved& &lt- 10
     this-&gtdata& &lt- allocator.alloc(this-&gtreserved * $#I)
     this-&gtallocator& &lt- allocator
 }
 
-func ^#1Vector.push(this #1Vector, x #I) -&gt #V {
+</code></pre>
+<h3 id="9.2">#1Vector.push</h3>
+Pushes the value <code>x</code> to the back of the vector.
+<pre><code>func ^#1Vector.push(this #1Vector, x #I) -> #V {
     eval if (this-&gtsize = this-&gtreserved) {
         def buffer #1I := this-&gtallocator.alloc(this-&gtreserved * 2 * $#I)
         eval puti_(this-&gtdata as #I)
@@ -516,7 +641,10 @@ func ^#1Vector.push(this #1Vector, x #I) -&gt #V {
     this-&gtsize& &lt- this-&gtsize + 1
 }
 
-func ^#1Vector.pop(this #1Vector) -&gt #I {
+</code></pre>
+<h3 id="9.3">#1Vector.pop</h3>
+Pops a value from the back of the vector and returns it.
+<pre><code>func ^#1Vector.pop(this #1Vector) -> #I {
     return if (this-&gtsize = 0) { return 0 }
     else {
         this-&gtsize& &lt- this-&gtsize - 1
@@ -524,7 +652,10 @@ func ^#1Vector.pop(this #1Vector) -&gt #I {
     }
 }
 
-func ^#1Vector.get(this #1Vector, x #I) -&gt #I {
+</code></pre>
+<h3 id="9.4">#1Vector.get</h3>
+Returns the element of vector at position <code>x</code>. Doens't check if the element exists.
+<pre><code>func ^#1Vector.get(this #1Vector, x #I) -> #I {
     return this-&gtdata[x]
 }
 </code></pre>

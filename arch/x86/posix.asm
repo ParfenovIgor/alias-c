@@ -10,8 +10,8 @@ global posix_fork
 global posix_execve
 global posix_exit
 global posix_wait4
-global posix_unlink
 global posix_getcwd
+global posix_unlink
 
 posix_read:
     mov rax, 0x0
@@ -74,12 +74,12 @@ posix_wait4:
     syscall
     ret
 
-posix_unlink:
-    mov rax, 0x57
+posix_getcwd:
+    mov rax, 0x4f
     syscall
     ret
 
-posix_getcwd:
-    mov rax, 0xb7
+posix_unlink:
+    mov rax, 0x57
     syscall
     ret

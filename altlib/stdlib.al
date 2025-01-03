@@ -1,8 +1,9 @@
-include altlib."string.al"
-
 //* stdlib
 
-//* todo
+include altlib."string.al"
+
+//* itoa_
+//* Prints the integer `n` into buffer `dst` in ascii format in radix `radix`. Returns the length of the string. Doesn't check for the length of the buffer.
 func ^.itoa_(n #I, dst #1C, radix #I) -> #1C {
     eval if (n = 0) {
         dst[0]& <- '0'
@@ -40,6 +41,8 @@ func ^.itoa_(n #I, dst #1C, radix #I) -> #1C {
     return dst
 }
 
+//* atoi_
+//* Converts the integer written in buffer `str` in ascii format into an integer and returns it.
 func ^.atoi_(str #1C) -> #I {
     def i := strlen_(str) - 1
     def x := 0
@@ -51,6 +54,8 @@ func ^.atoi_(str #1C) -> #I {
     return x
 }
 
+//* rand_
+//* Gets a seed `seed` and return the next pseudorandom integer.
 func ^.rand_(seed #I) -> #I {
     seed := seed * 1103515245 + 12345
     return (seed / 65536) % 32768

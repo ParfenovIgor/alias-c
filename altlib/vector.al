@@ -1,11 +1,10 @@
+//* vector
+
 include altlib."memory.al"
 include altlib."stdio.al"
 include altlib."stdlib.al"
 include altlib."test_allocator.al"
 
-//* vector
-
-//* todo
 typedef Vector := #S {
     data: #1I,
     size: #I,
@@ -13,6 +12,8 @@ typedef Vector := #S {
     allocator: #1TestAllocator
 }
 
+//* #1Vector.init
+//* Initializes a vector. The vector will use allocator `allocator` to expand.
 func ^#1Vector.init(this #1Vector, allocator #1TestAllocator) -> #V {
     this->size& <- 0 
     this->reserved& <- 10
@@ -20,6 +21,8 @@ func ^#1Vector.init(this #1Vector, allocator #1TestAllocator) -> #V {
     this->allocator& <- allocator
 }
 
+//* #1Vector.push
+//* Pushes the value `x` to the back of the vector.
 func ^#1Vector.push(this #1Vector, x #I) -> #V {
     eval if (this->size = this->reserved) {
         def buffer #1I := this->allocator.alloc(this->reserved * 2 * $#I)
@@ -32,6 +35,8 @@ func ^#1Vector.push(this #1Vector, x #I) -> #V {
     this->size& <- this->size + 1
 }
 
+//* #1Vector.pop
+//* Pops a value from the back of the vector and returns it.
 func ^#1Vector.pop(this #1Vector) -> #I {
     return if (this->size = 0) { return 0 }
     else {
@@ -40,6 +45,8 @@ func ^#1Vector.pop(this #1Vector) -> #I {
     }
 }
 
+//* #1Vector.get
+//* Returns the element of vector at position `x`. Doens't check if the element exists.
 func ^#1Vector.get(this #1Vector, x #I) -> #I {
     return this->data[x]
 }
