@@ -1,6 +1,7 @@
 global _memcpy
 _memcpy:
     call _cpy_dir
+    ret
 
 global _memmove
 _memmove:

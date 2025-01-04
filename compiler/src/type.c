@@ -63,8 +63,10 @@ bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *cont
     if (n1->node_type == TypeNodeStruct) {
         struct TypeStruct *_n1 = n1->node_ptr;
         struct TypeStruct *_n2 = n2->node_ptr;
-        int sz = vsize(&_n1->names);
-        for (int i = 0; i < sz; i++) {
+        int sz1 = vsize(&_n1->names);
+        int sz2 = vsize(&_n2->names);
+        if (sz1 != sz2) return false;
+        for (int i = 0; i < sz1; i++) {
             if (_strcmp(_n1->names.ptr[i], _n2->names.ptr[i]) ||
                 !type_equal(_n1->types.ptr[i], _n2->types.ptr[i], context)) {
                 return false;
@@ -75,8 +77,10 @@ bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *cont
     if (n1->node_type == TypeNodeFunction) {
         struct TypeFunction *_n1 = n1->node_ptr;
         struct TypeFunction *_n2 = n2->node_ptr;
-        int sz = vsize(&_n1->types);
-        for (int i = 0; i < sz; i++) {
+        int sz1 = vsize(&_n1->types);
+        int sz2 = vsize(&_n2->types);
+        if (sz1 != sz2) return false;
+        for (int i = 0; i < sz1; i++) {
             if (!type_equal(_n1->types.ptr[i], _n2->types.ptr[i], context)) {
                 return false;
             }
