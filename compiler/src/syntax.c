@@ -168,55 +168,55 @@ struct TypeNode *syntax_process_type(struct TokenStream *ts, struct Settings *st
 
 bool next_is_operation(struct TokenStream *ts) {
     return (
-        tokenstream_get(ts).type == TokenAnd            ||
-        tokenstream_get(ts).type == TokenOr             ||
-        tokenstream_get(ts).type == TokenNot            ||
-        tokenstream_get(ts).type == TokenAmpersand      ||
-        tokenstream_get(ts).type == TokenPipe           ||
-        tokenstream_get(ts).type == TokenCaret          ||
-        tokenstream_get(ts).type == TokenTilde          ||
-        tokenstream_get(ts).type == TokenBitwiseLeft    ||
-        tokenstream_get(ts).type == TokenBitwiseRight   ||
-        tokenstream_get(ts).type == TokenPlus           ||
-        tokenstream_get(ts).type == TokenMinus          ||
-        tokenstream_get(ts).type == TokenMult           ||
-        tokenstream_get(ts).type == TokenDiv            ||
-        tokenstream_get(ts).type == TokenMod            ||
-        tokenstream_get(ts).type == TokenLess           ||
-        tokenstream_get(ts).type == TokenGreater        ||
-        tokenstream_get(ts).type == TokenEqual          ||
-        tokenstream_get(ts).type == TokenLessEqual      ||
-        tokenstream_get(ts).type == TokenGreaterEqual   ||
+        tokenstream_get(ts).type == TokenAnd                ||
+        tokenstream_get(ts).type == TokenOr                 ||
+        tokenstream_get(ts).type == TokenNot                ||
+        tokenstream_get(ts).type == TokenAmpersand          ||
+        tokenstream_get(ts).type == TokenPipe               ||
+        tokenstream_get(ts).type == TokenCaret              ||
+        tokenstream_get(ts).type == TokenTilde              ||
+        tokenstream_get(ts).type == TokenBitwiseShiftLeft   ||
+        tokenstream_get(ts).type == TokenBitwiseShiftRight  ||
+        tokenstream_get(ts).type == TokenPlus               ||
+        tokenstream_get(ts).type == TokenMinus              ||
+        tokenstream_get(ts).type == TokenMult               ||
+        tokenstream_get(ts).type == TokenDiv                ||
+        tokenstream_get(ts).type == TokenMod                ||
+        tokenstream_get(ts).type == TokenLess               ||
+        tokenstream_get(ts).type == TokenGreater            ||
+        tokenstream_get(ts).type == TokenEqual              ||
+        tokenstream_get(ts).type == TokenLessEqual          ||
+        tokenstream_get(ts).type == TokenGreaterEqual       ||
         tokenstream_get(ts).type == TokenNotEqual);
 }
 
 int operation_priority(struct Token *token) {
-    if (token->type == -TokenMinus          ||
-        token->type == -TokenTilde          ||
+    if (token->type == -TokenMinus              ||
+        token->type == -TokenTilde              ||
         token->type == -TokenNot            ) {
         return 2;
     }
-    if (token->type == TokenMult            ||
-        token->type == TokenDiv             ||
+    if (token->type == TokenMult                ||
+        token->type == TokenDiv                 ||
         token->type == TokenMod             ) {
         return 3;
     }
-    if (token->type == TokenPlus            ||
+    if (token->type == TokenPlus                ||
         token->type == TokenMinus           ) {
         return 4;
     }
-    if (token->type == TokenBitwiseLeft     ||
-        token->type == TokenBitwiseRight    ) {
+    if (token->type == TokenBitwiseShiftLeft    ||
+        token->type == TokenBitwiseShiftRight    ) {
         return 5;
     }
-    if (token->type == TokenLess            ||
-        token->type == TokenGreater         ||
-        token->type == TokenLessEqual       ||
+    if (token->type == TokenLess                ||
+        token->type == TokenGreater             ||
+        token->type == TokenLessEqual           ||
         token->type == TokenGreaterEqual    ) {
         return 6;
     }
     if (
-        token->type == TokenEqual           ||
+        token->type == TokenEqual               ||
         token->type == TokenNotEqual        ) {
         return 7;
     }
@@ -285,26 +285,26 @@ struct Node *process_operation(struct Vector *primaries, struct Vector *operatio
         vpop(primaries);
     }
 
-    if (token->type == TokenAnd)            root->node_type = NodeAnd;
-    if (token->type == TokenOr)             root->node_type = NodeOr;
-    if (token->type == TokenNot)            root->node_type = NodeNot;
-    if (token->type == TokenAmpersand)      root->node_type = NodeBitwiseAnd;
-    if (token->type == TokenPipe)           root->node_type = NodeBitwiseOr;
-    if (token->type == TokenCaret)          root->node_type = NodeBitwiseXor;
-    if (token->type == TokenTilde)          root->node_type = NodeBitwiseNot;
-    if (token->type == TokenBitwiseLeft)    root->node_type = NodeBitwiseLeft;
-    if (token->type == TokenBitwiseRight)   root->node_type = NodeBitwiseRight;
-    if (token->type == TokenPlus)           root->node_type = NodeAddition;
-    if (token->type == TokenMinus)          root->node_type = NodeSubtraction;
-    if (token->type == TokenMult)           root->node_type = NodeMultiplication;
-    if (token->type == TokenDiv)            root->node_type = NodeDivision;
-    if (token->type == TokenMod)            root->node_type = NodeModulo;
-    if (token->type == TokenLess)           root->node_type = NodeLess;
-    if (token->type == TokenGreater)        root->node_type = NodeGreater;
-    if (token->type == TokenEqual)          root->node_type = NodeEqual;
-    if (token->type == TokenLessEqual)      root->node_type = NodeLessEqual;
-    if (token->type == TokenGreaterEqual)   root->node_type = NodeGreaterEqual;
-    if (token->type == TokenNotEqual)       root->node_type = NodeNotEqual;
+    if (token->type == TokenAnd)                root->node_type = NodeAnd;
+    if (token->type == TokenOr)                 root->node_type = NodeOr;
+    if (token->type == TokenNot)                root->node_type = NodeNot;
+    if (token->type == TokenAmpersand)          root->node_type = NodeBitwiseAnd;
+    if (token->type == TokenPipe)               root->node_type = NodeBitwiseOr;
+    if (token->type == TokenCaret)              root->node_type = NodeBitwiseXor;
+    if (token->type == TokenTilde)              root->node_type = NodeBitwiseNot;
+    if (token->type == TokenBitwiseShiftLeft)   root->node_type = NodeBitwiseShiftLeft;
+    if (token->type == TokenBitwiseShiftRight)  root->node_type = NodeBitwiseShiftRight;
+    if (token->type == TokenPlus)               root->node_type = NodeAddition;
+    if (token->type == TokenMinus)              root->node_type = NodeSubtraction;
+    if (token->type == TokenMult)               root->node_type = NodeMultiplication;
+    if (token->type == TokenDiv)                root->node_type = NodeDivision;
+    if (token->type == TokenMod)                root->node_type = NodeModulo;
+    if (token->type == TokenLess)               root->node_type = NodeLess;
+    if (token->type == TokenGreater)            root->node_type = NodeGreater;
+    if (token->type == TokenEqual)              root->node_type = NodeEqual;
+    if (token->type == TokenLessEqual)          root->node_type = NodeLessEqual;
+    if (token->type == TokenGreaterEqual)       root->node_type = NodeGreaterEqual;
+    if (token->type == TokenNotEqual)           root->node_type = NodeNotEqual;
 
     if (root->node_ptr == NULL) {
         error_syntax("Fatal Error", tokenstream_get(ts));

@@ -1083,7 +1083,7 @@ struct TypeNode *compile_bitwise_not(struct Node *node, struct BinaryOperator *t
     return _type;
 }
 
-struct TypeNode *compile_bitwise_left(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+struct TypeNode *compile_bitwise_shift_left(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct TypeNode *_type = compile_arithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "mov rcx, [rsp - 16]\n");
@@ -1092,7 +1092,7 @@ struct TypeNode *compile_bitwise_left(struct Node *node, struct BinaryOperator *
     return _type;
 }
 
-struct TypeNode *compile_bitwise_right(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
+struct TypeNode *compile_bitwise_shift_right(struct Node *node, struct BinaryOperator *this, struct CPContext *context) {
     struct TypeNode *_type = compile_arithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "mov rcx, [rsp - 16]\n");
@@ -1358,40 +1358,40 @@ struct TypeNode *compile_node(struct Node *node, struct CPContext *context) {
     }
 
     else if (node->node_type == NodeAnd) {
-        _fputs(context->fd_text, "addition\n");
+        _fputs(context->fd_text, "and\n");
         return compile_and(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeOr) {
-        _fputs(context->fd_text, "addition\n");
+        _fputs(context->fd_text, "or\n");
         return compile_or(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeNot) {
-        _fputs(context->fd_text, "addition\n");
+        _fputs(context->fd_text, "not\n");
         return compile_not(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeBitwiseAnd) {
-        _fputs(context->fd_text, "addition\n");
+        _fputs(context->fd_text, "bitwise and\n");
         return compile_bitwise_and(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeBitwiseOr) {
-        _fputs(context->fd_text, "addition\n");
+        _fputs(context->fd_text, "bitwise or\n");
         return compile_bitwise_or(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeBitwiseXor) {
-        _fputs(context->fd_text, "addition\n");
+        _fputs(context->fd_text, "bitwise xor\n");
         return compile_bitwise_xor(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeBitwiseNot) {
-        _fputs(context->fd_text, "addition\n");
+        _fputs(context->fd_text, "bitwise not\n");
         return compile_bitwise_not(node, (struct BinaryOperator*)node->node_ptr, context);
     }
-    else if (node->node_type == NodeBitwiseLeft) {
-        _fputs(context->fd_text, "addition\n");
-        return compile_bitwise_left(node, (struct BinaryOperator*)node->node_ptr, context);
+    else if (node->node_type == NodeBitwiseShiftLeft) {
+        _fputs(context->fd_text, "bitwise shift left\n");
+        return compile_bitwise_shift_left(node, (struct BinaryOperator*)node->node_ptr, context);
     }
-    else if (node->node_type == NodeBitwiseRight) {
-        _fputs(context->fd_text, "addition\n");
-        return compile_bitwise_right(node, (struct BinaryOperator*)node->node_ptr, context);
+    else if (node->node_type == NodeBitwiseShiftRight) {
+        _fputs(context->fd_text, "bitwise shift right\n");
+        return compile_bitwise_shift_right(node, (struct BinaryOperator*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAddition) {
         _fputs(context->fd_text, "addition\n");

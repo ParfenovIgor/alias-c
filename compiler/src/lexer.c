@@ -174,8 +174,8 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         else if (append_token(str, N, &i, "|", TokenPipe, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "^", TokenCaret, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "~", TokenTilde, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "<<", TokenBitwiseLeft, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ">>", TokenBitwiseRight, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "<<", TokenBitwiseShiftLeft, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, ">>", TokenBitwiseShiftRight, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "$", TokenDereference, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "->", TokenGetField, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "#", TokenSharp, true, line, &position, filename, token_stream)) {}
@@ -398,8 +398,8 @@ const char *TokenColor(enum TokenType type,
         Color_Black,        // TokenPipe,
         Color_Black,        // TokenCaret,
         Color_Black,        // TokenTilde,
-        Color_Black,        // TokenBitwiseLeft,
-        Color_Black,        // TokenBitwiseRight,
+        Color_Black,        // TokenBitwiseShiftLeft,
+        Color_Black,        // TokenBitwiseShiftRight,
         Color_Black,        // TokenDereference,
         Color_Black,        // TokenGetField,
         Color_Black,        // TokenSharp,
