@@ -23,10 +23,20 @@ const char *regs[] = {
 };
 
 void compile_memcpy(const char *dst, const char *src, int sz, struct CPContext *context) {
-    _fputs3(context->fd_text, "lea rdi, ", dst, "\n");
-    _fputs3(context->fd_text, "lea rsi, ", src, "\n");
-    _fputsi(context->fd_text, "mov rcx, ", sz, "\n");
-    _fputs(context->fd_text, "rep movsb\n");
+    if (sz == 1) {
+        _fputs3(context->fd_text, "mov cl, ", src, "\n");
+        _fputs3(context->fd_text, "mov ", dst, ", cl\n");
+    }
+    else if (sz == 8) {
+        _fputs3(context->fd_text, "mov rcx, ", src, "\n");
+        _fputs3(context->fd_text, "mov ", dst, ", rcx\n");
+    }
+    else {
+        _fputs3(context->fd_text, "lea rdi, ", dst, "\n");
+        _fputs3(context->fd_text, "lea rsi, ", src, "\n");
+        _fputsi(context->fd_text, "mov rcx, ", sz, "\n");
+        _fputs(context->fd_text, "rep movsb\n");
+    }
 }
 
 int align_to_word(int x) {
