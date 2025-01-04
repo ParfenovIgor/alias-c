@@ -353,6 +353,13 @@ struct TypeNode *from_signature_to_type(struct FunctionSignature *signature) {
 }
 
 void compile_function_definition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) { 
+    if (this->caller_type &&  !type_check(this->caller_type, context)) {
+        error_semantic("Type identifier was not declared in function caller type", node);
+    }
+    if (!type_check(this->signature->return_type, context)) {
+        error_semantic("Type identifier was not declared in function signature return type", node);
+    }
+
     const char *identifier_front, *identifier_back, *identifier_end;
     if (this->external) {
         if (this->caller_type) {
@@ -406,6 +413,13 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
 }
 
 void compile_prototype(struct Node *node, struct Prototype *this, struct CPContext *context) {
+    if (this->caller_type &&  !type_check(this->caller_type, context)) {
+        error_semantic("Type identifier was not declared in function caller type", node);
+    }
+    if (!type_check(this->signature->return_type, context)) {
+        error_semantic("Type identifier was not declared in function signature return type", node);
+    }
+
     const char *identifier;
     if (this->caller_type) {
         identifier = _concat(type_mangle(this->caller_type, context), this->name);
@@ -435,8 +449,11 @@ void compile_prototype(struct Node *node, struct Prototype *this, struct CPConte
 }
 
 void compile_definition(struct Node *node, struct Definition *this, struct CPContext *context) {
+    if (this->type &&  !type_check(this->type, context)) {
+        error_semantic("Type identifier was not declared in definition type", node);
+    }
+
     struct TypeNode *_type;
-    
     if (this->type && this->value) {
          _type = compile_node(this->value, context);
          if (this->type && !type_equal(_type, this->type, context)) {
@@ -464,6 +481,10 @@ void compile_definition(struct Node *node, struct Definition *this, struct CPCon
 }
 
 void compile_type_definition(struct Node *node, struct TypeDefinition *this, struct CPContext *context) {
+    if (this->type &&  !type_check(this->type, context)) {
+        error_semantic("Type identifier was not declared in type definition type", node);
+    }
+    
     struct TypeInfo *type_info = (struct TypeInfo*)_malloc(sizeof(struct TypeInfo));
     type_info->name = _strdup(this->identifier);
     type_info->type = this->type;
@@ -528,6 +549,9 @@ void compile_continue(struct Node *node, struct Continue *this, struct CPContext
 }
 
 struct TypeNode *compile_as(struct Node *node, struct As *this, struct CPContext *context) {
+    if (!type_check(this->type, context)) {
+        error_semantic("Type identifier was not declared in as type", node);
+    }
     struct TypeNode *_type = compile_node(this->expression, context);
     return this->type;
 }
@@ -721,6 +745,10 @@ struct TypeNode *compile_struct_instance(struct Node *node, struct StructInstanc
 }
 
 struct TypeNode *compile_lambda_function(struct Node *node, struct LambdaFunction *this, struct CPContext *context) {
+    if (!type_check(this->signature->return_type, context)) {
+        error_semantic("Type identifier was not declared in function signature return type", node);
+    }
+
     char *identifier_back = _concat("_Z", _itoa(context->function_index));
     context->function_index++;
     char *identifier_end = _concat("_E", identifier_back);
@@ -738,6 +766,10 @@ struct TypeNode *compile_lambda_function(struct Node *node, struct LambdaFunctio
 }
 
 struct TypeNode *compile_sizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
+    if (!type_check(this->type, context)) {
+        error_semantic("Type identifier was not declared in sizeof type", node);
+    }
+
     int size = type_size(this->type, context);
     _fputsi(context->fd_text, "mov qword [rsp - 8], ", size, "\n");
     struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));

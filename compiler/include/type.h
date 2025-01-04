@@ -3,6 +3,7 @@
 #include <typeast.h>
 #include <context.h>
 
+bool type_check(struct TypeNode*, struct CPContext*);
 bool type_equal(struct TypeNode*, struct TypeNode*, struct CPContext*);
 struct TypeNode *type_get_struct_pointer(struct TypeNode*, struct CPContext*);
 struct TypeNode *type_get_function(struct TypeNode*, struct CPContext*);

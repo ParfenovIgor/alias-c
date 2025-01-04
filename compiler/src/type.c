@@ -4,6 +4,34 @@
 #include <stdlib.h>
 #include <string.h>
 
+bool type_check(struct TypeNode *n, struct CPContext *context) {
+    if (n->node_type == TypeNodeVoid) return true;
+    if (n->node_type == TypeNodeInt) return true;
+    if (n->node_type == TypeNodeChar) return true;
+    if (n->node_type == TypeNodeStruct) {
+        struct TypeStruct *_n = n->node_ptr;
+        int sz = vsize(&_n->names);
+        for (int i = 0; i < sz; i++) {
+            if (!type_check(_n->types.ptr[i], context)) return false;
+        }
+        return true;
+    }
+    if (n->node_type == TypeNodeFunction) {
+        struct TypeFunction *_n = n->node_ptr;
+        int sz = vsize(&_n->types);
+        for (int i = 0; i < sz; i++) {
+            if (!type_check(_n->types.ptr[i], context)) return false;
+        }
+        return type_check(_n->return_type, context);
+    }
+    if (n->node_type == TypeNodeIdentifier) {
+        struct TypeIdentifier *_n = n->node_ptr;
+        struct TypeInfo *info = context_find_type(context, _n->identifier);
+        if (!info) return false;
+        return type_check(info->type, context);
+    }
+}
+
 bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *context) {
     int sum_degree1 = 0, sum_degree2 = 0;
     while (n1->node_type == TypeNodeIdentifier) {
