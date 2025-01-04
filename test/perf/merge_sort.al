@@ -47,6 +47,14 @@ func ^._start() -> #V {
     }
 
     eval merge_sort(a, 0, n, allocator&)
+    
+    i := 0
+    eval while (i + 1 < n) {
+        eval if (a[i] > a[i + 1]) {
+            eval posix_exit(1)
+        }
+        i := i + 1
+    }
 
     eval posix_exit(0)
 }

@@ -38,7 +38,12 @@ int main() {
     }
 
     merge_sort(a, 0, n);
-    for(int i=0;i<n;i++) _puti(a[i]);
+
+    for (int i = 0; i + 1 < n; i++) {
+        if (a[i] > a[i + 1]) {
+            return 1;
+        }
+    }
 
     return 0;
 }

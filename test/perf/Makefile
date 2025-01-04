@@ -1,5 +1,5 @@
 ALFLAGS=-i altlib ../../altlib/
-CFLAGS=-O2 -g -fno-stack-protector -I include -I ../../stdlib/include
+CFLAGS=-g -fno-stack-protector -I include -I ../../stdlib/include
 LDFLAGS=-z noexecstack
 
 SRCS_AL := $(wildcard *.al)
