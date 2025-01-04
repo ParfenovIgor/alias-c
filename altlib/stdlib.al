@@ -58,5 +58,9 @@ func ^.atoi_(str #1C) -> #I {
 //* Gets a seed `seed` and return the next pseudorandom integer.
 func ^.rand_(seed #I) -> #I {
     seed := seed * 1103515245 + 12345
-    return (seed / 65536) % 32768
+    seed := (seed / 65536) % 32768
+    eval if (seed < 0) {
+        seed := seed + 32768
+    }
+    return seed
 }

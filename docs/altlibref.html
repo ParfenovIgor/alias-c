@@ -483,7 +483,11 @@ Converts the integer written in buffer <code>str</code> in ascii format into an 
 Gets a seed <code>seed</code> and return the next pseudorandom integer.
 <pre><code>func ^.rand_(seed #I) -> #I {
     seed := seed * 1103515245 + 12345
-    return (seed / 65536) % 32768
+    seed := (seed / 65536) % 32768
+    eval if (seed &lt 0) {
+        seed := seed + 32768
+    }
+    return seed
 }
 </code></pre>
 <h2 id="7">string</h2>

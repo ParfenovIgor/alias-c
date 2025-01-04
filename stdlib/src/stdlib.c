@@ -44,7 +44,7 @@ char *_itoa(int n) {
 heap_t *heap;
 
 void _init_malloc() {
-    int heap_size = 0x100000;
+    int heap_size = 0x10000000;
     int heap_index_size = 0x1000;
     heap = create_heap(heap_size, heap_index_size);
 }
@@ -62,5 +62,9 @@ void _free(void *ptr) {
 
 int _rand(int seed) {
     seed = seed * 1103515245 + 12345;
-    return (seed / 65536) % 32768;
+    seed = (seed / 65536) % 32768;
+    if (seed < 0) {
+        seed += 32768;
+    }
+    return seed;
 }
