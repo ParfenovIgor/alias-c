@@ -781,8 +781,7 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         pass_next(ts, TokenDot, ". expected in include");
         check_next(ts, TokenString, "String literal expected in include");
         char *path = _concat(include_path, tokenstream_get(ts).value_string);
-        tokenstream_next(ts);
-        bool good = true;
+        bool include = true;
 
         const char *filename = _strrchr(path, '/');
         if (!filename) filename = path;
@@ -791,11 +790,11 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         int sz = vsize(&st->included_files);
         for (int i = 0; i < sz; i++) {
             if (_strcmp(filename, st->included_files.ptr[i]) == 0) {
-                good = false;
+                include = false;
                 break;
             }
         }
-        if (good) {
+        if (include) {
             vpush(&st->included_files, (char*)filename);
             int fd = posix_open(path, 0, 0);
             if (fd <= 0) {
@@ -810,9 +809,11 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
             this->statement_list = inc_block->statement_list;
             _free(inc_block);
             _free(_node);
+            tokenstream_next(ts);
         }
         else {
             _free(node);
+            tokenstream_next(ts);
             return NULL;
         }
     }

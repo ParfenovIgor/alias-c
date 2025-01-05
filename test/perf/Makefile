@@ -14,10 +14,12 @@ all: $(EXES_AL)
 $(BUILD_DIR)/test/perf/%: %.al make_dir
 	echo $(patsubst %.al, %, $<) > $(patsubst %, %_report, $@)
 
+	echo "calias" >> $(patsubst %, %_report, $@)
 	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $(patsubst %, %1.o, $@)
 	ld $(LDFLAGS) -o $(patsubst %, %1, $@) $(patsubst %, %1.o, $@) $(OBJS_ARCH) $(OBJS_ALTLIB)
 	{ time -p $(patsubst %, %1, $@) ; } 2>&1 | grep real | awk '{print $$2}' >> $(patsubst %, %_report, $@)
 
+	echo "gcc" >> $(patsubst %, %_report, $@)
 	gcc $(CFLAGS) -c $(patsubst %.al, %.c, $<) -o $(patsubst %, %2.o, $@)
 	gcc $(LDFLAGS) -o $(patsubst %, %2, $@) $(patsubst %, %2.o, $@) $(OBJS_ARCH) $(OBJS_STDLIB)
 	{ time -p $(patsubst %, %2, $@) ; } 2>&1 | grep real | awk '{print $$2}' >> $(patsubst %, %_report, $@)

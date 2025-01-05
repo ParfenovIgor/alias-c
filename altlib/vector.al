@@ -1,5 +1,3 @@
-//* vector
-
 include altlib."memory.al"
 include altlib."stdio.al"
 include altlib."stdlib.al"
@@ -11,6 +9,8 @@ typedef Vector := #S {
     reserved: #I,
     allocator: #1TestAllocator
 }
+
+//* vector
 
 //* #1Vector.init
 //* Initializes a vector. The vector will use allocator `allocator` to expand.

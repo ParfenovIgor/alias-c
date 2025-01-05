@@ -220,6 +220,15 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
     int sz = 0;
     if (this) {
         sz = vsize(&this->identifiers);
+        if (!type_check(this->return_type, context)) {
+            error_semantic("Type identifier was not declared in function signature return type", node);
+        }
+        for (int i = 0; i < sz; i++) {
+            if (!type_check(this->types.ptr[i], context)) {
+                error_semantic("Type identifier was not declared in function signature argument type", node);
+            }
+        }
+
         for (int i = 0; i < sz; i++) {
             _fputs3(context->fd_text, "push ", regs[i], "\n");
             struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
@@ -366,9 +375,6 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
     if (this->caller_type &&  !type_check(this->caller_type, context)) {
         error_semantic("Type identifier was not declared in function caller type", node);
     }
-    if (!type_check(this->signature->return_type, context)) {
-        error_semantic("Type identifier was not declared in function signature return type", node);
-    }
 
     const char *identifier_front, *identifier_back, *identifier_end;
     if (this->external) {
@@ -425,9 +431,6 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
 void compile_prototype(struct Node *node, struct Prototype *this, struct CPContext *context) {
     if (this->caller_type &&  !type_check(this->caller_type, context)) {
         error_semantic("Type identifier was not declared in function caller type", node);
-    }
-    if (!type_check(this->signature->return_type, context)) {
-        error_semantic("Type identifier was not declared in function signature return type", node);
     }
 
     const char *identifier;
@@ -755,10 +758,6 @@ struct TypeNode *compile_struct_instance(struct Node *node, struct StructInstanc
 }
 
 struct TypeNode *compile_lambda_function(struct Node *node, struct LambdaFunction *this, struct CPContext *context) {
-    if (!type_check(this->signature->return_type, context)) {
-        error_semantic("Type identifier was not declared in function signature return type", node);
-    }
-
     char *identifier_back = _concat("_Z", _itoa(context->function_index));
     context->function_index++;
     char *identifier_end = _concat("_E", identifier_back);

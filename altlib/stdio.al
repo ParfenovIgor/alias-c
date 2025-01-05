@@ -1,8 +1,8 @@
-//* stdio
-
 include altlib."posix.al"
 include altlib."stdlib.al"
 include altlib."string.al"
+
+//* stdio
 
 //* fputs_
 //* Prints the string `str` to the descriptor `fd`. Returns length of the string printed.

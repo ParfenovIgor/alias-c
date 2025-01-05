@@ -1,6 +1,6 @@
-//* string
-
 include altlib."stdlib.al"
+
+//* string
 
 //* strcpy_
 //* Copies the string `b` into buffer `a`. Returns `a`.

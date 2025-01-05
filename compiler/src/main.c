@@ -18,7 +18,7 @@ void help() {
     _puts("  -o <file>                 Set output file name.");
 }
 
-struct Settings *build_settings(int argc, char **argv) {
+struct Settings *build_settings(int argc, char **argv, char **envp) {
     struct Settings *settings = (struct Settings*)_malloc(sizeof(struct Settings));
     settings->language_server = false;
     settings->validate = false;
@@ -75,6 +75,23 @@ struct Settings *build_settings(int argc, char **argv) {
             settings->filename_input = _strdup(arg);
         }
     }
+    for (int x = 0; envp[x]; x++) {
+        const char *str = envp[x];
+        int delim = -1;
+        int n = _strlen(str);
+        for (int i = 0; i < n; i++) {
+            if (str[i] == '=') {
+                delim = i;
+                break;
+            }
+        }
+        if (delim == -1) continue;
+        if (_strncmp(str, "CALIAS", delim) == 0) {
+            _free((void*)settings->calias_directory);
+            settings->calias_directory = _strdup(str + delim + 1);
+            break;
+        }
+    }
 
     if (settings->language_server) {
         language_server(settings);
@@ -92,13 +109,13 @@ struct Settings *build_settings(int argc, char **argv) {
     return settings;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[], char *envp[]) {
     if (argc < 2) {
         help();
         return 0;
     }
     else {
-        struct Settings *settings = build_settings(argc, argv);
+        struct Settings *settings = build_settings(argc, argv, envp);
         if (!settings) {
             help();
             return 1;

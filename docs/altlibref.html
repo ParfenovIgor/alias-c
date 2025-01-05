@@ -163,9 +163,6 @@ Gets two integer values and returns the maximum one.
     if (a &lt b) b else a
 </code></pre>
 <h2 id="2">cassert</h2>
-<pre><code>include altlib."posix.al"
-
-</code></pre>
 <h3 id="2.1">assert_</h3>
 Gets one integer value and stop execution with return code <code>3</code>, if the value is <code>0</code>.
 <pre><code>func ^.assert_(x #I) -> #V {
@@ -248,11 +245,6 @@ System call. Unlinks the file <code>pathname</code>. Returns <code>0</code> on s
 <pre><code>proto .posix_unlink(pathname #1I) -> #I
 </code></pre>
 <h2 id="5">stdio</h2>
-<pre><code>include altlib."posix.al"
-include altlib."stdlib.al"
-include altlib."string.al"
-
-</code></pre>
 <h3 id="5.1">fputs_</h3>
 Prints the string <code>str</code> to the descriptor <code>fd</code>. Returns length of the string printed.
 <pre><code>func ^.fputs_(fd #I, str #1C) -> #I
@@ -422,9 +414,6 @@ Reads and returns an integer from the stardard input descriptor.
 }
 </code></pre>
 <h2 id="6">stdlib</h2>
-<pre><code>include altlib."string.al"
-
-</code></pre>
 <h3 id="6.1">itoa_</h3>
 Prints the integer <code>n</code> into buffer <code>dst</code> in ascii format in radix <code>radix</code>. Returns the length of the string. Doesn't check for the length of the buffer.
 <pre><code>func ^.itoa_(n #I, dst #1C, radix #I) -> #1C {
@@ -491,9 +480,6 @@ Gets a seed <code>seed</code> and return the next pseudorandom integer.
 }
 </code></pre>
 <h2 id="7">string</h2>
-<pre><code>include altlib."stdlib.al"
-
-</code></pre>
 <h3 id="7.1">strcpy_</h3>
 Copies the string <code>b</code> into buffer <code>a</code>. Returns <code>a</code>.
 <pre><code>func ^.strcpy_(a #1C, b #1C) -> #1C {
@@ -566,15 +552,6 @@ Calculates the length of string <code>a</code>, but checks at most <code>n</code
 }
 </code></pre>
 <h2 id="8">test_allocator</h2>
-<pre><code>include altlib."posix.al"
-
-typedef TestAllocator := #S {
-    data: #1I,
-    size: #I,
-    reserved: #I
-};
-
-</code></pre>
 <h3 id="8.1">#1TestAllocator.init</h3>
 Initializes an allocator with size <code>size</code> and allocates a buffer.
 <pre><code>func ^#1TestAllocator.init(this #1TestAllocator, size #I) -> #V {
@@ -608,19 +585,6 @@ Allocates memory of size <code>size</code>. Returns the pointer to the memory, o
 }
 </code></pre>
 <h2 id="9">vector</h2>
-<pre><code>include altlib."memory.al"
-include altlib."stdio.al"
-include altlib."stdlib.al"
-include altlib."test_allocator.al"
-
-typedef Vector := #S {
-    data: #1I,
-    size: #I,
-    reserved: #I,
-    allocator: #1TestAllocator
-}
-
-</code></pre>
 <h3 id="9.1">#1Vector.init</h3>
 Initializes a vector. The vector will use allocator <code>allocator</code> to expand.
 <pre><code>func ^#1Vector.init(this #1Vector, allocator #1TestAllocator) -> #V {

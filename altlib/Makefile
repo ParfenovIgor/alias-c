@@ -8,6 +8,9 @@ OBJS_ARCH := $(wildcard $(BUILD_DIR)/arch/*.o)
 OBJS_STDLIB := $(wildcard $(BUILD_DIR)/stdlib/*.o)
 
 all: $(OBJS_AL) docs
+	cp $(SRCS_AL) $(BUILD_DIR)/altlib_ext/include
+	cp $(OBJS_AL) $(BUILD_DIR)/altlib_ext/lib
+	cp $(OBJS_ARCH) $(BUILD_DIR)/altlib_ext/lib
 
 $(BUILD_DIR)/altlib/%.o: %.al make_dir
 	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $@
@@ -21,3 +24,5 @@ docs: $(BUILD_DIR)/altlib/generate_docs
 
 make_dir:
 	mkdir -p $(BUILD_DIR)/altlib
+	mkdir -p $(BUILD_DIR)/altlib_ext/include
+	mkdir -p $(BUILD_DIR)/altlib_ext/lib

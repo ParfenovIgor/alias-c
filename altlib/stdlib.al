@@ -1,6 +1,6 @@
-//* stdlib
-
 include altlib."string.al"
+
+//* stdlib
 
 //* itoa_
 //* Prints the integer `n` into buffer `dst` in ascii format in radix `radix`. Returns the length of the string. Doesn't check for the length of the buffer.

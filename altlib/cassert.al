@@ -1,6 +1,6 @@
-//* cassert
-
 include altlib."posix.al"
+
+//* cassert
 
 //* assert_
 //* Gets one integer value and stop execution with return code `3`, if the value is `0`.

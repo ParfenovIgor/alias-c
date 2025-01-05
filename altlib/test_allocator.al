@@ -1,5 +1,3 @@
-//* test_allocator
-
 include altlib."posix.al"
 
 typedef TestAllocator := #S {
@@ -7,6 +5,8 @@ typedef TestAllocator := #S {
     size: #I,
     reserved: #I
 };
+
+//* test_allocator
 
 //* #1TestAllocator.init
 //* Initializes an allocator with size `size` and allocates a buffer.
