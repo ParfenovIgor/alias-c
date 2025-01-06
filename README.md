@@ -30,9 +30,8 @@ Build options:
  * `make test` - build the compiler and altlib, run tests except performance tests.
  * `make perftest` - build the compiler and altlib, run performance tests.
 
-For further usage preferably add two new environmental variables:
+For further usage preferably add a new environmental variable:
 
- * `CALIAS` - **absolute** path to `build/calias`
  * `ALTLIB` - **absolute** path to `build/altlib_ext`
 
 ## flakes.nix

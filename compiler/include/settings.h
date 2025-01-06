@@ -15,7 +15,6 @@ struct Settings {
     const char *filename_input;
     const char *filename_output;
     const char *filename_compile_output;
-    const char *calias_directory;
     const char *path_variable;
     struct Vector included_files;
 };

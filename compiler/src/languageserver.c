@@ -2,6 +2,7 @@
 #include <posix.h>
 #include <httpd.h>
 #include <lexer.h>
+#include <process.h>
 #include <string.h>
 
 const char *check_errors(const char *payload, struct Settings *settings) {
@@ -29,7 +30,7 @@ const char *check_errors(const char *payload, struct Settings *settings) {
     if (pid == 0) {
         posix_dup2(fd[1], STDERR);
         posix_close(STDOUT);
-        posix_execve(settings->calias_directory, (const char *const*)argv, 0);
+        _execvp("calias", (const char *const*)argv, 0, settings->path_variable);
     }
     posix_wait4(pid, 0, 0, 0);
     posix_close(fd[1]);

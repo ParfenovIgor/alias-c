@@ -9,6 +9,26 @@
 #include <stdio.h>
 #include <string.h>
 
+int _execvp(const char *filename, const char *const argv[], const char *const envp[], const char *path) {
+    int n = _strlen(path);
+    char full_path[1024];
+    for (int l = 0; l < n;) {
+        int r = l;
+        while (r + 1 < n && path[r + 1] != ':') r++;
+
+        int x = r - l + 1;
+        _strncpy(full_path, path + l, x);
+        full_path[x] = '/';
+        _strcpy(full_path + x + 1, filename);
+        
+        posix_execve(full_path, argv, envp);
+
+        l = r + 2;
+    }
+    
+    return -1;
+}
+
 struct Node *process_parse(const char *filename, struct Settings *settings) {
     char *buffer = read_file(filename);
     if (!buffer) {
@@ -28,26 +48,6 @@ struct Node *process_parse_fd(int fd, struct Settings *settings) {
     struct Node *node = syntax_process(token_stream, settings);
 
     return node;
-}
-
-int _execvp(const char *filename, const char *const argv[], const char *const envp[], const char *path) {
-    int n = _strlen(path);
-    char full_path[1024];
-    for (int l = 0; l < n;) {
-        int r = l;
-        while (r + 1 < n && path[r + 1] != ':') r++;
-
-        int x = r - l + 1;
-        _strncpy(full_path, path + l, x);
-        full_path[x] = '/';
-        _strcpy(full_path + x + 1, filename);
-        
-        posix_execve(full_path, argv, envp);
-
-        l = r + 2;
-    }
-    
-    return -1;
 }
 
 void process_assemble(const char *input, const char *output, struct Settings *settings) {
