@@ -2,6 +2,8 @@ BUILD_DIR=$(abspath build)
 
 .PHONY: compiler arch stdlib altlib test perftest clean
 
+all: compiler arch stdlib altlib test perftest
+
 compiler: arch stdlib
 	$(MAKE) -C compiler BUILD_DIR=$(BUILD_DIR)
 
