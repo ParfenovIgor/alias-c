@@ -22,6 +22,7 @@
               mkdir -p $out/bin
               cp build/calias $out/bin/calias
             '';
+            meta.mainProgram = "calias";
           };
 
           makeAll = pkgs.writeShellApplication {
