@@ -10,14 +10,19 @@
       system:
       let
         pkgs = inputs.nixpkgs.legacyPackages.${system};
-        packages.calias = pkgs.stdenv.mkDerivation {
-          name = "calias";
-          src = ./.;
-          buildInputs = [pkgs.nasm];
-          installPhase = ''
-            mkdir -p $out/bin
-            cp build/calias $out/bin/calias
-          '';
+        packages = {
+          calias = pkgs.stdenv.mkDerivation {
+            name = "calias";
+            src = ./.;
+            buildInputs = [ pkgs.nasm ];
+            buildPhase = ''
+              make
+            '';
+            installPhase = ''
+              mkdir -p $out/bin
+              cp build/calias $out/bin/calias
+            '';
+          };
         };
       in
       {
