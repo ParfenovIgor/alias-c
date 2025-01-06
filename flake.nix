@@ -10,33 +10,37 @@
       system:
       let
         pkgs = inputs.nixpkgs.legacyPackages.${system};
+        fs = pkgs.lib.fileset;
         packages = {
           calias = pkgs.stdenv.mkDerivation {
             name = "calias";
-            src = ./.;
+            src = fs.toSource {
+              root = ./.;
+              fileset = fs.unions [
+                ./altlib
+                ./arch
+                ./compiler
+                ./docs
+                ./stdlib
+                ./test
+                ./Makefile
+              ];
+            };
             buildInputs = [ pkgs.nasm ];
             buildPhase = ''
-              make
-            '';
-            installPhase = ''
-              mkdir -p $out/bin
-              cp build/calias $out/bin/calias
-            '';
-            meta.mainProgram = "calias";
-          };
-
-          makeAll = pkgs.writeShellApplication {
-            name = "makeAll";
-            text = ''
               make compiler
               make altlib
+            '';
+            checkPhase = ''
               make test
               make perftest
             '';
-            runtimeInputs = [
-              pkgs.nasm
-              pkgs.cmake
-            ];
+            installPhase = ''
+              mkdir -p $out/bin
+              cp -r build $out
+              cp build/calias $out/bin/calias
+            '';
+            meta.mainProgram = "calias";
           };
         };
       in
@@ -45,11 +49,8 @@
         devShells.default = pkgs.mkShell {
           buildInputs = [ packages.calias ];
           shellHook = ''
-            export ROOT_DIR="$PWD"
-
-            ${pkgs.lib.getExe packages.makeAll}
-            export CALIAS="$ROOT_DIR/build/calias"
-            export ALTLIB="$ROOT_DIR/build/altlib_ext"
+            export CALIAS="${pkgs.lib.getExe packages.calias}"
+            export ALTLIB="${packages.calias}/build/altlib_ext"
           '';
         };
       }
