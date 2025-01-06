@@ -16,6 +16,7 @@ func ^._start() -> #V {
     eval vec&.push(3)
     eval vec&.push(4)
 
+    eval puti_(vec&.size())
     eval puti_(vec&.get(0))
     eval puti_(vec&.get(1))
     eval puti_(vec&.get(2))
@@ -26,6 +27,7 @@ func ^._start() -> #V {
     eval vec&.push(5)
     eval vec&.push(6)
 
+    eval puti_(vec&.size())
     eval puti_(vec&.get(0))
     eval puti_(vec&.get(1))
     eval puti_(vec&.get(2))

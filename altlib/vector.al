@@ -45,6 +45,12 @@ func ^#1Vector.pop(this #1Vector) -> #I {
     }
 }
 
+//* #1Vector.size
+//* Returns the size of vector.
+func ^#1Vector.size(this #1Vector) -> #I {
+    return this->size
+}
+
 //* #1Vector.get
 //* Returns the element of vector at position `x`. Doens't check if the element exists.
 func ^#1Vector.get(this #1Vector, x #I) -> #I {

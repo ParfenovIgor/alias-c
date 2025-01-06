@@ -146,7 +146,8 @@
 <li><a href="#9.1">#1Vector.init</a></li>
 <li><a href="#9.2">#1Vector.push</a></li>
 <li><a href="#9.3">#1Vector.pop</a></li>
-<li><a href="#9.4">#1Vector.get</a></li>
+<li><a href="#9.4">#1Vector.size</a></li>
+<li><a href="#9.5">#1Vector.get</a></li>
 </ul></li>
 </ul></nav></div>
 <div id="contents-wrapper"><main id="contents">
@@ -621,7 +622,14 @@ Pops a value from the back of the vector and returns it.
 }
 
 </code></pre>
-<h3 id="9.4">#1Vector.get</h3>
+<h3 id="9.4">#1Vector.size</h3>
+Returns the size of vector.
+<pre><code>func ^#1Vector.size(this #1Vector) -> #I {
+    return this-&gtsize
+}
+
+</code></pre>
+<h3 id="9.5">#1Vector.get</h3>
 Returns the element of vector at position <code>x</code>. Doens't check if the element exists.
 <pre><code>func ^#1Vector.get(this #1Vector, x #I) -> #I {
     return this-&gtdata[x]
