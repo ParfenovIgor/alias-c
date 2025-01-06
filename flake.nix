@@ -41,10 +41,7 @@
       in
       {
         inherit packages;
-        devShells = pkgs.mkShell {
-          buildInputs = [ packages.default ];
-          bash.extra = '''';
-        };
+        devShells.default = pkgs.mkShell { buildInputs = [ packages.calias ]; };
       }
     );
 }
