@@ -23,6 +23,20 @@
               cp build/calias $out/bin/calias
             '';
           };
+
+          makeAll = pkgs.writeShellApplication {
+            name = "makeAll";
+            text = ''
+              make compiler
+              make altlib
+              make test
+              make perftest
+            '';
+            runtimeInputs = [
+              pkgs.nasm
+              pkgs.cmake
+            ];
+          };
         };
       in
       {
