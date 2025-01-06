@@ -30,22 +30,42 @@ struct Node *process_parse_fd(int fd, struct Settings *settings) {
     return node;
 }
 
-void process_assemble(const char *input, const char *output) {
+int _execvp(const char *filename, const char *const argv[], const char *const envp[], const char *path) {
+    int n = _strlen(path);
+    char full_path[1024];
+    for (int l = 0; l < n;) {
+        int r = l;
+        while (r + 1 < n && path[r + 1] != ':') r++;
+
+        int x = r - l + 1;
+        _strncpy(full_path, path + l, x);
+        full_path[x] = '/';
+        _strcpy(full_path + x + 1, filename);
+        
+        posix_execve(full_path, argv, envp);
+
+        l = r + 2;
+    }
+    
+    return -1;
+}
+
+void process_assemble(const char *input, const char *output, struct Settings *settings) {
     int pid = posix_fork();
     if (pid == 0) {
-        const char *nasm = "/usr/bin/nasm";
-        const char *const args[] = {"/usr/bin/nasm", "-f", "elf64", input, "-o", output, NULL};
-        posix_execve(nasm, args, 0);
+        const char *nasm = "nasm";
+        const char *const args[] = {"nasm", "-f", "elf64", input, "-o", output, NULL};
+        _execvp(nasm, args, 0, settings->path_variable);
     }
     posix_wait4(pid, 0, 0, 0);
 }
 
-void process_link(const char *input, const char *output) {
+void process_link(const char *input, const char *output, struct Settings *settings) {
     int pid = posix_fork();
     if (pid == 0) {
-        const char *gcc = "/usr/bin/ld";
-        const char *const args[] = {"/usr/bin/ld", input, "-o", output, NULL};
-        posix_execve(gcc, args, 0);
+        const char *ld = "ld";
+        const char *const args[] = {"ld", input, "-o", output, NULL};
+        _execvp(ld, args, 0, settings->path_variable);
     }
     posix_wait4(pid, 0, 0, 0);
 }
@@ -93,7 +113,7 @@ int process(struct Settings *settings) {
 
             // call the NASM assembler
             posix_unlink(assemble_out_filename);
-            process_assemble(assemble_in_filename, assemble_out_filename);
+            process_assemble(assemble_in_filename, assemble_out_filename, settings);
             posix_unlink(assemble_in_filename);
             _free(assemble_in_filename);
             _free(assemble_out_filename);
@@ -111,7 +131,7 @@ int process(struct Settings *settings) {
 
                 // call the ld linker
                 posix_unlink(link_out_filename);
-                process_link(link_in_filename, link_out_filename);
+                process_link(link_in_filename, link_out_filename, settings);
                 posix_unlink(link_in_filename);
                 _free(link_in_filename);
                 _free(link_out_filename);

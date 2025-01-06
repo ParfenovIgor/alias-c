@@ -32,6 +32,7 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
     settings->filename_output = NULL;
     settings->filename_compile_output = NULL;
     settings->calias_directory = _strdup(argv[0]);
+    settings->path_variable = "";
 
     for (int i = 1; i < argc; i++) {
         const char *arg = argv[i];
@@ -89,7 +90,9 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
         if (_strncmp(str, "CALIAS", delim) == 0) {
             _free((void*)settings->calias_directory);
             settings->calias_directory = _strdup(str + delim + 1);
-            break;
+        }
+        if (_strncmp(str, "PATH", delim) == 0) {
+            settings->path_variable = _strdup(str + delim + 1);
         }
     }
 
