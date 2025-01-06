@@ -14,6 +14,7 @@
         packages = {
           calias = pkgs.stdenv.mkDerivation {
             name = "calias";
+            meta.mainProgram = "calias";
             src = fs.toSource {
               root = ./.;
               fileset = fs.unions [
@@ -40,7 +41,6 @@
               cp -r build $out
               cp build/calias $out/bin/calias
             '';
-            meta.mainProgram = "calias";
           };
         };
       in
@@ -49,7 +49,6 @@
         devShells.default = pkgs.mkShell {
           buildInputs = [ packages.calias ];
           shellHook = ''
-            export CALIAS="${pkgs.lib.getExe packages.calias}"
             export ALTLIB="${packages.calias}/build/altlib_ext"
           '';
         };
