@@ -41,7 +41,16 @@
       in
       {
         inherit packages;
-        devShells.default = pkgs.mkShell { buildInputs = [ packages.calias ]; };
+        devShells.default = pkgs.mkShell {
+          buildInputs = [ packages.calias ];
+          shellHook = ''
+            export ROOT_DIR="$PWD"
+
+            ${pkgs.lib.getExe packages.makeAll}
+            export CALIAS="$ROOT_DIR/build/calias"
+            export ALTLIB="$ROOT_DIR/build/altlib_ext"
+          '';
+        };
       }
     );
 }
