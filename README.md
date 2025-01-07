@@ -10,29 +10,29 @@ A System Programming Language
 
 ## Installation
 
- * building from source
- * flakes.nix
- * download a pre-built binary
+* building from source
+* flakes.nix
+* download a pre-built binary
 
 ## Building from Source
 
 Required dependencies:
 
- * gcc
- * ld
- * nasm
- * make
+* gcc
+* ld
+* nasm
+* make
 
 Build options:
 
- * `make compiler` - build the compiler. The compiler will appear in `build/calias`.
- * `make altlib` - build the compiler and altlib. Public version of altlib will appear in `build/altlib_ext`.
- * `make test` - build the compiler and altlib, run tests except performance tests.
- * `make perftest` - build the compiler and altlib, run performance tests.
+* `make compiler` - build the compiler. The compiler will appear in `build/calias`.
+* `make altlib` - build the compiler and altlib. Public version of altlib will appear in `build/altlib_ext`.
+* `make test` - build the compiler and altlib, run tests except performance tests.
+* `make perftest` - build the compiler and altlib, run performance tests.
 
 For further usage preferably add a new environmental variable:
 
- * `ALTLIB` - **absolute** path to `build/altlib_ext`
+* `ALTLIB` - **absolute** path to `build/altlib_ext`
 
 ## Get `calias` using Nix
 
