@@ -10,21 +10,47 @@
       system:
       let
         pkgs = inputs.nixpkgs.legacyPackages.${system};
-        packages.calias = pkgs.stdenv.mkDerivation {
-          name = "calias";
-          src = ./.;
-          buildInputs = [pkgs.nasm];
-          installPhase = ''
-            mkdir -p $out/bin
-            cp build/calias $out/bin/calias
-          '';
+        fs = pkgs.lib.fileset;
+        packages = {
+          calias = pkgs.stdenv.mkDerivation {
+            name = "calias";
+            meta.mainProgram = "calias";
+            src = fs.toSource {
+              root = ./.;
+              fileset = fs.unions [
+                ./altlib
+                ./arch
+                ./compiler
+                ./docs
+                ./stdlib
+                ./test
+                ./Makefile
+              ];
+            };
+            buildInputs = [ pkgs.nasm ];
+            buildPhase = ''
+              make compiler
+              make altlib
+            '';
+            checkPhase = ''
+              make test
+              make perftest
+            '';
+            installPhase = ''
+              mkdir -p $out/bin
+              cp -r build $out
+              cp build/calias $out/bin/calias
+            '';
+          };
         };
       in
       {
         inherit packages;
-        devShells = pkgs.mkShell {
-          buildInputs = [ packages.default ];
-          bash.extra = '''';
+        devShells.default = pkgs.mkShell {
+          buildInputs = [ packages.calias ];
+          shellHook = ''
+            export ALTLIB="${packages.calias}/build/altlib_ext"
+          '';
         };
       }
     );

@@ -34,17 +34,30 @@ For further usage preferably add a new environmental variable:
 
 * `ALTLIB` - **absolute** path to `build/altlib_ext`
 
-## flakes.nix
+## Get `calias` using Nix
 
 Required dependencies:
 
-* nix
+* [Nix](https://nixos.org)
+    * Use [this](https://github.com/DeterminateSystems/nix-installer) or [this](https://nixos.org/download/) way to install Nix
+
+Enter the development shell for `calias`:
 
 ```
-nix shell github:ParfenovIgor/alias-c#calias
+nix develop github:ParfenovIgor/alias-c
 ```
 
-`calias` will appear in a new shell.
+Check that `calias` is present:
+
+```
+calias
+```
+
+Check that `ALTLIB` is set:
+
+```
+echo "$ALTLIB"
+```
 
 ## Example
 
