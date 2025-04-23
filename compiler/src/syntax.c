@@ -504,7 +504,6 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         node->node_type = NodeLambdaFunction;
         node->node_ptr = this;
         tokenstream_next(ts);
-        pass_next(ts, TokenParenthesisOpen, "( expected in function definition");
         this->signature = syntax_process_function_signature(ts, st);
         this->block = syntax_process_expression(ts, st);
     } 
@@ -515,9 +514,13 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         tokenstream_next(ts);
         this->type = syntax_process_type(ts, st);
     }
-    else if (tokenstream_get(ts).type == TokenIdentifier) {
+    else if (tokenstream_get(ts).type == TokenIdentifier ||
+             tokenstream_get(ts).type == TokenAt) {
         struct Identifier *this = (struct Identifier*)_malloc(sizeof(struct Identifier));
-        this->identifier = _strdup(tokenstream_get(ts).value_string);
+        if (tokenstream_get(ts).type == TokenIdentifier)
+            this->identifier = _strdup(tokenstream_get(ts).value_string);
+        else
+            this->identifier = _strdup("@");
         node->node_ptr = this;
         node->node_type = NodeIdentifier;
         tokenstream_next(ts);
@@ -640,6 +643,15 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
             node->node_type = NodeFunctionCall;
             this->function = prv_node;
             this->arguments = vnew();
+            this->propagate_allocator = NULL;
+
+            if (tokenstream_get(ts).type == TokenAt) {
+                tokenstream_next(ts);
+                this->propagate_allocator = syntax_process_expression(ts, st);
+                if (tokenstream_get(ts).type != TokenParenthesisClose) {
+                    pass_next(ts, TokenComma, ", expected in function call");
+                }
+            }
             while (true) {
                 if (tokenstream_get(ts).type == TokenParenthesisClose) {
                     break;
@@ -726,7 +738,13 @@ struct FunctionSignature *syntax_process_function_signature(struct TokenStream *
     struct FunctionSignature *this = (struct FunctionSignature*)_malloc(sizeof(struct FunctionSignature));
     this->identifiers = vnew();
     this->types = vnew();
+    this->propagate_allocator = false;
 
+    if (tokenstream_get(ts).type == TokenAt) {
+        this->propagate_allocator = true;
+        tokenstream_next(ts);
+    }
+    pass_next(ts, TokenParenthesisOpen, "( expected in function prototype");
     while (true) {
         if (tokenstream_get(ts).type == TokenParenthesisClose) {
             tokenstream_next(ts);
@@ -847,7 +865,6 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         check_next(ts, TokenIdentifier, "Identifier exprected in function definition");
         this->name = _strdup(tokenstream_get(ts).value_string);
         tokenstream_next(ts);
-        pass_next(ts, TokenParenthesisOpen, "( expected in function definition");
         this->signature = syntax_process_function_signature(ts, st);
         this->block = syntax_process_expression(ts, st);
     }
@@ -866,7 +883,6 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         check_next(ts, TokenIdentifier, "Identifier exprected in function prototype");
         this->name = _strdup(tokenstream_get(ts).value_string);
         tokenstream_next(ts);
-        pass_next(ts, TokenParenthesisOpen, "( expected in function prototype");
         this->signature = syntax_process_function_signature(ts, st);
     }
     else if (tokenstream_get(ts).type == TokenDef) {

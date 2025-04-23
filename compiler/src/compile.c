@@ -101,6 +101,14 @@ void compile_process(struct Node *node, struct Settings *settings) {
         context->node_char->node_type = TypeNodeChar;
         context->node_char->degree = 0;
     }
+    {
+        context->node_allocator = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+        struct TypeIdentifier *_type = (struct TypeIdentifier*)_malloc(sizeof(struct TypeIdentifier));
+        context->node_allocator->node_ptr = _type;
+        context->node_allocator->node_type = TypeNodeIdentifier;
+        context->node_allocator->degree = 1;
+        _type->identifier = _strdup("TestAllocator");
+    }
     
     int fd[2];
 
@@ -229,11 +237,25 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
             }
         }
 
+        sz += (this->propagate_allocator != NULL);
+
         for (int i = 0; i < sz; i++) {
             _fputs3(context->fd_text, "push ", regs[i], "\n");
             struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
-            var_info->name = this->identifiers.ptr[i];
-            var_info->type = this->types.ptr[i];
+            if (this->propagate_allocator) {
+                if (i == 0) {
+                    var_info->name = "@";
+                    var_info->type = context->node_allocator;
+                }
+                else {
+                    var_info->name = this->identifiers.ptr[i - 1];
+                    var_info->type = this->types.ptr[i - 1];
+                }
+            }
+            else {
+                var_info->name = this->identifiers.ptr[i];
+                var_info->type = this->types.ptr[i];
+            }
             int size = align_to_word(type_size(var_info->type, context));
             var_info->sf_phase = context->sf_pos - size;
             context->sf_pos -= size;
@@ -356,18 +378,22 @@ struct TypeNode *compile_while(struct Node *node, struct While *this, struct CPC
     return type;
 }
 
-struct TypeNode *from_signature_to_type(struct FunctionSignature *signature) {
+struct TypeNode *from_signature_to_type(struct FunctionSignature *signature, struct CPContext *context) {
     struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
     struct TypeFunction *_type = (struct TypeFunction*)_malloc(sizeof(struct TypeFunction));
     type->node_ptr = _type;
     type->node_type = TypeNodeFunction;
     type->degree = 0;
     _type->types = vnew();
+    if (signature->propagate_allocator) {
+        vpush(&_type->types, context->node_allocator);
+    }
     int sz = vsize(&signature->types);
     for (int i = 0; i < sz; i++) {
         vpush(&_type->types, signature->types.ptr[i]);
     }
     _type->return_type = signature->return_type;
+    _type->propagate_allocator = (signature->propagate_allocator != NULL);
     return type;
 }
 
@@ -398,7 +424,7 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
     function_info->name_front = identifier_front;
     function_info->name_back = identifier_back;
     function_info->caller_type = this->caller_type;
-    function_info->type = from_signature_to_type(this->signature);
+    function_info->type = from_signature_to_type(this->signature, context);
     vpush(&context->functions, function_info);
 
     if (this->external) {
@@ -445,7 +471,7 @@ void compile_prototype(struct Node *node, struct Prototype *this, struct CPConte
     struct FunctionInfo *function_info = (struct FunctionInfo*)_malloc(sizeof(struct FunctionInfo));
     function_info->name_front = identifier;
     function_info->name_back = identifier;
-    function_info->type = from_signature_to_type(this->signature);
+    function_info->type = from_signature_to_type(this->signature, context);
     function_info->caller_type = this->caller_type;
     vpush(&context->functions, function_info);
 
@@ -762,7 +788,7 @@ struct TypeNode *compile_lambda_function(struct Node *node, struct LambdaFunctio
     context->function_index++;
     char *identifier_end = _concat("_E", identifier_back);
 
-    struct TypeNode *type = from_signature_to_type(this->signature);
+    struct TypeNode *type = from_signature_to_type(this->signature, context);
 
     struct TypeNode *_type = compile_function_signature(node, this->signature, context, this->block, identifier_back, identifier_end);    
     if (!type_equal(_type, this->signature->return_type, context)) {
@@ -813,11 +839,45 @@ struct TypeNode *compile_function_call(struct Node *node, struct FunctionCall *t
         error_semantic("Function expected in function call", node);
     }
     struct TypeFunction *_type = type->node_ptr;
+
+    if (_type->propagate_allocator) {
+        vpush(&this->arguments, NULL);
+        int sz = vsize(&this->arguments);
+        for (int i = 1; i < sz; i++) {
+            this->arguments.ptr[i] = this->arguments.ptr[i - 1];
+        }
+        if (this->propagate_allocator) {
+            this->arguments.ptr[0] = this->propagate_allocator;
+        }
+        else if (context_find_variable(context, "@")) {
+            struct Node *_node = (struct Node*)_malloc(sizeof(struct Node));
+            _node->line_begin = 0;
+            _node->position_begin = 0;
+            _node->line_end = 0;
+            _node->position_end = 0;
+            _node->filename = "_generated";
+            struct Identifier *identifier = (struct Identifier*)_malloc(sizeof(struct Identifier));
+            _node->node_ptr = identifier;
+            _node->node_type = NodeIdentifier;
+            identifier->identifier = "@";
+            identifier->address = false;
+            this->arguments.ptr[0] = _node;
+        }
+        else {
+            error_semantic("Allocator expected for propagation to called function", node);
+        }
+    }
+    else {
+        if (this->propagate_allocator) {
+            error_semantic("Unexpected allocator propagation to called function", node);
+        }
+    }
+
     int sz = vsize(&_type->types);
     if (sz != vsize(&this->arguments)) {
         error_semantic("Incorrect number of arguments in function call", node);
     }
-
+    
     for (int i = 0; i < sz; i++) {
         struct TypeNode *type_arg = compile_node(this->arguments.ptr[i], context);
         if (!type_equal(type_arg, _type->types.ptr[i], context)) {

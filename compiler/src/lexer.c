@@ -179,6 +179,7 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
         else if (append_token(str, N, &i, "$", TokenDereference, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "->", TokenGetField, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "#", TokenSharp, true, line, &position, filename, token_stream)) {}
+        else if (append_token(str, N, &i, "@", TokenAt, true, line, &position, filename, token_stream)) {}
         else if (append_token(str, N, &i, "+", TokenPlus, true, line, &position, filename, token_stream)) {}
         else if (check_token(str, N, "-", i, true)) {
             if (i + 2 <= N && _isdigit(str[i + 1]) && 
@@ -403,6 +404,7 @@ const char *TokenColor(enum TokenType type,
         Color_Black,        // TokenDereference,
         Color_Black,        // TokenGetField,
         Color_Black,        // TokenSharp,
+        Color_Black,        // TokenAt,
         Color_Black,        // TokenPlus,
         Color_Black,        // TokenMinus,
         Color_Black,        // TokenMult,

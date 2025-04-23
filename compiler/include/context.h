@@ -55,6 +55,7 @@ struct CPContext {
     struct TypeNode *node_void;
     struct TypeNode *node_int;
     struct TypeNode *node_char;
+    struct TypeNode *node_allocator;
 };
 
 struct VariableInfo *context_find_variable      (struct CPContext*, const char*);

@@ -94,6 +94,7 @@ struct FunctionSignature {
     struct Vector identifiers;
     struct Vector types;
     struct TypeNode *return_type;
+    bool propagate_allocator;
 };
 
 struct Node {
@@ -220,6 +221,7 @@ struct Sizeof {
 struct FunctionCall {
     struct Node *function;
     struct Vector arguments;
+    struct Node *propagate_allocator;
 };
 
 struct MethodCall {

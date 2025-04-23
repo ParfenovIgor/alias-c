@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <vector.h>
 
 enum TypeNodeType {
@@ -46,6 +47,7 @@ struct TypeStruct {
 struct TypeFunction {
     struct Vector types;
     struct TypeNode *return_type;
+    bool propagate_allocator;
 };
 
 struct TypeIdentifier {
