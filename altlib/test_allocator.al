@@ -1,5 +1,10 @@
 include altlib."posix.al"
 
+def PROT_READ := 1
+def PROT_WRITE := 2
+def MAP_PRIVATE := 2
+def MAP_ANONYMOUS := 32
+
 typedef TestAllocator := #S {
     data: #1I,
     size: #I,
@@ -11,10 +16,6 @@ typedef TestAllocator := #S {
 //* #1TestAllocator.init
 //* Initializes an allocator with size `size` and allocates a buffer.
 func ^#1TestAllocator.init(this #1TestAllocator, size #I) -> #V {
-    def PROT_READ := 1
-    def PROT_WRITE := 2
-    def MAP_PRIVATE := 2
-    def MAP_ANONYMOUS := 32
     this->data& <- posix_mmap(0 as #1I, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
     this->size& <- 0
     this->reserved& <- size

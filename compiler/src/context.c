@@ -3,6 +3,17 @@
 #include <context.h>
 #include <string.h>
 
+struct GlobalVariableInfo *context_find_global_variable(struct CPContext *context, const char *identifier) {
+    int sz = vsize(&context->global_variables);
+    for (int i = sz - 1; i >= 0; i--) {
+        struct GlobalVariableInfo *global_var_info = context->global_variables.ptr[i];
+        if (_strcmp(global_var_info->name, identifier) == 0) {
+            return global_var_info;
+        }
+    }
+    return NULL;
+}
+
 struct VariableInfo *context_find_variable(struct CPContext *context, const char *identifier) {
     int sz = vsize(&context->variables);
     for (int i = sz - 1; i >= 0; i--) {

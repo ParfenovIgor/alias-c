@@ -106,6 +106,7 @@
 <li><a href="#6.1">Definition</a></li>
 <li><a href="#6.2">Types</a></li>
 <li><a href="#6.3">Type size</a></li>
+<li><a href="#6.4">Global variables</a></li>
 </ul></li>
 <li><a href="#7">Functions</a>
 <ul>
@@ -342,6 +343,19 @@ Operator <code>^</code> returns size of the packed type in bytes. However, on st
     // The size of `#C` is 1 byte
     return test_equal($#I + $#C, 9)
 }
+
+</code></pre>
+<h3 id="6.4">Global variables</h3>
+Variable can be created in global scope. If it is not assigned, it will be stored in <code>.bss</code> section and assigned to <code>0</code>. If it is assigned, it has to be assigned to a simple integer and it will be stored in <code>.data</code> section.
+<pre><code>def var1 #I
+def var2 := 31;
+
+test demo_global_variable {
+    var1 := 43
+    var1& &lt- var1 + 6;
+    return test_equal(var1 + var2, 80);
+}
+
 </code></pre>
 <h2 id="7">Functions</h2>
 <h3 id="7.1">Functions</h3>

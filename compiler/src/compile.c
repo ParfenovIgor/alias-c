@@ -67,6 +67,7 @@ void generate_test_function(struct CPContext *context, struct Settings *settings
 void compile_process(struct Node *node, struct Settings *settings) {
     struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
     context->variables = vnew();
+    context->global_variables = vnew();
     context->types = vnew();
     context->functions = vnew();
     context->block_labels = vnew();
@@ -159,6 +160,24 @@ void compile_process(struct Node *node, struct Settings *settings) {
     _free(str_text);
     if (settings->filename_compile_output) {
         write_file(settings->filename_compile_output, program);
+    }
+}
+
+void compile_module(struct Node *node, struct Module *this, struct CPContext *context) {
+    int old_cnt_var = vsize(&context->variables);
+    int old_cnt_functions = vsize(&context->functions);
+
+    for (int i = 0; i < vsize(&this->statement_list); i++) {
+        compile_node(this->statement_list.ptr[i], context);
+    }
+
+    int cnt_var = vsize(&context->variables);
+    int cnt_functions = vsize(&context->functions);
+    for (int i = 0; i < cnt_var - old_cnt_var; i++) {
+        vpop(&context->variables);
+    }
+    for (int i = 0; i < cnt_functions - old_cnt_functions; i++) {
+        vpop(&context->functions);
     }
 }
 
@@ -487,15 +506,50 @@ void compile_prototype(struct Node *node, struct Prototype *this, struct CPConte
     }
 }
 
+void compile_global_definition(struct Node *node, struct GlobalDefinition *this, struct CPContext *context) {
+    struct TypeNode *_type;
+    if (this->value) {
+        _type = context->node_int;
+        if (this->value->node_type != NodeInteger) {
+            error_semantic("Const integer expected as initial value in global variable", node);
+        }
+        if (this->type && !type_equal(_type, this->type, context)) {
+            error_semantic("Declared and inferred types are not equal", node);
+        }
+    }
+    else {
+        if (this->type) {
+            _type = this->type;
+        }
+        else {
+            error_semantic("Undefined type in definition", node);
+        }
+    }
+
+    struct GlobalVariableInfo *global_var_info = (struct GlobalVariableInfo*)_malloc(sizeof(struct GlobalVariableInfo));
+    global_var_info->name = _strdup(this->identifier);
+    global_var_info->type = _type;
+    vpush(&context->global_variables, global_var_info);
+
+    if (this->value) {
+        _fputs2(context->fd_data, this->identifier, ":\n");
+        _fputsi(context->fd_data, "dq ", ((struct Integer*)(this->value->node_ptr))->value, "\n");
+    }
+    else {
+        _fputs2(context->fd_bss, this->identifier, ":\n");
+        _fputsi(context->fd_bss, "resb ", type_size(this->type, context), "\n");
+    }
+}
+
 void compile_definition(struct Node *node, struct Definition *this, struct CPContext *context) {
-    if (this->type &&  !type_check(this->type, context)) {
+    if (this->type && !type_check(this->type, context)) {
         error_semantic("Type identifier was not declared in definition type", node);
     }
 
     struct TypeNode *_type;
     if (this->type && this->value) {
-         _type = compile_node(this->value, context);
-         if (this->type && !type_equal(_type, this->type, context)) {
+        _type = compile_node(this->value, context);
+        if (this->type && !type_equal(_type, this->type, context)) {
             error_semantic("Declared and inferred types are not equal", node);
         }
     }
@@ -601,17 +655,30 @@ void compile_assignment(struct Node *node, struct Assignment *this, struct CPCon
     }
     struct Identifier *_identifier = (struct Identifier*)(this->dst->node_ptr);
     struct VariableInfo *var_info = context_find_variable(context, _identifier->identifier);
-    if (!var_info) {
+    struct GlobalVariableInfo *global_var_info = context_find_global_variable(context, _identifier->identifier);
+    if (!var_info && !global_var_info) {
         error_semantic("Variable was not declared in assignment", node);
     }
-    struct TypeNode *_type1 = var_info->type;
+    struct TypeNode *_type1;
+    if (var_info) {
+        _type1 = var_info->type;
+    }
+    else {
+        _type1 = global_var_info->type;
+    }
     struct TypeNode *_type2 = compile_node(this->src, context);
     if (!type_equal(_type1, _type2, context)) {
         error_semantic("Assignment of not equal types", node);
     }
 
     int tsize = type_size(_type1, context);
-    const char *dst = _concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
+    const char *dst;
+    if (var_info) {
+        dst = _concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
+    }
+    else {
+        dst = _concat3("[", global_var_info->name, "]");
+    }
     const char *src = _concat3("[rsp - ", _itoa(align_to_word(tsize)), "]");
     compile_memcpy(dst, src, tsize, context);
 }
@@ -650,28 +717,38 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
         _type = function_info->type;
         _fputs3(context->fd_text, "mov rax, ", function_info->name_back, "\n");
         _fputs(context->fd_text, "mov [rsp - 8], rax\n");
+        return _type;
     }
-    else {
-        struct VariableInfo *var_info = context_find_variable(context, this->identifier);
+    struct VariableInfo *var_info = context_find_variable(context, this->identifier);
+    struct GlobalVariableInfo *global_var_info = context_find_global_variable(context, this->identifier);
+    if (!var_info && !global_var_info) {
+        error_semantic("Identifier was not declared", node);
+    }
+    if (this->address) {
         if (var_info) {
-            if (this->address) {
-                _type = type_copy_node(var_info->type);
-                _type->degree++;
-                _fputsi(context->fd_text, "lea rax, [rbp + ", var_info->sf_phase, "]\n");
-                _fputs(context->fd_text, "mov [rsp - 8], rax\n");
-            }
-            else {
-                _type = var_info->type;
-                const char *dst = _concat3("[rsp - ", _itoa(align_to_word(type_size(_type, context))), "]");
-                const char *src = _concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
-                compile_memcpy(dst, src, align_to_word(type_size(_type, context)), context);
-            }
+            _type = type_copy_node(var_info->type);
+            _fputsi(context->fd_text, "lea rax, [rbp + ", var_info->sf_phase, "]\n");
+            _fputs(context->fd_text, "mov [rsp - 8], rax\n");
         }
         else {
-            error_semantic("Variable was not declared", node);
+            _type = type_copy_node(global_var_info->type);
+            _fputs3(context->fd_text, "mov qword [rsp - 8], ", global_var_info->name, "\n");
         }
+        _type->degree++;
     }
-
+    else {
+        const char *src;
+        if (var_info) {
+            _type = var_info->type;
+            src = _concat3("[rbp + ", _itoa(var_info->sf_phase), "]");
+        }
+        else {
+            _type = global_var_info->type;
+            src = _concat3("[", global_var_info->name, "]");
+        }
+        const char *dst = _concat3("[rsp - ", _itoa(align_to_word(type_size(_type, context))), "]");
+        compile_memcpy(dst, src, align_to_word(type_size(_type, context)), context);
+    }
     return _type;
 }
 
@@ -843,7 +920,7 @@ struct TypeNode *compile_function_call(struct Node *node, struct FunctionCall *t
     if (_type->propagate_allocator) {
         vpush(&this->arguments, NULL);
         int sz = vsize(&this->arguments);
-        for (int i = 1; i < sz; i++) {
+        for (int i = sz - 1; i >= 0; i--) {
             this->arguments.ptr[i] = this->arguments.ptr[i - 1];
         }
         if (this->propagate_allocator) {
@@ -1303,15 +1380,19 @@ struct TypeNode *compile_node(struct Node *node, struct CPContext *context) {
     _fputi(context->fd_text, node->position_begin + 1);
     _fputs(context->fd_text, " -> ");
 
-    if (node->node_type == NodeBlock) {
+    if (node->node_type == NodeModule) {
+        _fputs(context->fd_text, "module\n");
+        compile_module(node, (struct Module*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeBlock) {
         _fputs(context->fd_text, "block\n");
         return compile_block(node, (struct Block*)node->node_ptr, context);
     }
-    if (node->node_type == NodeInclude) {
+    else if (node->node_type == NodeInclude) {
         _fputs(context->fd_text, "include\n");
         compile_include(node, (struct Include*)node->node_ptr, context);
     }
-    if (node->node_type == NodeTest) {
+    else if (node->node_type == NodeTest) {
         _fputs(context->fd_text, "test\n");
         compile_test(node, (struct Test*)node->node_ptr, context);
     }
@@ -1330,6 +1411,10 @@ struct TypeNode *compile_node(struct Node *node, struct CPContext *context) {
     else if (node->node_type == NodePrototype) {
         _fputs(context->fd_text, "prototype\n");
         compile_prototype(node, (struct Prototype*)node->node_ptr, context);
+    }
+    else if (node->node_type == NodeGlobalDefinition) {
+        _fputs(context->fd_text, "global definition\n");
+        compile_global_definition(node, (struct GlobalDefinition*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDefinition) {
         _fputs(context->fd_text, "definition\n");

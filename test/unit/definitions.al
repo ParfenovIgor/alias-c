@@ -29,3 +29,15 @@ test demo_type_size { .foo
     // The size of `#C` is 1 byte
     return test_equal($#I + $#C, 9)
 }
+
+//* Global variables
+//* Variable can be created in global scope. If it is not assigned, it will be stored in `.bss` section and assigned to `0`. If it is assigned, it has to be assigned to a simple integer and it will be stored in `.data` section.
+
+def var1 #I
+def var2 := 31;
+
+test demo_global_variable {
+    var1 := 43
+    var1& <- var1 + 6;
+    return test_equal(var1 + var2, 80);
+}
