@@ -45,6 +45,7 @@ enum TokenType {
     TokenDereference,
     TokenGetField,
     TokenSharp,
+    TokenAt,
     TokenPlus,
     TokenMinus,
     TokenMult,

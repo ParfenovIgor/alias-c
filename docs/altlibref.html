@@ -556,10 +556,6 @@ Calculates the length of string <code>a</code>, but checks at most <code>n</code
 <h3 id="8.1">#1TestAllocator.init</h3>
 Initializes an allocator with size <code>size</code> and allocates a buffer.
 <pre><code>func ^#1TestAllocator.init(this #1TestAllocator, size #I) -> #V {
-    def PROT_READ := 1
-    def PROT_WRITE := 2
-    def MAP_PRIVATE := 2
-    def MAP_ANONYMOUS := 32
     this-&gtdata& &lt- posix_mmap(0 as #1I, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
     this-&gtsize& &lt- 0
     this-&gtreserved& &lt- size

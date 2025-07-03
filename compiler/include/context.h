@@ -4,6 +4,11 @@
 #include <typeast.h>
 #include <stdbool.h>
 
+struct GlobalVariableInfo {
+    const char *name;
+    struct TypeNode *type;
+};
+
 struct VariableInfo {
     const char *name;
     struct TypeNode *type;
@@ -32,6 +37,7 @@ struct LabelInfo {
 
 struct CPContext {
     struct Vector variables;
+    struct Vector global_variables;
     struct Vector types;
     struct Vector functions;
     struct Vector block_labels;
@@ -55,11 +61,13 @@ struct CPContext {
     struct TypeNode *node_void;
     struct TypeNode *node_int;
     struct TypeNode *node_char;
+    struct TypeNode *node_allocator;
 };
 
-struct VariableInfo *context_find_variable      (struct CPContext*, const char*);
-struct TypeInfo     *context_find_type          (struct CPContext*, const char*);
-struct FunctionInfo *context_find_function      (struct CPContext*, const char*);
-struct FunctionInfo *context_find_method        (struct CPContext*, const char*, struct TypeNode*);
-struct LabelInfo    *context_find_block_label   (struct CPContext*, const char*);
-struct LabelInfo    *context_find_loop_label    (struct CPContext*, const char*);
+struct GlobalVariableInfo *context_find_global_variable(struct CPContext*, const char*);
+struct VariableInfo       *context_find_variable       (struct CPContext*, const char*);
+struct TypeInfo           *context_find_type           (struct CPContext*, const char*);
+struct FunctionInfo       *context_find_function       (struct CPContext*, const char*);
+struct FunctionInfo       *context_find_method         (struct CPContext*, const char*, struct TypeNode*);
+struct LabelInfo          *context_find_block_label    (struct CPContext*, const char*);
+struct LabelInfo          *context_find_loop_label     (struct CPContext*, const char*);

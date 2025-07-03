@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 enum NodeType {
+    NodeModule,
     NodeBlock,
     NodeInclude,
     NodeTest,
@@ -12,6 +13,7 @@ enum NodeType {
     NodeWhile,
     NodeFunctionDefinition,
     NodePrototype,
+    NodeGlobalDefinition,
     NodeDefinition,
     NodeTypeDefinition,
     NodeReturn,
@@ -57,6 +59,7 @@ enum NodeType {
 };
 
 struct Node;
+struct Module;
 struct Block;
 struct Include;
 struct Test;
@@ -64,6 +67,7 @@ struct If;
 struct While;
 struct FunctionDefinition;
 struct Prototype;
+struct GlobalDefinition;
 struct Definition;
 struct TypeDefinition;
 struct Return;
@@ -94,6 +98,7 @@ struct FunctionSignature {
     struct Vector identifiers;
     struct Vector types;
     struct TypeNode *return_type;
+    bool propagate_allocator;
 };
 
 struct Node {
@@ -101,6 +106,10 @@ struct Node {
     const char *filename;
     void *node_ptr;
     enum NodeType node_type;
+};
+
+struct Module {
+   struct Vector statement_list;
 };
 
 struct Block {
@@ -142,6 +151,12 @@ struct Prototype {
     struct TypeNode *caller_type;
     const char *name;
     struct FunctionSignature *signature;
+};
+
+struct GlobalDefinition {
+    const char *identifier;
+    struct TypeNode *type;
+    struct Node *value;
 };
 
 struct Definition {
@@ -220,6 +235,7 @@ struct Sizeof {
 struct FunctionCall {
     struct Node *function;
     struct Vector arguments;
+    struct Node *propagate_allocator;
 };
 
 struct MethodCall {
