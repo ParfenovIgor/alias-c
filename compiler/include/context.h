@@ -57,6 +57,9 @@ struct CPContext {
     int fd_text;
     int fd_data;
     int fd_bss;
+    int fd_text_out;
+    int fd_data_out;
+    int fd_bss_out;
 
     struct TypeNode *node_void;
     struct TypeNode *node_int;
