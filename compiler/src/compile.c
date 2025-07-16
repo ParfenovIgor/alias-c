@@ -1,3 +1,4 @@
+#include "token.h"
 #include <ast.h>
 #include <type.h>
 #include <process.h>
@@ -13,6 +14,23 @@
 
 #define WORD 8
 
+enum Register {
+    REG_A,
+    REG_B,
+    REG_C,
+    REG_D
+};
+
+const char *codegen_register(enum Register reg) {
+    switch (reg) {
+        case REG_A: return "rax";
+        case REG_B: return "rbx";
+        case REG_C: return "rcx";
+        case REG_D: return "rdx";
+        default: return NULL;
+    }
+}
+
 void codegen_buffer_zero(const char *label, int size, struct CPContext *context) {
     _fputs2(context->fd_bss, label, ":\n");
     _fputsi(context->fd_bss, "resb ", size, "\n");
@@ -23,26 +41,41 @@ void codegen_buffer_int(const char *label, int value, struct CPContext *context)
     _fputsi(context->fd_data, "dq ", value, "\n");
 }
 
+void codegen_buffer_string(const char *label, const char *str, struct CPContext *context) {
+    _fputs2(context->fd_data, label, ":\n");
+    _fputs(context->fd_data, "db ");
+    for (int i = 0; i < _strlen(str); i++) {
+        _fputi(context->fd_data, str[i]);
+        _fputs(context->fd_data, ", ");
+    }
+    _fputs(context->fd_data, "0\n");
+}
+
 void codegen_label(const char *label, struct CPContext *context) {
     _fputs2(context->fd_text, label, ":\n");
 }
 
-void codegen_move(const char *dst, const char *src, struct CPContext *context) {
-    _fputs3(context->fd_text, "mov ", dst, ", ");
-    _fputs2(context->fd_text, src, "\n");
+void codegen_move_regreg(enum Register dst, enum Register src, struct CPContext *context) {
+    _fputs3(context->fd_text, "mov ", codegen_register(dst), ", ");
+    _fputs2(context->fd_text, codegen_register(src), "\n");
+}
+
+void codegen_move_labelreg(enum Register dst, const char *label, struct CPContext *context) {
+    _fputs3(context->fd_text, "mov ", codegen_register(dst), ", ");
+    _fputs2(context->fd_text, label, "\n");
 }
 
 void codegen_jump(const char *label, struct CPContext *context) {
     _fputs3(context->fd_text, "jmp ", label, "\n");
 }
 
-void codegen_jump_ifzero(const char *value, const char *label, struct CPContext *context) {
-    _fputs3(context->fd_text, "cmp ", value, ", 0\n");
+void codegen_jump_ifzero(enum Register reg, const char *label, struct CPContext *context) {
+    _fputs3(context->fd_text, "cmp ", codegen_register(reg), ", 0\n");
     _fputs3(context->fd_text, "je ", label, "\n");
 }
 
-void codegen_jump_ifnonzero(const char *value, const char *label, struct CPContext *context) {
-    _fputs3(context->fd_text, "cmp ", value, ", 0\n");
+void codegen_jump_ifnonzero(enum Register reg, const char *label, struct CPContext *context) {
+    _fputs3(context->fd_text, "cmp ", codegen_register(reg), ", 0\n");
     _fputs3(context->fd_text, "jne ", label, "\n");
 }
 
@@ -58,12 +91,30 @@ void codegen_stack_shift(int x, struct CPContext *context) {
     _fputsi(context->fd_text, "add rsp, ", x, "\n");
 }
 
-void codegen_stack_pushword(const char *value, struct CPContext *context) {
-    _fputs3(context->fd_text, "mov qword [rsp - 8], ", value, "\n");
+void codegen_stack_pushword(enum Register reg, struct CPContext *context) {
+    _fputs3(context->fd_text, "mov qword [rsp - 8], ", codegen_register(reg), "\n");
 }
 
-void codegen_stack_popword(const char *value, struct CPContext *context) {
-    _fputs3(context->fd_text, "mov qword ", value, ", [rsp - 8]\n");
+void codegen_stack_popword(enum Register reg, struct CPContext *context) {
+    _fputs3(context->fd_text, "mov qword ", codegen_register(reg), ", [rsp - 8]\n");
+}
+
+void codegen_stack_pushint(int n, struct CPContext *context) {
+    _fputs3(context->fd_text, "mov qword [rsp - 8], ", _itoa(n), "\n");
+}
+
+void codegen_stack_pushlabel(const char *label, struct CPContext *context) {
+    _fputs3(context->fd_text, "mov qword [rsp - 8], ", label, "\n");
+}
+
+void codegen_stack_pushword_phase(enum Register reg, int phase, struct CPContext *context) {
+    _fputsi(context->fd_text, "mov qword [rsp + ", phase, "], ");
+    _fputs2(context->fd_text, codegen_register(reg), "\n");
+}
+
+void codegen_stack_popword_phase(enum Register reg, int phase, struct CPContext *context) {
+    _fputs2(context->fd_text, "mov qword ", codegen_register(reg));
+    _fputsi(context->fd_text, ", [rsp + ", phase, "]\n");
 }
 
 void codegen_function_prologue(struct CPContext *context) {
@@ -84,12 +135,12 @@ void codegen_syscall(const char *func, const char *arg, struct CPContext *contex
 
 void compile_memcpy(const char *dst, const char *src, int sz, struct CPContext *context) {
     if (sz == 1) {
-        codegen_move("cl", src, context);
-        codegen_move(dst, "cl", context);
+        _fputs3(context->fd_text, "mov cl, ", src, "\n");
+        _fputs3(context->fd_text, "mov ", dst, ", cl\n");
     }
     else if (sz == 8) {
-        codegen_move("rcx", src, context);
-        codegen_move(dst, "rcx", context);
+        _fputs3(context->fd_text, "mov rcx, ", src, "\n");
+        _fputs3(context->fd_text, "mov ", dst, ", rcx\n");
     }
     else {
         _fputs3(context->fd_text, "lea rdi, ", dst, "\n");
@@ -111,7 +162,12 @@ void codegen_from_global_to_stack(const char *identifier, int size, struct CPCon
     compile_memcpy(dst, src, size, context);
 }
 
-const char *regs[] = {
+void codegen_get_stackframe_position(enum Register reg, int stackframe_phase, struct CPContext *context) {
+    _fputs3(context->fd_text, "lea ", codegen_register(reg), ", ");
+    _fputsi(context->fd_text, "[rbp + ", stackframe_phase, "]\n");
+}
+
+const char *codegen_call_arguments_registers[] = {
     "rdi",
     "rsi",
     "rdx",
@@ -119,6 +175,33 @@ const char *regs[] = {
     "r8",
     "r9"
 };
+
+void codegen_call_arguments_push(int n, struct CPContext *context) {
+    if (n > sizeof(codegen_call_arguments_registers) / sizeof(codegen_call_arguments_registers[0])) {
+        posix_exit(3);
+    }
+     for (int i = 0; i < n; i++) {
+        _fputs3(context->fd_text, "push ", codegen_call_arguments_registers[i], "\n");
+    }
+}
+
+void codegen_call_arguments_restore(int n, struct CPContext *context) {
+    if (n > sizeof(codegen_call_arguments_registers) / sizeof(codegen_call_arguments_registers[0])) {
+        posix_exit(3);
+    }
+    for (int i = 0; i < n; i++) {
+        _fputs3(context->fd_text, "mov ", codegen_call_arguments_registers[i], ", ");
+        _fputsi(context->fd_text, "[rsp - ", WORD * (i + 2), "]\n");
+    }
+}
+
+void codegen_call_reg(enum Register reg, struct CPContext *context) {
+    _fputs3(context->fd_text, "call ", codegen_register(reg), "\n");
+}
+
+void codegen_call_label(const char *label, struct CPContext *context) {
+    _fputs3(context->fd_text, "call ", label, "\n");
+}
 
 int align_to_word(int x) {
     return (x + WORD - 1) / WORD * WORD;
@@ -132,8 +215,8 @@ void generate_test_function(struct CPContext *context, struct Settings *settings
     int idx = context->branch_index;
     context->branch_index++;
     for (int i = 0; i < vsize(&context->test_names); i++) {
-        _fputs3(context->fd_text, "call ", context->test_names.ptr[i], "\n");
-        codegen_jump_ifnonzero("rax", _concat("_L", _itoa(idx)), context);
+        codegen_call_label(context->test_names.ptr[i], context);
+        codegen_jump_ifnonzero(REG_A, _concat("_L", _itoa(idx)), context);
     }
     codegen_syscall("0x3c", "0", context);
     codegen_label(_concat("_L", _itoa(idx)), context);
@@ -337,8 +420,8 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
 
         sz += (this->propagate_allocator != NULL);
 
+        codegen_call_arguments_push(sz, context);
         for (int i = 0; i < sz; i++) {
-            _fputs3(context->fd_text, "push ", regs[i], "\n");
             struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
             if (this->propagate_allocator) {
                 if (i == 0) {
@@ -363,7 +446,7 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
 
     struct TypeNode *_type = compile_node(block, context);
     
-    codegen_stack_popword("rax", context);
+    codegen_stack_popword(REG_A, context);
     codegen_stack_shift(-context->sf_pos, context);
     for (int i = 0; i < sz; i++) {
         _free(context->variables.ptr[i]);
@@ -403,8 +486,8 @@ struct TypeNode *compile_if(struct Node *node, struct If *this, struct CPContext
     for (int i = 0; i < sz; i++) {
         codegen_label(_concat("_L", _itoa(idx + i)), context);
         compile_node(this->condition_list.ptr[i], context);
-        codegen_stack_popword("rax", context);
-        codegen_jump_ifzero("rax", _concat("_L", _itoa(idx + i + 1)), context);
+        codegen_stack_popword(REG_A, context);
+        codegen_jump_ifzero(REG_A, _concat("_L", _itoa(idx + i + 1)), context);
         struct TypeNode *_type2 = compile_node(this->block_list.ptr[i], context);
         if (_type && !type_equal(_type, _type2, context)) {
             error_semantic("If branches types do not equal", node);
@@ -439,8 +522,8 @@ struct TypeNode *compile_while(struct Node *node, struct While *this, struct CPC
     vpush(&context->loop_labels, label_info);
     codegen_label(_concat("_L", _itoa(idx)), context);
     compile_node(this->condition, context);
-    codegen_stack_popword("rax", context);
-    codegen_jump_ifzero("rax", _concat("_L", _itoa(idx + 1)), context);
+    codegen_stack_popword(REG_A, context);
+    codegen_jump_ifzero(REG_A, _concat("_L", _itoa(idx + 1)), context);
     compile_node(this->block, context);
     codegen_jump(_concat("_L", _itoa(idx)), context);
     codegen_label(_concat("_L", _itoa(idx + 1)), context);
@@ -775,7 +858,7 @@ void compile_movement(struct Node *node, struct Movement *this, struct CPContext
     context->sf_pos += WORD;
 
     int tsize = align_to_word(type_size(_type2, context));
-    codegen_stack_popword("rax", context);
+    codegen_stack_popword(REG_A, context);
     const char *dst = "[rax]";
     const char *src = _concat3("[rsp - ", _itoa(tsize + WORD), "]");
     compile_memcpy(dst, src, type_size(_type2, context), context);
@@ -789,8 +872,8 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
             error_semantic("Can't take address of function", node);
         }
         _type = function_info->type;
-        codegen_move("rax", function_info->name_back, context);
-        codegen_stack_pushword("rax", context);
+        codegen_move_labelreg(REG_A, function_info->name_back, context);
+        codegen_stack_pushword(REG_A, context);
         return _type;
     }
     struct VariableInfo *var_info = context_find_variable(context, this->identifier);
@@ -806,11 +889,11 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
     }
     if (this->address) {
         if (var_info) {
-            _fputsi(context->fd_text, "lea rax, [rbp + ", var_info->sf_phase, "]\n");
-            codegen_stack_pushword("rax", context);
+            codegen_get_stackframe_position(REG_A, var_info->sf_phase, context);
+            codegen_stack_pushword(REG_A, context);
         }
         else {
-            codegen_stack_pushword(global_var_info->name, context);
+            codegen_stack_pushlabel(global_var_info->name, context);
         }
         _type->degree++;
     }
@@ -826,26 +909,20 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
 }
 
 struct TypeNode *compile_integer(struct Node *node, struct Integer *this, struct CPContext *context) {
-    codegen_stack_pushword(_itoa(this->value), context);
+    codegen_stack_pushint(this->value, context);
     return context->node_int;
 }
 
 struct TypeNode *compile_char(struct Node *node, struct Char *this, struct CPContext *context) {
-    codegen_stack_pushword(_itoa(this->value), context);
+    codegen_stack_pushint(this->value, context);
     return context->node_char;
 }
 
 struct TypeNode *compile_string(struct Node *node, struct String *this, struct CPContext *context) {
     int idx = context->data_index;
     context->data_index++;
-    _fputsi(context->fd_data, "_S", idx, ":\n");
-    _fputs(context->fd_data, "db ");
-    for (int i = 0; i < _strlen(this->value); i++) {
-        _fputi(context->fd_data, this->value[i]);
-        _fputs(context->fd_data, ", ");
-    }
-    _fputs(context->fd_data, "0\n");
-    codegen_stack_pushword(_concat("_S", _itoa(idx)), context);
+    codegen_buffer_string(_concat("_S", _itoa(idx)), this->value, context);
+    codegen_stack_pushlabel(_concat("_S", _itoa(idx)), context);
     
     struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
     struct TypeChar *_type = (struct TypeChar*)_malloc(sizeof(struct TypeChar));
@@ -856,6 +933,7 @@ struct TypeNode *compile_string(struct Node *node, struct String *this, struct C
 }
 
 struct TypeNode *compile_array(struct Node *node, struct Array *this, struct CPContext *context) {
+    error_semantic("Array is not supported currently", node);
     int size = vsize(&this->values);
     if (size == 0) {
         error_semantic("Array has to be non-empty", node);
@@ -872,11 +950,11 @@ struct TypeNode *compile_array(struct Node *node, struct Array *this, struct CPC
         if (!type_equal(_type, _type2, context)) {
             error_semantic("Array elements have to have same type", node);
         }
-        codegen_move("rax", _concat("_B", _itoa(idx)), context);
-        codegen_stack_popword("rbx", context);
+        codegen_move_labelreg(REG_A, _concat("_B", _itoa(idx)), context);
+        codegen_stack_popword(REG_B, context);
         _fputsi(context->fd_text, "mov [rax + ", i * 8, "], rbx\n");
     }
-    codegen_stack_pushword(_concat("_B", _itoa(idx)), context);
+    codegen_stack_pushlabel(_concat("_B", _itoa(idx)), context);
     _type = type_copy_node(_type);
     _type->degree++;
     return _type;
@@ -944,7 +1022,7 @@ struct TypeNode *compile_lambda_function(struct Node *node, struct LambdaFunctio
         error_semantic("Function return type does not equal to the type of the function body", node);
     }
     
-    codegen_stack_pushword(identifier_back, context);
+    codegen_stack_pushlabel(identifier_back, context);
 
     return type;
 }
@@ -955,27 +1033,19 @@ struct TypeNode *compile_sizeof(struct Node *node, struct Sizeof *this, struct C
     }
 
     int size = type_size(this->type, context);
-    codegen_stack_pushword(_itoa(size), context);
-    struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
-    struct TypeInt *_type = (struct TypeInt*)_malloc(sizeof(struct TypeInt));
-    type->node_ptr = _type;
-    type->node_type = TypeNodeInt;
-    type->degree = 0;
-    return type;
+    codegen_stack_pushlabel(_itoa(size), context);
+    return context->node_int;
 }
 
 void compile_call_finish(struct CPContext *context, int sz) {
-    codegen_stack_shift(WORD * (sz + 1), context);
-    context->sf_pos += WORD * (sz + 1);
+    codegen_stack_shift(8 * (sz + 1), context);
+    context->sf_pos += 8 * (sz + 1);
 
-    for (int i = 0; i < sz; i++) {
-        _fputs3(context->fd_text, "mov ", regs[i], ", ");
-        _fputsi(context->fd_text, "[rsp - ", WORD * (i + 2), "]\n");
-    }
+    codegen_call_arguments_restore(sz, context);
 
-    codegen_stack_popword("rax", context);
-    _fputs(context->fd_text, "call rax\n");
-    codegen_stack_pushword("rax", context);
+    codegen_stack_popword(REG_A, context);
+    codegen_call_reg(REG_A, context);
+    codegen_stack_pushword(REG_A, context);
 }
 
 struct TypeNode *compile_function_call(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
@@ -1042,17 +1112,17 @@ struct TypeNode *compile_function_call(struct Node *node, struct FunctionCall *t
 
 struct TypeNode *compile_method_call(struct Node *node, struct MethodCall *this, struct CPContext *context) {
     codegen_stack_shift(-8, context);
-    context->sf_pos -= WORD;
+    context->sf_pos -= 8;
     struct TypeNode *type_caller = compile_node(this->caller, context);
     codegen_stack_shift(-8, context);
-    context->sf_pos -= WORD;
+    context->sf_pos -= 8;
 
     struct TypeNode *type_function;
     struct FunctionInfo *function_info = context_find_method(context, this->function, type_caller);
     if (function_info) {
         type_function = function_info->type;
-        _fputs3(context->fd_text, "mov rax, ", function_info->name_back, "\n");
-        _fputs(context->fd_text, "mov [rsp + 8], rax\n");
+        codegen_move_labelreg(REG_A, function_info->name_back, context);
+        codegen_stack_pushword_phase(REG_A, 8, context);
     }
     else {
         error_semantic("Method was not declared", node);
@@ -1084,7 +1154,7 @@ struct TypeNode *compile_dereference(struct Node *node, struct Dereference *this
     _type->degree--;
     int _type_size = type_size(_type, context);
 
-    codegen_stack_popword("rax", context);
+    codegen_stack_popword(REG_A, context);
     const char *dst = _concat3("[rsp - ", _itoa(align_to_word(_type_size)), "]");
     const char *src = "[rax]";
     compile_memcpy(dst, src, align_to_word(_type_size), context);
@@ -1106,7 +1176,7 @@ struct TypeNode *compile_index(struct Node *node, struct Index *this, struct CPC
     
     codegen_stack_shift(8, context);
     context->sf_pos += 8;
-    _fputs(context->fd_text, "mov rax, [rsp - 16]\n");
+    codegen_stack_popword_phase(REG_A, -16, context);
     _type1->degree--;
     int _type_size = type_size(_type1, context);
     _fputsi(context->fd_text, "mov rbx, ", _type_size, "\n");
@@ -1114,6 +1184,9 @@ struct TypeNode *compile_index(struct Node *node, struct Index *this, struct CPC
     _fputs(context->fd_text, "mul rbx\n");
     _fputs(context->fd_text, "add rax, [rsp - 8]\n");
     if (!this->address) {
+        // const char *dst = _concat3("[rsp - ", _itoa(align_to_word(_type_size)), "]");
+        // const char *src = "[rax]";
+        // compile_memcpy(dst, src, align_to_word(_type_size), context);
         if (_type_size == 1) {
             _fputs(context->fd_text, "mov rbx, 0\n");
             _fputs(context->fd_text, "mov bl, [rax]\n");
@@ -1124,13 +1197,12 @@ struct TypeNode *compile_index(struct Node *node, struct Index *this, struct CPC
         else {
             error_semantic("Not implemented", node);
         }
-        codegen_stack_pushword("rbx", context);
+        codegen_stack_pushword(REG_B, context);
         _type1 = type_copy_node(_type1);
         _type1->degree--;
     }
     else {
-        _fputs(context->fd_text, "lea rbx, [rax]\n");
-        codegen_stack_pushword("rbx", context);
+        codegen_stack_pushword(REG_A, context);
     }
     return _type1;
 }
@@ -1158,17 +1230,15 @@ struct TypeNode *compile_get_field(struct Node *node, struct GetField *this, str
         error_semantic("Structure doesn't have corresponding field", node);
     }
     
-    codegen_stack_popword("rax", context);
+    codegen_stack_popword(REG_A, context);
     if (!this->address) {    
-        _fputsi(context->fd_text, "mov rbx, [rax + ", phase, "]\n");
-        codegen_stack_pushword("rbx", context);
         const char *dst = _concat3("[rsp - ", _itoa(align_to_word(type_size(field_type, context))), "]");
         const char *src = _concat3("[rax + ", _itoa(phase), "]");
         compile_memcpy(dst, src, align_to_word(type_size(field_type, context)), context);
     }
     else {
         _fputsi(context->fd_text, "lea rbx, [rax + ", phase, "]\n");
-        codegen_stack_pushword("rbx", context);
+        codegen_stack_pushword(REG_B, context);
         field_type = type_copy_node(field_type);
         field_type->degree++;
     }
@@ -1214,7 +1284,7 @@ struct TypeNode *compile_and(struct Node *node, struct BinaryOperator *this, str
     _fputs(context->fd_text, "sub qword [rsp - 16], 0\n");
     _fputs(context->fd_text, "setne bl\n");
     _fputs(context->fd_text, "and rax, rbx\n");
-    codegen_stack_pushword("rax", context);
+    codegen_stack_pushword(REG_A, context);
     return context->node_int;
 }
 
@@ -1227,7 +1297,7 @@ struct TypeNode *compile_or(struct Node *node, struct BinaryOperator *this, stru
     _fputs(context->fd_text, "sub qword [rsp - 16], 0\n");
     _fputs(context->fd_text, "setne bl\n");
     _fputs(context->fd_text, "or rax, rbx\n");
-    codegen_stack_pushword("rax", context);
+    codegen_stack_pushword(REG_A, context);
     return context->node_int;
 }
 
@@ -1236,7 +1306,7 @@ struct TypeNode *compile_not(struct Node *node, struct BinaryOperator *this, str
     _fputs(context->fd_text, "xor rbx, rbx\n");
     _fputs(context->fd_text, "sub qword [rsp - 16], 0\n");
     _fputs(context->fd_text, "sete bl\n");
-    codegen_stack_pushword("rbx", context);
+    codegen_stack_pushword(REG_B, context);
     return context->node_int;
 }
 
@@ -1244,7 +1314,7 @@ struct TypeNode *compile_bitwise_and(struct Node *node, struct BinaryOperator *t
     struct TypeNode *_type = compile_arithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "and rax, [rsp - 16]\n");
-    codegen_stack_pushword("rax", context);
+    codegen_stack_pushword(REG_A, context);
     return _type;
 }
 
@@ -1252,7 +1322,7 @@ struct TypeNode *compile_bitwise_or(struct Node *node, struct BinaryOperator *th
     struct TypeNode *_type = compile_arithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "or rax, [rsp - 16]\n");
-    codegen_stack_pushword("rax", context);
+    codegen_stack_pushword(REG_A, context);
     return _type;
 }
 
@@ -1260,7 +1330,7 @@ struct TypeNode *compile_bitwise_xor(struct Node *node, struct BinaryOperator *t
     struct TypeNode *_type = compile_arithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "xor rax, [rsp - 16]\n");
-    codegen_stack_pushword("rax", context);
+    codegen_stack_pushword(REG_A, context);
     return _type;
 }
 
@@ -1268,7 +1338,7 @@ struct TypeNode *compile_bitwise_not(struct Node *node, struct BinaryOperator *t
     struct TypeNode *_type = compile_arithmetic(node, this, context);
     _fputs(context->fd_text, "mov rax, [rsp - 16]\n");
     _fputs(context->fd_text, "not rax\n");
-    codegen_stack_pushword("rax", context);
+    codegen_stack_pushword(REG_A, context);
     return _type;
 }
 
@@ -1277,7 +1347,7 @@ struct TypeNode *compile_bitwise_shift_left(struct Node *node, struct BinaryOper
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "mov rcx, [rsp - 16]\n");
     _fputs(context->fd_text, "shl rax, cl\n");
-    codegen_stack_pushword("rax", context);
+    codegen_stack_pushword(REG_A, context);
     return _type;
 }
 
@@ -1286,7 +1356,7 @@ struct TypeNode *compile_bitwise_shift_right(struct Node *node, struct BinaryOpe
     _fputs(context->fd_text, "mov rax, [rsp - 8]\n");
     _fputs(context->fd_text, "mov rcx, [rsp - 16]\n");
     _fputs(context->fd_text, "shr rax, cl\n");
-    codegen_stack_pushword("rax", context);
+    codegen_stack_pushword(REG_A, context);
     return _type;
 }
 
