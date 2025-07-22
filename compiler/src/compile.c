@@ -150,6 +150,23 @@ void compile_memcpy(const char *dst, const char *src, int sz, struct CPContext *
     }
 }
 
+void compile_memzero(const char *dst, int sz, struct CPContext *context) {
+    if (sz == 1) {
+        _fputs3(context->fd_text, "mov byte", dst, ", 0\n");
+    }
+    else if (sz == 8) {
+        _fputs3(context->fd_text, "mov qword", dst, ", 0\n");
+    }
+    else {
+        _fputs(context->fd_text, "mov rsi, rax\n");
+        _fputs3(context->fd_text, "lea rdi, ", dst, "\n");
+        _fputs(context->fd_text, "mov rax, 0\n");
+        _fputsi(context->fd_text, "mov rcx, ", sz, "\n");
+        _fputs(context->fd_text, "rep stosb\n");
+        _fputs(context->fd_text, "mov rax, rsi\n");
+    }
+}
+
 void codegen_from_stackframe_to_stack(int stackframe_phase, int size, struct CPContext *context) {    
     const char *src = _concat3("[rbp + ", _itoa(stackframe_phase), "]");
     const char *dst = _concat3("[rsp - ", _itoa(size), "]");
@@ -1234,7 +1251,8 @@ struct TypeNode *compile_get_field(struct Node *node, struct GetField *this, str
     if (!this->address) {    
         const char *dst = _concat3("[rsp - ", _itoa(align_to_word(type_size(field_type, context))), "]");
         const char *src = _concat3("[rax + ", _itoa(phase), "]");
-        compile_memcpy(dst, src, align_to_word(type_size(field_type, context)), context);
+        compile_memzero(dst, align_to_word(type_size(field_type, context)), context);
+        compile_memcpy(dst, src, type_size(field_type, context), context);
     }
     else {
         _fputsi(context->fd_text, "lea rbx, [rax + ", phase, "]\n");
