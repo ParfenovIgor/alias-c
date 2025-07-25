@@ -67,6 +67,7 @@ struct CPContext {
     struct TypeNode *node_allocator;
 };
 
+struct CPContext          *context_init();
 struct GlobalVariableInfo *context_find_global_variable(struct CPContext*, const char*);
 struct VariableInfo       *context_find_variable       (struct CPContext*, const char*);
 struct TypeInfo           *context_find_type           (struct CPContext*, const char*);

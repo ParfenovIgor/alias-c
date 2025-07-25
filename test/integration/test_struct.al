@@ -16,11 +16,11 @@ func ^._start() -> #V {
         e := 43
     }
 
-    eval puti_(str1&->a = 'a')
-    eval puti_(str1&->b = 'b')
-    eval puti_(str1&->c = 11)
-    eval puti_(str1&->d = 'd')
-    eval puti_(str1&->e = 43)
+    eval puti_(str1&->a = 'a' as #I)
+    eval puti_(str1&->b = 'b' as #I)
+    eval puti_(str1&->c = 11 as #I)
+    eval puti_(str1&->d = 'd' as #I)
+    eval puti_(str1&->e = 43 as #I)
 
     def str2 #Str := .{
         a := 'A',
@@ -30,19 +30,19 @@ func ^._start() -> #V {
         e := 143
     }
 
-    eval puti_(str2&->a = 'A')
-    eval puti_(str2&->b = 'B')
-    eval puti_(str2&->c = 111)
-    eval puti_(str2&->d = 'D')
-    eval puti_(str2&->e = 143)
+    eval puti_(str2&->a = 'A' as #I)
+    eval puti_(str2&->b = 'B' as #I)
+    eval puti_(str2&->c = 111 as #I)
+    eval puti_(str2&->d = 'D' as #I)
+    eval puti_(str2&->e = 143 as #I)
 
     str2 := str1
     
-    eval puti_(str2&->a = 'a')
-    eval puti_(str2&->b = 'b')
-    eval puti_(str2&->c = 11)
-    eval puti_(str2&->d = 'd')
-    eval puti_(str2&->e = 43)
+    eval puti_(str2&->a = 'a' as #I)
+    eval puti_(str2&->b = 'b' as #I)
+    eval puti_(str2&->c = 11 as #I)
+    eval puti_(str2&->d = 'd' as #I)
+    eval puti_(str2&->e = 43 as #I)
 
     def t1 := .{
         a := 12,
@@ -50,13 +50,13 @@ func ^._start() -> #V {
         c := 'C'
     }
 
-    eval puti_(t1&->a = 12)
-    eval puti_(t1&->b&->a = 'a')
-    eval puti_(t1&->b&->b = 'b')
-    eval puti_(t1&->b&->c = 11)
-    eval puti_(t1&->b&->d = 'd')
-    eval puti_(t1&->b&->e = 43)
-    eval puti_(t1&->c = 'C')
+    eval puti_(t1&->a = 12 as #I)
+    eval puti_(t1&->b&->a = 'a' as #I)
+    eval puti_(t1&->b&->b = 'b' as #I)
+    eval puti_(t1&->b&->c = 11 as #I)
+    eval puti_(t1&->b&->d = 'd' as #I)
+    eval puti_(t1&->b&->e = 43 as #I)
+    eval puti_(t1&->c = 'C' as #I)
 
     def str3 := t1&->b
     def str4 := str3&

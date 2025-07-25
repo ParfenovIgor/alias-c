@@ -3,6 +3,55 @@
 #include <context.h>
 #include <string.h>
 
+struct CPContext *context_init() {
+    struct CPContext *context = (struct CPContext*)_malloc(sizeof(struct CPContext));
+    context->variables = vnew();
+    context->global_variables = vnew();
+    context->types = vnew();
+    context->functions = vnew();
+    context->block_labels = vnew();
+    context->loop_labels = vnew();
+    context->sf_pos = 0;
+    context->function_index = 0;
+    context->branch_index = 0;
+    context->data_index = 0;
+    context->bss_index = 0;
+    context->test_names = vnew();
+    context->testing = false;
+    context->header = false;
+
+    {
+        context->node_void = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+        struct TypeVoid *_type = (struct TypeVoid*)_malloc(sizeof(struct TypeVoid));
+        context->node_void->node_ptr = _type;
+        context->node_void->node_type = TypeNodeVoid;
+        context->node_void->degree = 0;
+    }
+    {
+        context->node_int = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+        struct TypeInt *_type = (struct TypeInt*)_malloc(sizeof(struct TypeInt));
+        context->node_int->node_ptr = _type;
+        context->node_int->node_type = TypeNodeInt;
+        context->node_int->degree = 0;
+    }
+    {
+        context->node_char = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+        struct TypeChar *_type = (struct TypeChar*)_malloc(sizeof(struct TypeChar));
+        context->node_char->node_ptr = _type;
+        context->node_char->node_type = TypeNodeChar;
+        context->node_char->degree = 0;
+    }
+    {
+        context->node_allocator = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+        struct TypeIdentifier *_type = (struct TypeIdentifier*)_malloc(sizeof(struct TypeIdentifier));
+        context->node_allocator->node_ptr = _type;
+        context->node_allocator->node_type = TypeNodeIdentifier;
+        context->node_allocator->degree = 1;
+        _type->identifier = _strdup("TestAllocator");
+    }
+    return context;
+}
+
 struct GlobalVariableInfo *context_find_global_variable(struct CPContext *context, const char *identifier) {
     int sz = vsize(&context->global_variables);
     for (int i = sz - 1; i >= 0; i--) {
