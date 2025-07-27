@@ -9,11 +9,11 @@ void help() {
     _puts("Syntax: calias [flags] file [flags]");
     _puts("Flags:");
     _puts("  -ls                       Run language server.");
-    _puts("  -s                        Print states collected during validation.");
     _puts("  -c                        Compile program to Asm code.");
     _puts("  -a                        Compile program and assemble it using nasm to object file.");
     _puts("  -l                        Compile, assemble and link program using gcc to executable file.");
     _puts("  -t                        Compile to testing.");
+    _puts("  -b {x86_64_asm, c}        Set backend. The default is x86_64_asm");
     _puts("  -i <name> <path>          Add include directory.");
     _puts("  -o <file>                 Set output file name.");
 }
@@ -26,6 +26,7 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
     settings->assemble = false;
     settings->link = false;
     settings->testing = false;
+    settings->backend = x86_64_asm;
     settings->include_names = vnew();
     settings->include_paths = vnew();
     settings->filename_input = NULL;
@@ -70,6 +71,20 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
         }
         else if (_strcmp(arg, "-t") == 0) {
             settings->testing = true;
+        }
+        else if (_strcmp(arg, "-b") == 0) {
+            if (i + 1 >= argc) {
+                _puts("Backend expected after -b flag");
+                return NULL;
+            }
+            if (_strcmp(argv[i + 1], "x86_64_asm") == 0) settings->backend = x86_64_asm;
+            else if (_strcmp(argv[i + 1], "c") == 0) settings->backend = c;
+            else {
+                _puts("Undefined backend after -b flag");
+                return NULL;
+            }
+            vpush(&settings->include_names, _strdup(argv[i + 1]));
+            i += 2;
         }
         else {
             settings->filename_input = _strdup(arg);

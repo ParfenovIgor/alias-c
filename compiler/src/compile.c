@@ -4,6 +4,7 @@
 #include <process.h>
 #include <compile.h>
 #include <settings.h>
+#include <codegen.h>
 #include <vector.h>
 #include <context.h>
 #include <exception.h>
@@ -12,24 +13,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define WORD 8
-
-#include <codegen.h>
+int align_to_word(int x) {
+    return (x + WORD - 1) / WORD * WORD;
+}
 
 struct TypeNode *compile_node(struct Node *node, struct CPContext *context);
 
 void generate_test_function(struct CPContext *context, struct Settings *settings) {
-    codegen_global("test", context);
-    codegen_label("test", context);
+    context->codegen->def_global("test", context);
+    context->codegen->label("test", context);
     int idx = context->branch_index;
     context->branch_index++;
     for (int i = 0; i < vsize(&context->test_names); i++) {
-        codegen_call_label(context->test_names.ptr[i], context);
-        codegen_jump_ifnonzero(REG_A, _concat("_L", _itoa(idx)), context);
+        context->codegen->call_label(context->test_names.ptr[i], context);
+        context->codegen->jump_ifnonzero(REG_A, _concat("_L", _itoa(idx)), context);
     }
-    codegen_syscall("0x3c", "0", context);
-    codegen_label(_concat("_L", _itoa(idx)), context);
-    codegen_syscall("0x3c", "1", context);
+    context->codegen->syscall("0x3c", "0", context);
+    context->codegen->label(_concat("_L", _itoa(idx)), context);
+    context->codegen->syscall("0x3c", "1", context);
 }
 
 void compile_init_descriptors(struct Node *node, struct CPContext *context) {
@@ -78,6 +79,12 @@ void compile_flush_descriptors(struct Node *node, const char *filename_output, s
 void compile_process(struct Node *node, struct Settings *settings) {
     struct CPContext *context = context_init();   
     context->testing = settings->testing;
+    if (settings->backend == x86_64_asm) {
+        context->codegen = x86_64_codegen_init();
+    }
+    else {
+        context->codegen = c_codegen_init();
+    }
     compile_init_descriptors(node, context);
     compile_node(node, context);
     if (settings->testing) {
@@ -115,7 +122,7 @@ struct TypeNode *compile_block(struct Node *node, struct Block *this, struct CPC
     label_info->type = NULL;
     label_info->sf_pos = context->sf_pos;
     vpush(&context->block_labels, label_info);
-    codegen_label(label_info->name_begin, context);
+    context->codegen->label(label_info->name_begin, context);
 
     int old_cnt_var = vsize(&context->variables);
     int old_cnt_functions = vsize(&context->functions);
@@ -126,7 +133,7 @@ struct TypeNode *compile_block(struct Node *node, struct Block *this, struct CPC
 
     int cnt_var = vsize(&context->variables);
     int cnt_functions = vsize(&context->functions);
-    codegen_stack_shift(label_info->sf_pos - context->sf_pos, context);
+    context->codegen->stack_shift(label_info->sf_pos - context->sf_pos, context);
     context->sf_pos = label_info->sf_pos;
     for (int i = 0; i < cnt_var - old_cnt_var; i++) {
         vpop(&context->variables);
@@ -134,7 +141,7 @@ struct TypeNode *compile_block(struct Node *node, struct Block *this, struct CPC
     for (int i = 0; i < cnt_functions - old_cnt_functions; i++) {
         vpop(&context->functions);
     }
-    codegen_label(label_info->name_end, context);
+    context->codegen->label(label_info->name_end, context);
 
     struct TypeNode *type;
     if (!label_info->type) {
@@ -157,9 +164,9 @@ void compile_include(struct Node *node, struct Include *this, struct CPContext *
 }
 
 struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSignature *this, struct CPContext *context, struct Node *block, const char *identifier_back, const char *identifier_end) {
-    codegen_jump(identifier_end, context);
-    codegen_label(identifier_back, context);
-    codegen_function_prologue(context);
+    context->codegen->jump(identifier_end, context);
+    context->codegen->label(identifier_back, context);
+    context->codegen->function_prologue(context);
 
     struct Vector variables_tmp = context->variables;
     context->variables = vnew();
@@ -180,7 +187,7 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
 
         sz += (this->propagate_allocator != NULL);
 
-        codegen_call_arguments_push(sz, context);
+        context->codegen->call_arguments_push(sz, context);
         for (int i = 0; i < sz; i++) {
             struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
             if (this->propagate_allocator) {
@@ -206,8 +213,8 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
 
     struct TypeNode *_type = compile_node(block, context);
     
-    codegen_stack_popword(REG_A, context);
-    codegen_stack_shift(-context->sf_pos, context);
+    context->codegen->stack_popword(REG_A, context);
+    context->codegen->stack_shift(-context->sf_pos, context);
     for (int i = 0; i < sz; i++) {
         _free(context->variables.ptr[i]);
     }
@@ -215,8 +222,8 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
     context->variables = variables_tmp;
     context->sf_pos = sf_pos_tmp;
 
-    codegen_function_epilogue(context);
-    codegen_label(identifier_end, context);
+    context->codegen->function_epilogue(context);
+    context->codegen->label(identifier_end, context);
 
     return _type;
 }
@@ -227,7 +234,7 @@ void compile_test(struct Node *node, struct Test *this, struct CPContext *contex
     char *identifier_end = _concat("_T", this->name);
 
     if (context->header) {
-        codegen_extern(this->name, context);
+        context->codegen->def_extern(this->name, context);
         return;
     }
 
@@ -245,24 +252,24 @@ struct TypeNode *compile_if(struct Node *node, struct If *this, struct CPContext
     }
     struct TypeNode *_type = NULL;
     for (int i = 0; i < sz; i++) {
-        codegen_label(_concat("_L", _itoa(idx + i)), context);
+        context->codegen->label(_concat("_L", _itoa(idx + i)), context);
         compile_node(this->condition_list.ptr[i], context);
-        codegen_stack_popword(REG_A, context);
-        codegen_jump_ifzero(REG_A, _concat("_L", _itoa(idx + i + 1)), context);
+        context->codegen->stack_popword(REG_A, context);
+        context->codegen->jump_ifzero(REG_A, _concat("_L", _itoa(idx + i + 1)), context);
         struct TypeNode *_type2 = compile_node(this->block_list.ptr[i], context);
         if (_type && !type_equal(_type, _type2, context)) {
             error_semantic("If branches types do not equal", node);
         }
         if (!_type) _type = _type2;
-        codegen_jump(_concat("_L", _itoa(last)), context);
+        context->codegen->jump(_concat("_L", _itoa(last)), context);
     }
-    codegen_label(_concat("_L", _itoa(idx + sz)), context);
+    context->codegen->label(_concat("_L", _itoa(idx + sz)), context);
     if (this->else_block) {
         struct TypeNode *_type2 = compile_node(this->else_block, context);
         if (_type && !type_equal(_type, _type2, context)) {
             error_semantic("If branches types do not equal", node);
         }
-        codegen_label(_concat("_L", _itoa(idx + sz + 1)), context);
+        context->codegen->label(_concat("_L", _itoa(idx + sz + 1)), context);
     }
     else if (!type_equal(_type, context->node_void, context)){
         error_semantic("If that returns non-void has to have else block", node);
@@ -281,18 +288,18 @@ struct TypeNode *compile_while(struct Node *node, struct While *this, struct CPC
     label_info->type = NULL;
     label_info->sf_pos = context->sf_pos;
     vpush(&context->loop_labels, label_info);
-    codegen_label(_concat("_L", _itoa(idx)), context);
+    context->codegen->label(_concat("_L", _itoa(idx)), context);
     compile_node(this->condition, context);
-    codegen_stack_popword(REG_A, context);
-    codegen_jump_ifzero(REG_A, _concat("_L", _itoa(idx + 1)), context);
+    context->codegen->stack_popword(REG_A, context);
+    context->codegen->jump_ifzero(REG_A, _concat("_L", _itoa(idx + 1)), context);
     compile_node(this->block, context);
-    codegen_jump(_concat("_L", _itoa(idx)), context);
-    codegen_label(_concat("_L", _itoa(idx + 1)), context);
+    context->codegen->jump(_concat("_L", _itoa(idx)), context);
+    context->codegen->label(_concat("_L", _itoa(idx + 1)), context);
     struct TypeNode *type_else = NULL;
     if (this->else_block) {
         type_else = compile_node(this->else_block, context);
     }
-    codegen_label(_concat("_L", _itoa(idx + 2)), context);
+    context->codegen->label(_concat("_L", _itoa(idx + 2)), context);
 
     struct TypeNode *type;
     if ((!label_info->type || type_equal(label_info->type, context->node_void, context)) && 
@@ -368,11 +375,11 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
 
     if (this->external) {
         if (context->header) {
-            codegen_extern(identifier_back, context);
+            context->codegen->def_extern(identifier_back, context);
             return;
         }
         else {
-            codegen_global(identifier_back, context);
+            context->codegen->def_global(identifier_back, context);
         }
     }
 
@@ -405,7 +412,7 @@ void compile_prototype(struct Node *node, struct Prototype *this, struct CPConte
     else{
         identifier = this->name;
     }
-    codegen_extern(identifier, context);
+    context->codegen->def_extern(identifier, context);
 
     struct FunctionInfo *function_info = (struct FunctionInfo*)_malloc(sizeof(struct FunctionInfo));
     function_info->name_front = identifier;
@@ -452,10 +459,10 @@ void compile_global_definition(struct Node *node, struct GlobalDefinition *this,
     vpush(&context->global_variables, global_var_info);
 
     if (this->value) {
-        codegen_buffer_int(this->identifier, ((struct Integer*)(this->value->node_ptr))->value, context);
+        context->codegen->buffer_int(this->identifier, ((struct Integer*)(this->value->node_ptr))->value, context);
     }
     else {
-        codegen_buffer_zero(this->identifier, type_size(this->type, context), context);
+        context->codegen->buffer_zero(this->identifier, type_size(this->type, context), context);
     }
 }
 
@@ -488,7 +495,7 @@ void compile_definition(struct Node *node, struct Definition *this, struct CPCon
     var_info->sf_phase = context->sf_pos - sz;
     vpush(&context->variables, var_info);
     context->sf_pos -= sz;
-    codegen_stack_shift(-sz, context);
+    context->codegen->stack_shift(-sz, context);
 }
 
 void compile_type_definition(struct Node *node, struct TypeDefinition *this, struct CPContext *context) {
@@ -518,10 +525,10 @@ void compile_return(struct Node *node, struct Return *this, struct CPContext *co
     }
 
     int tsize = type_size(_type, context);
-    codegen_stackframe_memcpy(label_info->sf_pos - align_to_word(tsize), context->sf_pos - align_to_word(tsize), tsize, context);
+    context->codegen->stackframe_memcpy(label_info->sf_pos - align_to_word(tsize), context->sf_pos - align_to_word(tsize), tsize, context);
 
-    codegen_stack_shift(label_info->sf_pos - context->sf_pos, context);
-    codegen_jump(label_info->name_end, context);
+    context->codegen->stack_shift(label_info->sf_pos - context->sf_pos, context);
+    context->codegen->jump(label_info->name_end, context);
 }
 
 void compile_break(struct Node *node, struct Break *this, struct CPContext *context) {
@@ -540,10 +547,10 @@ void compile_break(struct Node *node, struct Break *this, struct CPContext *cont
     }
 
     int tsize = type_size(_type, context);
-    codegen_stackframe_memcpy(label_info->sf_pos - align_to_word(tsize), context->sf_pos - align_to_word(tsize), tsize, context);
+    context->codegen->stackframe_memcpy(label_info->sf_pos - align_to_word(tsize), context->sf_pos - align_to_word(tsize), tsize, context);
 
-    codegen_stack_shift(label_info->sf_pos - context->sf_pos, context);
-    codegen_jump(label_info->name_end, context);
+    context->codegen->stack_shift(label_info->sf_pos - context->sf_pos, context);
+    context->codegen->jump(label_info->name_end, context);
 }
 
 void compile_continue(struct Node *node, struct Continue *this, struct CPContext *context) {
@@ -551,8 +558,8 @@ void compile_continue(struct Node *node, struct Continue *this, struct CPContext
     if (!label_info) {
         error_semantic("Label was not declared", node);
     }
-    codegen_stack_shift(label_info->sf_pos - context->sf_pos, context);
-    codegen_jump(label_info->name_begin, context);
+    context->codegen->stack_shift(label_info->sf_pos - context->sf_pos, context);
+    context->codegen->jump(label_info->name_begin, context);
 }
 
 struct TypeNode *compile_as(struct Node *node, struct As *this, struct CPContext *context) {
@@ -587,17 +594,17 @@ void compile_assignment(struct Node *node, struct Assignment *this, struct CPCon
 
     int tsize = type_size(_type1, context);
     if (var_info) {
-        codegen_stack_pop_memcpy_stackframe(var_info->sf_phase, tsize, context);
+        context->codegen->stack_pop_memcpy_stackframe(var_info->sf_phase, tsize, context);
     }
     else {
-        codegen_stack_pop_memcpy_label(global_var_info->name, tsize, context);
+        context->codegen->stack_pop_memcpy_label(global_var_info->name, tsize, context);
     }
 }
 
 void compile_movement(struct Node *node, struct Movement *this, struct CPContext *context) {
     struct TypeNode *_type1 = compile_node(this->dst, context);
     if (_type1->degree == 0) error_semantic("Pointer expected in movement", node);
-    codegen_stack_shift(-WORD, context);
+    context->codegen->stack_shift(-WORD, context);
     context->sf_pos -= WORD;
 
     struct TypeNode *_type2 = compile_node(this->src, context);
@@ -607,10 +614,10 @@ void compile_movement(struct Node *node, struct Movement *this, struct CPContext
     }
     _type2->degree--;
 
-    codegen_stack_popword_phase(REG_A, 0, context);
-    codegen_stack_pop_memcpy(REG_A, type_size(_type2, context), context);
+    context->codegen->stack_popword_phase(REG_A, 0, context);
+    context->codegen->stack_pop_memcpy(REG_A, type_size(_type2, context), context);
 
-    codegen_stack_shift(WORD, context);
+    context->codegen->stack_shift(WORD, context);
     context->sf_pos += WORD;
 }
 
@@ -622,8 +629,8 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
             error_semantic("Can't take address of function", node);
         }
         _type = function_info->type;
-        codegen_move_labelreg(REG_A, function_info->name_back, context);
-        codegen_stack_pushword(REG_A, context);
+        context->codegen->move_labelreg(REG_A, function_info->name_back, context);
+        context->codegen->stack_pushword(REG_A, context);
         return _type;
     }
     struct VariableInfo *var_info = context_find_variable(context, this->identifier);
@@ -639,40 +646,40 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
     }
     if (this->address) {
         if (var_info) {
-            codegen_get_stackframe_position(REG_A, var_info->sf_phase, context);
-            codegen_stack_pushword(REG_A, context);
+            context->codegen->get_stackframe_position(REG_A, var_info->sf_phase, context);
+            context->codegen->stack_pushword(REG_A, context);
         }
         else {
-            codegen_stack_pushlabel(global_var_info->name, context);
+            context->codegen->stack_pushlabel(global_var_info->name, context);
         }
         _type->degree++;
     }
     else {
         if (var_info) {
-            codegen_from_stackframe_to_stack(var_info->sf_phase, align_to_word(type_size(_type, context)), context);
+            context->codegen->from_stackframe_to_stack(var_info->sf_phase, align_to_word(type_size(_type, context)), context);
         }
         else {
-            codegen_from_global_to_stack(global_var_info->name, align_to_word(type_size(_type, context)), context);
+            context->codegen->from_global_to_stack(global_var_info->name, align_to_word(type_size(_type, context)), context);
         }
     }
     return _type;
 }
 
 struct TypeNode *compile_integer(struct Node *node, struct Integer *this, struct CPContext *context) {
-    codegen_stack_pushint(this->value, context);
+    context->codegen->stack_pushint(this->value, context);
     return context->node_int;
 }
 
 struct TypeNode *compile_char(struct Node *node, struct Char *this, struct CPContext *context) {
-    codegen_stack_pushint(this->value, context);
+    context->codegen->stack_pushint(this->value, context);
     return context->node_char;
 }
 
 struct TypeNode *compile_string(struct Node *node, struct String *this, struct CPContext *context) {
     int idx = context->data_index;
     context->data_index++;
-    codegen_buffer_string(_concat("_S", _itoa(idx)), this->value, context);
-    codegen_stack_pushlabel(_concat("_S", _itoa(idx)), context);
+    context->codegen->buffer_string(_concat("_S", _itoa(idx)), this->value, context);
+    context->codegen->stack_pushlabel(_concat("_S", _itoa(idx)), context);
     
     struct TypeNode *type = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
     struct TypeChar *_type = (struct TypeChar*)_malloc(sizeof(struct TypeChar));
@@ -708,7 +715,7 @@ struct TypeNode *compile_struct_instance(struct Node *node, struct StructInstanc
         int field_size = type_size(_type, context);
         orig_struct_size += align_to_word(field_size);
         context->sf_pos -= align_to_word(field_size);
-        codegen_stack_shift(-align_to_word(field_size), context);
+        context->codegen->stack_shift(-align_to_word(field_size), context);
         vpush(&type->names, this->names.ptr[i]);
         vpush(&type->types, _type);
         vpush(&type_sizes, (void*)(long)field_size);
@@ -718,8 +725,8 @@ struct TypeNode *compile_struct_instance(struct Node *node, struct StructInstanc
     vreverse(&type->types);
     vreverse(&type_sizes);
 
-    codegen_stack_shift(orig_struct_size, context);
-    codegen_pack_struct(&type_sizes, context);
+    context->codegen->stack_shift(orig_struct_size, context);
+    context->codegen->pack_struct(&type_sizes, context);
 
     context->sf_pos = old_sf_pos;
     return type_node;
@@ -737,7 +744,7 @@ struct TypeNode *compile_lambda_function(struct Node *node, struct LambdaFunctio
         error_semantic("Function return type does not equal to the type of the function body", node);
     }
     
-    codegen_stack_pushlabel(identifier_back, context);
+    context->codegen->stack_pushlabel(identifier_back, context);
 
     return type;
 }
@@ -748,24 +755,24 @@ struct TypeNode *compile_sizeof(struct Node *node, struct Sizeof *this, struct C
     }
 
     int size = type_size(this->type, context);
-    codegen_stack_pushlabel(_itoa(size), context);
+    context->codegen->stack_pushlabel(_itoa(size), context);
     return context->node_int;
 }
 
 void compile_call_finish(struct CPContext *context, int sz) {
-    codegen_stack_shift(WORD * (sz + 1), context);
+    context->codegen->stack_shift(WORD * (sz + 1), context);
     context->sf_pos += WORD * (sz + 1);
 
-    codegen_call_arguments_restore(sz, context);
+    context->codegen->call_arguments_restore(sz, context);
 
-    codegen_stack_popword(REG_A, context);
-    codegen_call_reg(REG_A, context);
-    codegen_stack_pushword(REG_A, context);
+    context->codegen->stack_popword(REG_A, context);
+    context->codegen->call_reg(REG_A, context);
+    context->codegen->stack_pushword(REG_A, context);
 }
 
 struct TypeNode *compile_function_call(struct Node *node, struct FunctionCall *this, struct CPContext *context) {
     struct TypeNode *type = compile_node(this->function, context);
-    codegen_stack_shift(-WORD, context);
+    context->codegen->stack_shift(-WORD, context);
     context->sf_pos -= WORD;
 
     type = type_get_function(type, context);
@@ -817,7 +824,7 @@ struct TypeNode *compile_function_call(struct Node *node, struct FunctionCall *t
         if (!type_equal(type_arg, _type->types.ptr[i], context)) {
             error_semantic("Passing to function value of incorrect type", node);
         }
-        codegen_stack_shift(-WORD, context);
+        context->codegen->stack_shift(-WORD, context);
         context->sf_pos -= WORD;
     }
 
@@ -826,18 +833,18 @@ struct TypeNode *compile_function_call(struct Node *node, struct FunctionCall *t
 }
 
 struct TypeNode *compile_method_call(struct Node *node, struct MethodCall *this, struct CPContext *context) {
-    codegen_stack_shift(-WORD, context);
+    context->codegen->stack_shift(-WORD, context);
     context->sf_pos -= WORD;
     struct TypeNode *type_caller = compile_node(this->caller, context);
-    codegen_stack_shift(-WORD, context);
+    context->codegen->stack_shift(-WORD, context);
     context->sf_pos -= WORD;
 
     struct TypeNode *type_function;
     struct FunctionInfo *function_info = context_find_method(context, this->function, type_caller);
     if (function_info) {
         type_function = function_info->type;
-        codegen_move_labelreg(REG_A, function_info->name_back, context);
-        codegen_stack_pushword_phase(REG_A, WORD, context);
+        context->codegen->move_labelreg(REG_A, function_info->name_back, context);
+        context->codegen->stack_pushword_phase(REG_A, WORD, context);
     }
     else {
         error_semantic("Method was not declared", node);
@@ -854,7 +861,7 @@ struct TypeNode *compile_method_call(struct Node *node, struct MethodCall *this,
         if (!type_equal(type_arg, _type->types.ptr[i], context)) {
             error_semantic("Passing to function value of incorrect type", node);
         }
-        codegen_stack_shift(-WORD, context);
+        context->codegen->stack_shift(-WORD, context);
         context->sf_pos -= WORD;
     }
 
@@ -869,8 +876,8 @@ struct TypeNode *compile_dereference(struct Node *node, struct Dereference *this
     _type->degree--;
     int _type_size = type_size(_type, context);
 
-    codegen_stack_popword(REG_A, context);
-    codegen_stack_push_memcpy(REG_A, _type_size, context);
+    context->codegen->stack_popword(REG_A, context);
+    context->codegen->stack_push_memcpy(REG_A, _type_size, context);
 
     return _type;
 }
@@ -879,7 +886,7 @@ struct TypeNode *compile_index(struct Node *node, struct Index *this, struct CPC
     struct TypeNode *_type1 = compile_node(this->left, context);
     if (_type1->degree == 0) error_semantic("Pointer expected in indexation", node);
 
-    codegen_stack_shift(-WORD, context);
+    context->codegen->stack_shift(-WORD, context);
     context->sf_pos -= WORD;
 
     struct TypeNode *_type2 = compile_node(this->right, context);
@@ -887,19 +894,19 @@ struct TypeNode *compile_index(struct Node *node, struct Index *this, struct CPC
         error_semantic("Integer expected in indexation", node);
     }
     
-    codegen_stack_shift(WORD, context);
+    context->codegen->stack_shift(WORD, context);
     context->sf_pos += WORD;
     _type1->degree--;
     int _type_size = type_size(_type1, context);
     _type1->degree++;
-    codegen_index(_type_size, context);
+    context->codegen->index(_type_size, context);
     if (!this->address) {
-        codegen_stack_push_memcpy(REG_A, _type_size, context);
+        context->codegen->stack_push_memcpy(REG_A, _type_size, context);
         _type1 = type_copy_node(_type1);
         _type1->degree--;
     }
     else {
-        codegen_stack_pushword(REG_A, context);
+        context->codegen->stack_pushword(REG_A, context);
     }
     return _type1;
 }
@@ -927,13 +934,13 @@ struct TypeNode *compile_get_field(struct Node *node, struct GetField *this, str
         error_semantic("Structure doesn't have corresponding field", node);
     }
     
-    codegen_stack_popword(REG_A, context);
-    codegen_add_const(REG_A, phase, context);
+    context->codegen->stack_popword(REG_A, context);
+    context->codegen->add_const(REG_A, phase, context);
     if (!this->address) {  
-        codegen_stack_push_memcpy(REG_A, type_size(field_type, context), context);
+        context->codegen->stack_push_memcpy(REG_A, type_size(field_type, context), context);
     }
     else {
-        codegen_stack_pushword(REG_A, context);
+        context->codegen->stack_pushword(REG_A, context);
         field_type = type_copy_node(field_type);
         field_type->degree++;
     }
@@ -951,7 +958,7 @@ struct TypeNode *compile_arithmetic(struct Node *node, struct BinaryOperator *th
         }
     }
 
-    codegen_stack_shift(-WORD, context);
+    context->codegen->stack_shift(-WORD, context);
     context->sf_pos -= WORD;
 
     struct TypeNode *_type2 = compile_node(this->right, context);
@@ -969,11 +976,11 @@ struct TypeNode *compile_arithmetic(struct Node *node, struct BinaryOperator *th
         error_semantic("Equal types expected in arithmetic operator", node);
     }
 
-    codegen_stack_shift(WORD, context);
+    context->codegen->stack_shift(WORD, context);
     context->sf_pos += WORD;
 
-    codegen_arithmetic(node->node_type, !(this->left), context);
-    codegen_stack_pushword(REG_A, context);
+    context->codegen->arithmetic(node->node_type, !(this->left), context);
+    context->codegen->stack_pushword(REG_A, context);
 
     return _type2;
 }

@@ -48,6 +48,8 @@ struct CPContext {
     int branch_index;
     int data_index;
     int bss_index;
+
+    struct Codegen *codegen;
     
     struct Vector test_names;
     bool testing;
