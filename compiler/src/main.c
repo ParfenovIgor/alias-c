@@ -11,7 +11,6 @@ void help() {
     _puts("  -ls                       Run language server.");
     _puts("  -c                        Compile program to Asm code.");
     _puts("  -a                        Compile program and assemble it using nasm to object file.");
-    _puts("  -l                        Compile, assemble and link program using gcc to executable file.");
     _puts("  -t                        Compile to testing.");
     _puts("  -b {x86_64_asm, c}        Set backend. The default is x86_64_asm");
     _puts("  -i <name> <path>          Add include directory.");
@@ -21,10 +20,8 @@ void help() {
 struct Settings *build_settings(int argc, char **argv, char **envp) {
     struct Settings *settings = (struct Settings*)_malloc(sizeof(struct Settings));
     settings->language_server = false;
-    settings->validate = false;
     settings->compile = false;
     settings->assemble = false;
-    settings->link = false;
     settings->testing = false;
     settings->backend = x86_64_asm;
     settings->include_names = vnew();
@@ -39,17 +36,11 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
         if (_strcmp(arg, "-ls") == 0) {
             settings->language_server = true;
         }
-        else if(_strcmp(arg, "-v") == 0) {
-            settings->validate = true;
-        }
         else if(_strcmp(arg, "-c") == 0) {
             settings->compile = true;
         }
         else if(_strcmp(arg, "-a") == 0) {
             settings->assemble = true;
-        }
-        else if (_strcmp(arg, "-l") == 0) {
-            settings->link = true;
         }
         else if (_strcmp(arg, "-i") == 0) {
             if (i + 2 >= argc) {
@@ -83,8 +74,7 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
                 _puts("Undefined backend after -b flag");
                 return NULL;
             }
-            vpush(&settings->include_names, _strdup(argv[i + 1]));
-            i += 2;
+            i++;
         }
         else {
             settings->filename_input = _strdup(arg);

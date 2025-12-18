@@ -26,6 +26,7 @@ struct CPContext *context_init() {
         context->node_void->node_ptr = _type;
         context->node_void->node_type = TypeNodeVoid;
         context->node_void->degree = 0;
+        context->node_void->size = -1;
     }
     {
         context->node_int = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
@@ -33,6 +34,7 @@ struct CPContext *context_init() {
         context->node_int->node_ptr = _type;
         context->node_int->node_type = TypeNodeInt;
         context->node_int->degree = 0;
+        context->node_int->size = -1;
     }
     {
         context->node_char = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
@@ -40,6 +42,7 @@ struct CPContext *context_init() {
         context->node_char->node_ptr = _type;
         context->node_char->node_type = TypeNodeChar;
         context->node_char->degree = 0;
+        context->node_char->size = -1;
     }
     {
         context->node_allocator = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
@@ -47,6 +50,7 @@ struct CPContext *context_init() {
         context->node_allocator->node_ptr = _type;
         context->node_allocator->node_type = TypeNodeIdentifier;
         context->node_allocator->degree = 1;
+        context->node_allocator->size = -1;
         _type->identifier = _strdup("TestAllocator");
     }
     return context;

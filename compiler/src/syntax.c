@@ -117,6 +117,7 @@ struct Node *syntax_process_block(struct TokenStream *ts, struct Settings *st) {
 struct TypeNode *syntax_process_type(struct TokenStream *ts, struct Settings *st) {
     struct TypeNode *node = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
     node->degree = 0;
+    node->size = -1;
     pass_next(ts, TokenSharp, "# expected in type definition");
     if (tokenstream_get(ts).type == TokenInteger) {
         node->degree = tokenstream_get(ts).value_int;

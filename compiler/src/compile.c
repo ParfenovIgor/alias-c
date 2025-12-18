@@ -83,7 +83,8 @@ void compile_process(struct Node *node, struct Settings *settings) {
         context->codegen = x86_64_codegen_init();
     }
     else {
-        context->codegen = c_codegen_init();
+        context->codegen = x86_64_codegen_init();
+        // context->codegen = c_codegen_init();
     }
     compile_init_descriptors(node, context);
     compile_node(node, context);
@@ -173,9 +174,8 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
     int sf_pos_tmp = context->sf_pos;
     context->sf_pos = 0;
 
-    int sz = 0;
     if (this) {
-        sz = vsize(&this->identifiers);
+        int sz = vsize(&this->identifiers);
         if (!type_check(this->return_type, context)) {
             error_semantic("Type identifier was not declared in function signature return type", node);
         }
@@ -215,9 +215,6 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
     
     context->codegen->stack_popword(REG_A, context);
     context->codegen->stack_shift(-context->sf_pos, context);
-    for (int i = 0; i < sz; i++) {
-        _free(context->variables.ptr[i]);
-    }
     vdrop(&context->variables);
     context->variables = variables_tmp;
     context->sf_pos = sf_pos_tmp;
@@ -330,12 +327,14 @@ struct TypeNode *from_signature_to_type(struct FunctionSignature *signature, str
     type->node_ptr = _type;
     type->node_type = TypeNodeFunction;
     type->degree = 0;
+    type->size = -1;
     _type->types = vnew();
     if (signature->propagate_allocator) {
         vpush(&_type->types, context->node_allocator);
     }
     int sz = vsize(&signature->types);
     for (int i = 0; i < sz; i++) {
+        type_check(signature->types.ptr[i], context);
         vpush(&_type->types, signature->types.ptr[i]);
     }
     _type->return_type = signature->return_type;
@@ -371,6 +370,8 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
     function_info->name_back = identifier_back;
     function_info->caller_type = this->caller_type;
     function_info->type = from_signature_to_type(this->signature, context);
+    if (this->caller_type) type_check(this->caller_type, context);
+    this->type = function_info->type;
     vpush(&context->functions, function_info);
 
     if (this->external) {
@@ -418,6 +419,7 @@ void compile_prototype(struct Node *node, struct Prototype *this, struct CPConte
     function_info->name_front = identifier;
     function_info->name_back = identifier;
     function_info->type = from_signature_to_type(this->signature, context);
+    this->type = function_info->type;
     function_info->caller_type = this->caller_type;
     vpush(&context->functions, function_info);
 
@@ -440,6 +442,7 @@ void compile_global_definition(struct Node *node, struct GlobalDefinition *this,
         if (this->value->node_type != NodeInteger) {
             error_semantic("Const integer expected as initial value in global variable", node);
         }
+        this->value->type = context->node_int;
         if (this->type && !type_equal(_type, this->type, context)) {
             error_semantic("Declared and inferred types are not equal", node);
         }
@@ -686,6 +689,7 @@ struct TypeNode *compile_string(struct Node *node, struct String *this, struct C
     type->node_ptr = _type;
     type->node_type = TypeNodeChar;
     type->degree = 1;
+    type->size = 1;
     return type;
 }
 
@@ -697,6 +701,7 @@ struct TypeNode *compile_array(struct Node *node, struct Array *this, struct CPC
 struct TypeNode *compile_struct_instance(struct Node *node, struct StructInstance *this, struct CPContext *context) {
     struct TypeNode *type_node = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
     type_node->degree = 0;
+    type_node->size = -1;
     
     struct TypeStruct *type = (struct TypeStruct*)_malloc(sizeof(struct TypeStruct));
     type_node->node_type = TypeNodeStruct;
@@ -843,6 +848,7 @@ struct TypeNode *compile_method_call(struct Node *node, struct MethodCall *this,
     struct FunctionInfo *function_info = context_find_method(context, this->function, type_caller);
     if (function_info) {
         type_function = function_info->type;
+        this->name = function_info->name_back;
         context->codegen->move_labelreg(REG_A, function_info->name_back, context);
         context->codegen->stack_pushword_phase(REG_A, WORD, context);
     }
@@ -934,6 +940,7 @@ struct TypeNode *compile_get_field(struct Node *node, struct GetField *this, str
         error_semantic("Structure doesn't have corresponding field", node);
     }
     
+    this->phase = phase;
     context->codegen->stack_popword(REG_A, context);
     context->codegen->add_const(REG_A, phase, context);
     if (!this->address) {  
@@ -986,137 +993,137 @@ struct TypeNode *compile_arithmetic(struct Node *node, struct BinaryOperator *th
 }
 
 struct TypeNode *compile_node(struct Node *node, struct CPContext *context) {
-    _fputs(context->fd_text, "; ");
-    _fputs(context->fd_text, node->filename);
-    _fputs(context->fd_text, " ");
-    _fputi(context->fd_text, node->line_begin + 1);
-    _fputs(context->fd_text, ":");
-    _fputi(context->fd_text, node->position_begin + 1);
-    _fputs(context->fd_text, " -> ");
+    // _fputs(context->fd_text, "; ");
+    // _fputs(context->fd_text, node->filename);
+    // _fputs(context->fd_text, " ");
+    // _fputi(context->fd_text, node->line_begin + 1);
+    // _fputs(context->fd_text, ":");
+    // _fputi(context->fd_text, node->position_begin + 1);
+    // _fputs(context->fd_text, " -> ");
 
     if (node->node_type == NodeModule) {
-        _fputs(context->fd_text, "module\n");
+        // _fputs(context->fd_text, "module\n");
         compile_module(node, (struct Module*)node->node_ptr, context);
     }
     else if (node->node_type == NodeBlock) {
-        _fputs(context->fd_text, "block\n");
-        return compile_block(node, (struct Block*)node->node_ptr, context);
+        // _fputs(context->fd_text, "block\n");
+        return node->type = compile_block(node, (struct Block*)node->node_ptr, context);
     }
     else if (node->node_type == NodeInclude) {
-        _fputs(context->fd_text, "include\n");
+        // _fputs(context->fd_text, "include\n");
         compile_include(node, (struct Include*)node->node_ptr, context);
     }
     else if (node->node_type == NodeTest) {
-        _fputs(context->fd_text, "test\n");
+        // _fputs(context->fd_text, "test\n");
         compile_test(node, (struct Test*)node->node_ptr, context);
     }
     else if (node->node_type == NodeIf) {
-        _fputs(context->fd_text, "if\n");
-        return compile_if(node, (struct If*)node->node_ptr, context);
+        // _fputs(context->fd_text, "if\n");
+        return node->type = compile_if(node, (struct If*)node->node_ptr, context);
     }
     else if (node->node_type == NodeWhile) {
-        _fputs(context->fd_text, "while\n");
-        return compile_while(node, (struct While*)node->node_ptr, context);
+        // _fputs(context->fd_text, "while\n");
+        return node->type = compile_while(node, (struct While*)node->node_ptr, context);
     }
     else if (node->node_type == NodeFunctionDefinition) {
-        _fputs(context->fd_text, "function definition\n");
+        // _fputs(context->fd_text, "function definition\n");
         compile_function_definition(node, (struct FunctionDefinition*)node->node_ptr, context);
     }
     else if (node->node_type == NodePrototype) {
-        _fputs(context->fd_text, "prototype\n");
+        // _fputs(context->fd_text, "prototype\n");
         compile_prototype(node, (struct Prototype*)node->node_ptr, context);
     }
     else if (node->node_type == NodeGlobalDefinition) {
-        _fputs(context->fd_text, "global definition\n");
+        // _fputs(context->fd_text, "global definition\n");
         compile_global_definition(node, (struct GlobalDefinition*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDefinition) {
-        _fputs(context->fd_text, "definition\n");
+        // _fputs(context->fd_text, "definition\n");
         compile_definition(node, (struct Definition*)node->node_ptr, context);
     }
     else if (node->node_type == NodeTypeDefinition) {
-        _fputs(context->fd_text, "type definition\n");
+        // _fputs(context->fd_text, "type definition\n");
         compile_type_definition(node, (struct TypeDefinition*)node->node_ptr, context);
     }
     else if (node->node_type == NodeReturn) {
-        _fputs(context->fd_text, "return\n");
+        // _fputs(context->fd_text, "return node->type = n");
         compile_return(node, (struct Return*)node->node_ptr, context);
     }
     else if (node->node_type == NodeBreak) {
-        _fputs(context->fd_text, "break\n");
+        // _fputs(context->fd_text, "break\n");
         compile_break(node, (struct Break*)node->node_ptr, context);
     }
     else if (node->node_type == NodeContinue) {
-        _fputs(context->fd_text, "continue\n");
+        // _fputs(context->fd_text, "continue\n");
         compile_continue(node, (struct Continue*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAs) {
-        _fputs(context->fd_text, "as\n");
-        return compile_as(node, (struct As*)node->node_ptr, context);
+        // _fputs(context->fd_text, "as\n");
+        return node->type = compile_as(node, (struct As*)node->node_ptr, context);
     }
     else if (node->node_type == NodeAssignment) {
-        _fputs(context->fd_text, "assignment\n");
+        // _fputs(context->fd_text, "assignment\n");
         compile_assignment(node, (struct Assignment*)node->node_ptr, context);
     }
     else if (node->node_type == NodeMovement) {
-        _fputs(context->fd_text, "movement\n");
+        // _fputs(context->fd_text, "movement\n");
         compile_movement(node, (struct Movement*)node->node_ptr, context);
     }
     else if (node->node_type == NodeIdentifier) {
-        _fputs(context->fd_text, "identifier\n");
-        return compile_identifier(node, (struct Identifier*)node->node_ptr, context);
+        // _fputs(context->fd_text, "identifier\n");
+        return node->type = compile_identifier(node, (struct Identifier*)node->node_ptr, context);
     }
     else if (node->node_type == NodeInteger) {
-        _fputs(context->fd_text, "integer\n");
-        return compile_integer(node, (struct Integer*)node->node_ptr, context);
+        // _fputs(context->fd_text, "integer\n");
+        return node->type = compile_integer(node, (struct Integer*)node->node_ptr, context);
     }
     else if (node->node_type == NodeChar) {
-        _fputs(context->fd_text, "char\n");
-        return compile_char(node, (struct Char*)node->node_ptr, context);
+        // _fputs(context->fd_text, "char\n");
+        return node->type = compile_char(node, (struct Char*)node->node_ptr, context);
     }
     else if (node->node_type == NodeString) {
-        _fputs(context->fd_text, "string\n");
-        return compile_string(node, (struct String*)node->node_ptr, context);
+        // _fputs(context->fd_text, "string\n");
+        return node->type = compile_string(node, (struct String*)node->node_ptr, context);
     }
     else if (node->node_type == NodeArray) {
-        _fputs(context->fd_text, "array\n");
-        return compile_array(node, (struct Array*)node->node_ptr, context);
+        // _fputs(context->fd_text, "array\n");
+        return node->type = compile_array(node, (struct Array*)node->node_ptr, context);
     }
     else if (node->node_type == NodeStructInstance) {
-        _fputs(context->fd_text, "struct instance\n");
-        return compile_struct_instance(node, (struct StructInstance*)node->node_ptr, context);
+        // _fputs(context->fd_text, "struct instance\n");
+        return node->type = compile_struct_instance(node, (struct StructInstance*)node->node_ptr, context);
     }
     else if (node->node_type == NodeLambdaFunction) {
-        _fputs(context->fd_text, "lambda function\n");
-        return compile_lambda_function(node, (struct LambdaFunction*)node->node_ptr, context);
+        // _fputs(context->fd_text, "lambda function\n");
+        return node->type = compile_lambda_function(node, (struct LambdaFunction*)node->node_ptr, context);
     }
     else if (node->node_type == NodeSizeof) {
-        _fputs(context->fd_text, "sizeof\n");
-        return compile_sizeof(node, (struct Sizeof*)node->node_ptr, context);
+        // _fputs(context->fd_text, "sizeof\n");
+        return node->type = compile_sizeof(node, (struct Sizeof*)node->node_ptr, context);
     }
     else if (node->node_type == NodeFunctionCall) {
-        _fputs(context->fd_text, "function call\n");
-        return compile_function_call(node, (struct FunctionCall*)node->node_ptr, context);
+        // _fputs(context->fd_text, "function call\n");
+        return node->type = compile_function_call(node, (struct FunctionCall*)node->node_ptr, context);
     }
     else if (node->node_type == NodeMethodCall) {
-        _fputs(context->fd_text, "method call\n");
-        return compile_method_call(node, (struct MethodCall*)node->node_ptr, context);
+        // _fputs(context->fd_text, "method call\n");
+        return node->type = compile_method_call(node, (struct MethodCall*)node->node_ptr, context);
     }
     else if (node->node_type == NodeDereference) {
-        _fputs(context->fd_text, "dereference\n");
-        return compile_dereference(node, (struct Dereference*)node->node_ptr, context);
+        // _fputs(context->fd_text, "dereference\n");
+        return node->type = compile_dereference(node, (struct Dereference*)node->node_ptr, context);
     }
     else if (node->node_type == NodeIndex) {
-        _fputs(context->fd_text, "index\n");
-        return compile_index(node, (struct Index*)node->node_ptr, context);
+        // _fputs(context->fd_text, "index\n");
+        return node->type = compile_index(node, (struct Index*)node->node_ptr, context);
     }
     else if (node->node_type == NodeGetField) {
-        _fputs(context->fd_text, "get field\n");
-        return compile_get_field(node, (struct GetField*)node->node_ptr, context);
+        // _fputs(context->fd_text, "get field\n");
+        return node->type = compile_get_field(node, (struct GetField*)node->node_ptr, context);
     }
     else {
-        _fputs(context->fd_text, "arithmetic\n");
-        return compile_arithmetic(node, (struct BinaryOperator*)node->node_ptr, context);
+        // _fputs(context->fd_text, "arithmetic\n");
+        return node->type = compile_arithmetic(node, (struct BinaryOperator*)node->node_ptr, context);
     }
-    return NULL;
+    return node->type = NULL;
 }

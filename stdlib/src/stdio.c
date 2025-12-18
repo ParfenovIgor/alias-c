@@ -10,6 +10,13 @@ int _puts(const char *str) {
     return res;
 }
 
+int _putc(char c) {
+    int res = 0;
+    res += _fputc(STDOUT, c);
+    res += _fputs(STDOUT, "\n");
+    return res;
+}
+
 int _puti(int n) {
     int res = 0;
     res += _fputi(STDOUT, n);
@@ -42,6 +49,10 @@ int _fputsi(int fd, const char *str1, int x, const char *str2) {
     res += _fputi(fd, x);
     res += _fputs(fd, str2);
     return res;
+}
+
+int _fputc(int fd, char c) {
+    return posix_write(fd, &c, 1);
 }
 
 int _fputi(int fd, int n) {

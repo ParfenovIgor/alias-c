@@ -25,6 +25,7 @@ struct TypeNode {
     void *node_ptr;
     enum TypeNodeType node_type;
     int degree;
+    int size;
 };
 
 struct TypeVoid {

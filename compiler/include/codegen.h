@@ -51,5 +51,5 @@ struct Codegen {
 };
 
 struct Codegen *x86_64_codegen_init();
-struct Codegen *c_codegen_init();
+// struct Codegen *c_codegen_init();
 

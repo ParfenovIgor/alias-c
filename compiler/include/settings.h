@@ -10,10 +10,8 @@ enum Backend {
 
 struct Settings {
     bool language_server;
-    bool validate;
     bool compile;
     bool assemble;
-    bool link;
     bool testing;
     enum Backend backend;
     struct Vector include_names;

@@ -1,19 +1,33 @@
 #include <type.h>
 #include <memory.h>
 #include <panic.h>
+#include <cassert.h>
 #include <stdlib.h>
 #include <string.h>
 
 bool type_check(struct TypeNode *n, struct CPContext *context) {
-    if (n->node_type == TypeNodeVoid) return true;
-    if (n->node_type == TypeNodeInt) return true;
-    if (n->node_type == TypeNodeChar) return true;
+    if (n->node_type == TypeNodeVoid) {
+        n->size = 0;
+        return true;
+    }
+    if (n->node_type == TypeNodeInt) {
+        n->size = 8;
+        return true;
+    }
+    if (n->node_type == TypeNodeChar) {
+        n->size = 1;
+        return true;
+    }
     if (n->node_type == TypeNodeStruct) {
         struct TypeStruct *_n = n->node_ptr;
+        int res = 0;
         int sz = vsize(&_n->names);
         for (int i = 0; i < sz; i++) {
-            if (!type_check(_n->types.ptr[i], context)) return false;
+            struct TypeNode *type = _n->types.ptr[i];
+            if (!type_check(type, context)) return false;
+            res += type->size;
         }
+        n->size = res;
         return true;
     }
     if (n->node_type == TypeNodeFunction) {
@@ -22,13 +36,16 @@ bool type_check(struct TypeNode *n, struct CPContext *context) {
         for (int i = 0; i < sz; i++) {
             if (!type_check(_n->types.ptr[i], context)) return false;
         }
+        n->size = 8;
         return type_check(_n->return_type, context);
     }
     if (n->node_type == TypeNodeIdentifier) {
         struct TypeIdentifier *_n = n->node_ptr;
         struct TypeInfo *info = context_find_type(context, _n->identifier);
         if (!info) return false;
-        return type_check(info->type, context);
+        if (!type_check(info->type, context)) return false;
+        n->size = info->type->size;
+        return true;
     }
 }
 
@@ -125,25 +142,12 @@ struct TypeNode *type_get_function(struct TypeNode *n, struct CPContext *context
 }
 
 int type_size(struct TypeNode *n, struct CPContext *context) {
+    if (n->size == -1) {
+        type_check(n, context);
+    }
+
     if (n->degree > 0) return 8;
-    if (n->node_type == TypeNodeVoid) return 0;
-    if (n->node_type == TypeNodeInt) return 8;
-    if (n->node_type == TypeNodeChar) return 1;
-    if (n->node_type == TypeNodeStruct) {
-        struct TypeStruct *_n = n->node_ptr;
-        int res = 0;
-        int sz = vsize(&_n->names);
-        for (int i = 0; i < sz; i++) {
-            res += type_size(_n->types.ptr[i], context);
-        }
-        return res;
-    }
-    if (n->node_type == TypeNodeFunction) return 8;
-    if (n->node_type == TypeNodeIdentifier) {
-        struct TypeIdentifier *_n = n->node_ptr;
-        return type_size(context_find_type(context, _n->identifier)->type, context);
-    }
-    return 0;
+    else return n->size;
 }
 
 struct TypeNode *type_copy_node(struct TypeNode *n1) {
@@ -151,6 +155,7 @@ struct TypeNode *type_copy_node(struct TypeNode *n1) {
     n2->node_ptr = n1->node_ptr;
     n2->node_type = n1->node_type;
     n2->degree = n1->degree;
+    n2->size = n1->size;
     return n2;
 }
 

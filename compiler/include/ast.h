@@ -106,10 +106,11 @@ struct Node {
     const char *filename;
     void *node_ptr;
     enum NodeType node_type;
+    struct TypeNode *type;
 };
 
 struct Module {
-   struct Vector statement_list;
+    struct Vector statement_list;
 };
 
 struct Block {
@@ -142,6 +143,7 @@ struct While {
 struct FunctionDefinition {
     struct TypeNode *caller_type;
     const char *name;
+    struct TypeNode *type;
     struct FunctionSignature *signature;
     struct Node *block;
     bool external;
@@ -150,6 +152,7 @@ struct FunctionDefinition {
 struct Prototype {
     struct TypeNode *caller_type;
     const char *name;
+    struct TypeNode *type;
     struct FunctionSignature *signature;
 };
 
@@ -242,6 +245,7 @@ struct MethodCall {
     struct Node *caller;
     const char *function;
     struct Vector arguments;
+    const char *name;
 };
 
 struct Dereference {
@@ -256,6 +260,7 @@ struct Index {
 struct GetField {
     struct Node *left;
     const char *field;
+    int phase;
     bool address;
 };
 
