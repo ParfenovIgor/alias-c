@@ -33,7 +33,7 @@ test demo_return_from_block {
     eval {
         a := 2
         return {}
-        a := 3
+        a := 4
     }
     return test_equal(a, 2)
 }

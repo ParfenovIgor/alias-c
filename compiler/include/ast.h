@@ -124,6 +124,7 @@ struct Include {
 
 struct Test {
     const char *name;
+    struct TypeNode *type;
     struct Node *block;
 };
 
@@ -147,6 +148,7 @@ struct FunctionDefinition {
     struct FunctionSignature *signature;
     struct Node *block;
     bool external;
+    bool global;
 };
 
 struct Prototype {
@@ -246,6 +248,7 @@ struct MethodCall {
     const char *function;
     struct Vector arguments;
     const char *name;
+    struct Node *function_definition;
 };
 
 struct Dereference {

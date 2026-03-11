@@ -23,6 +23,7 @@ struct TypeInfo {
 struct FunctionInfo {
     const char *name_front;
     const char *name_back;
+    struct Node *function_definition;
     struct TypeNode *caller_type;
     struct TypeNode *type;
 };
@@ -66,6 +67,7 @@ struct CPContext {
     struct TypeNode *node_void;
     struct TypeNode *node_int;
     struct TypeNode *node_char;
+    struct TypeNode *node_function;
     struct TypeNode *node_allocator;
 };
 

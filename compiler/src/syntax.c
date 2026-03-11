@@ -869,6 +869,7 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
         struct FunctionDefinition *this = (struct FunctionDefinition*)_malloc(sizeof(struct FunctionDefinition));
         node->node_ptr = this;
         node->node_type = NodeFunctionDefinition;
+        this->global = top_level;
         this->external = false;
         tokenstream_next(ts);
         if (tokenstream_get(ts).type == TokenCaret) {

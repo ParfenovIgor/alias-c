@@ -227,6 +227,7 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
 
 void compile_test(struct Node *node, struct Test *this, struct CPContext *context) {
     if (!context->testing) return;
+    this->type = context->node_function;
     vpush(&context->test_names, (void*)this->name);
     char *identifier_end = _concat("_T", this->name);
 
@@ -343,7 +344,7 @@ struct TypeNode *from_signature_to_type(struct FunctionSignature *signature, str
 }
 
 void compile_function_definition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) { 
-    if (this->caller_type &&  !type_check(this->caller_type, context)) {
+    if (this->caller_type && !type_check(this->caller_type, context)) {
         error_semantic("Type identifier was not declared in function caller type", node);
     }
 
@@ -368,6 +369,7 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
     struct FunctionInfo *function_info = (struct FunctionInfo*)_malloc(sizeof(struct FunctionInfo));
     function_info->name_front = identifier_front;
     function_info->name_back = identifier_back;
+    function_info->function_definition = node;
     function_info->caller_type = this->caller_type;
     function_info->type = from_signature_to_type(this->signature, context);
     if (this->caller_type) type_check(this->caller_type, context);
@@ -402,7 +404,7 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
 }
 
 void compile_prototype(struct Node *node, struct Prototype *this, struct CPContext *context) {
-    if (this->caller_type &&  !type_check(this->caller_type, context)) {
+    if (this->caller_type && !type_check(this->caller_type, context)) {
         error_semantic("Type identifier was not declared in function caller type", node);
     }
 
@@ -418,6 +420,7 @@ void compile_prototype(struct Node *node, struct Prototype *this, struct CPConte
     struct FunctionInfo *function_info = (struct FunctionInfo*)_malloc(sizeof(struct FunctionInfo));
     function_info->name_front = identifier;
     function_info->name_back = identifier;
+    function_info->function_definition = node;
     function_info->type = from_signature_to_type(this->signature, context);
     this->type = function_info->type;
     function_info->caller_type = this->caller_type;
@@ -439,6 +442,7 @@ void compile_global_definition(struct Node *node, struct GlobalDefinition *this,
     struct TypeNode *_type;
     if (this->value) {
         _type = context->node_int;
+        this->type = context->node_int;
         if (this->value->node_type != NodeInteger) {
             error_semantic("Const integer expected as initial value in global variable", node);
         }
@@ -490,6 +494,7 @@ void compile_definition(struct Node *node, struct Definition *this, struct CPCon
     if (!this->type && !this->value) {
         error_semantic("Undefined type in definition", node);
     }
+    this->type = _type;
 
     struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
     var_info->name = _strdup(this->identifier);
@@ -849,6 +854,7 @@ struct TypeNode *compile_method_call(struct Node *node, struct MethodCall *this,
     if (function_info) {
         type_function = function_info->type;
         this->name = function_info->name_back;
+        this->function_definition = function_info->function_definition;
         context->codegen->move_labelreg(REG_A, function_info->name_back, context);
         context->codegen->stack_pushword_phase(REG_A, WORD, context);
     }

@@ -45,6 +45,16 @@ struct CPContext *context_init() {
         context->node_char->size = -1;
     }
     {
+        context->node_function = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+        struct TypeFunction *_type = (struct TypeFunction*)_malloc(sizeof(struct TypeFunction));
+        context->node_function->node_ptr = _type;
+        context->node_function->node_type = TypeNodeFunction;
+        context->node_function->degree = 0;
+        context->node_function->size = -1;
+        _type->types = vnew();
+        _type->return_type = context->node_char;
+    }
+    {
         context->node_allocator = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
         struct TypeIdentifier *_type = (struct TypeIdentifier*)_malloc(sizeof(struct TypeIdentifier));
         context->node_allocator->node_ptr = _type;

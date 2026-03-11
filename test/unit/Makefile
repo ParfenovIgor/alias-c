@@ -3,19 +3,24 @@ CFLAGS=-I ../../stdlib/include
 LDFLAGS=-z noexecstack -e test
 
 SRCS_AL := $(wildcard *.al)
-EXES_AL := $(patsubst %.al, $(BUILD_DIR)/test/unit/%, $(SRCS_AL))
+EXES_x86_64 := $(patsubst %.al, $(BUILD_DIR)/test/unit/x86_64/%, $(SRCS_AL))
+EXES_C := $(patsubst %.al, $(BUILD_DIR)/test/unit/c/%, $(SRCS_AL))
 
 OBJS_ARCH := $(wildcard $(BUILD_DIR)/arch/*.o)
 OBJS_ALTLIB := $(wildcard $(BUILD_DIR)/altlib/*.o)
 OBJS_STDLIB := $(wildcard $(BUILD_DIR)/stdlib/*.o)
 
-all: $(EXES_AL) docs
+all: $(EXES_x86_64) $(EXES_C) docs
 
-$(BUILD_DIR)/test/unit/%.o: %.al make_dir
-	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $@
+$(BUILD_DIR)/test/unit/x86_64/%: %.al make_dir
+	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $@.o
+	ld $(LDFLAGS) -o $@ $@.o $(OBJS_ARCH) $(OBJS_ALTLIB)
+	$@ || (echo "Test failed"; exit 1)
 
-$(BUILD_DIR)/test/unit/%: $(BUILD_DIR)/test/unit/%.o make_dir
-	ld $(LDFLAGS) -o $@ $< $(OBJS_ARCH) $(OBJS_ALTLIB)
+$(BUILD_DIR)/test/unit/c/%: %.al make_dir
+	$(BUILD_DIR)/calias -a -b c $(ALFLAGS) $< -o $@.c
+	gcc -fno-stack-protector -c $@.c -o $@.o -no-pie
+	ld $(LDFLAGS) -o $@ $@.o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	$@ || (echo "Test failed"; exit 1)
 
 $(BUILD_DIR)/test/unit/generate_docs: generate_docs.c
@@ -26,4 +31,5 @@ docs: $(BUILD_DIR)/test/unit/generate_docs
 	$< $(SRCS_AL) >> ../../docs/langref.html
 
 make_dir:
-	mkdir -p $(BUILD_DIR)/test/unit
+	mkdir -p $(BUILD_DIR)/test/unit/x86_64
+	mkdir -p $(BUILD_DIR)/test/unit/c
