@@ -77,83 +77,77 @@
 <li><a href="#1.1">Get address and movement</a></li>
 <li><a href="#1.2">Dereference</a></li>
 </ul></li>
-<li><a href="#2">Allocators</a>
+<li><a href="#2">Arithmetic</a>
 <ul>
-<li><a href="#2.1">Allocator passing</a></li>
-<li><a href="#2.2">Allocator propagation</a></li>
-<li><a href="#2.3">Allocator overriding</a></li>
+<li><a href="#2.1">Addition and subtraction</a></li>
+<li><a href="#2.2">Multiplication and division</a></li>
+<li><a href="#2.3">Parenthesis</a></li>
+<li><a href="#2.4">Unary minus</a></li>
 </ul></li>
-<li><a href="#3">Arithmetic</a>
+<li><a href="#3">Block Expressions</a>
 <ul>
-<li><a href="#3.1">Addition and subtraction</a></li>
-<li><a href="#3.2">Multiplication and division</a></li>
-<li><a href="#3.3">Parenthesis</a></li>
-<li><a href="#3.4">Unary minus</a></li>
+<li><a href="#3.1">Return with expression</a></li>
+<li><a href="#3.2">Return to label</a></li>
+<li><a href="#3.3">Return void</a></li>
 </ul></li>
-<li><a href="#4">Block Expressions</a>
+<li><a href="#4">Defer</a>
 <ul>
-<li><a href="#4.1">Return with expression</a></li>
-<li><a href="#4.2">Return to label</a></li>
-<li><a href="#4.3">Return void</a></li>
+<li><a href="#4.1">Defer</a></li>
+<li><a href="#4.2">Multiple defer</a></li>
 </ul></li>
-<li><a href="#5">Defer</a>
+<li><a href="#5">Definitions</a>
 <ul>
-<li><a href="#5.1">Defer</a></li>
-<li><a href="#5.2">Multiple defer</a></li>
+<li><a href="#5.1">Definition</a></li>
+<li><a href="#5.2">Types</a></li>
+<li><a href="#5.3">Type size</a></li>
+<li><a href="#5.4">Global variables</a></li>
 </ul></li>
-<li><a href="#6">Definitions</a>
+<li><a href="#6">Functions</a>
 <ul>
-<li><a href="#6.1">Definition</a></li>
-<li><a href="#6.2">Types</a></li>
-<li><a href="#6.3">Type size</a></li>
-<li><a href="#6.4">Global variables</a></li>
+<li><a href="#6.1">Functions</a></li>
+<li><a href="#6.2">Methods</a></li>
+<li><a href="#6.3">Extern</a></li>
 </ul></li>
-<li><a href="#7">Functions</a>
+<li><a href="#7">If</a>
 <ul>
-<li><a href="#7.1">Functions</a></li>
-<li><a href="#7.2">Methods</a></li>
-<li><a href="#7.3">Extern</a></li>
+<li><a href="#7.1">If statement</a></li>
+<li><a href="#7.2">If expression</a></li>
 </ul></li>
-<li><a href="#8">If</a>
+<li><a href="#8">Lambda Functions</a>
 <ul>
-<li><a href="#8.1">If statement</a></li>
-<li><a href="#8.2">If expression</a></li>
+<li><a href="#8.1">Simple lambda functions</a></li>
+<li><a href="#8.2">Higher order functions</a></li>
 </ul></li>
-<li><a href="#9">Lambda Functions</a>
+<li><a href="#9">Operators</a>
 <ul>
-<li><a href="#9.1">Simple lambda functions</a></li>
-<li><a href="#9.2">Higher order functions</a></li>
+<li><a href="#9.1">Logic operators</a></li>
+<li><a href="#9.2">Bitwise operators</a></li>
+<li><a href="#9.3">Operator precendence</a></li>
 </ul></li>
-<li><a href="#10">Operators</a>
+<li><a href="#10">Structs</a>
 <ul>
-<li><a href="#10.1">Logic operators</a></li>
-<li><a href="#10.2">Bitwise operators</a></li>
-<li><a href="#10.3">Operator precendence</a></li>
+<li><a href="#10.1">Definition of struct</a></li>
+<li><a href="#10.2">Passing structs to functions</a></li>
 </ul></li>
-<li><a href="#11">Structs</a>
+<li><a href="#11">Typedef</a>
 <ul>
-<li><a href="#11.1">Definition of struct</a></li>
-<li><a href="#11.2">Passing structs to functions</a></li>
+<li><a href="#11.1">Int type</a></li>
+<li><a href="#11.2">Function type</a></li>
 </ul></li>
-<li><a href="#12">Typedef</a>
+<li><a href="#12">While</a>
 <ul>
-<li><a href="#12.1">Int type</a></li>
-<li><a href="#12.2">Function type</a></li>
-</ul></li>
-<li><a href="#13">While</a>
-<ul>
-<li><a href="#13.1">While statement</a></li>
-<li><a href="#13.2">While expression</a></li>
-<li><a href="#13.3">While else block</a></li>
-<li><a href="#13.4">While continue statement</a></li>
-<li><a href="#13.5">While control with labels</a></li>
+<li><a href="#12.1">While statement</a></li>
+<li><a href="#12.2">While expression</a></li>
+<li><a href="#12.3">While else block</a></li>
+<li><a href="#12.4">While continue statement</a></li>
+<li><a href="#12.5">While control with labels</a></li>
 </ul></li>
 </ul></nav></div>
 <div id="contents-wrapper"><main id="contents">
 <h2 id="1">Address</h2>
 <h3 id="1.1">Get address and movement</h3>
 We can take a pointer to local variable or function argument with <code>&</code> syntax. We can store a value by a pointer with <code>-></code> syntax.
-<pre><code>test demo_get_address_and_movement {
+<pre><code>/*test demo_get_address_and_movement {
     def a #I
     def ptr := a&
     ptr &lt- 12
@@ -168,63 +162,10 @@ We can get a value from a pointer (or a pointer with a lower degree) with a <cod
     def ptr := a&
     a := 7
     return test_equal(ptr$, 7)
-}
+}*/
 </code></pre>
-<h2 id="2">Allocators</h2>
-<h3 id="2.1">Allocator passing</h3>
-If the function signature has @, then this function is an @-function, which expects an allocator to be passed.
-The allocator can be referenced using @.
-To call an @-function from a non-@-function (test is simply a function with empty set of arguments), the allocator has to be passed explicitly as first argument, prepended with @.
-<pre><code>func .foo@() -> #I {
-    return @.alloc(32) as #I
-}
-
-test demo_allocator_passing {
-    def allocator #TestAllocator
-    eval allocator&.init(1024)
-    defer eval allocator&.deinit()
-    return test_equal(foo(@allocator&) = 0, 0)
-}
-
-</code></pre>
-<h3 id="2.2">Allocator propagation</h3>
-An @-function can call both @-functions and non-@-functions. For an @-callee the allocator will be propagated.
-<pre><code>func .inc(x #I) -> #I {
-    return x + 1
-}
-
-func .boo@() -&gt #I {
-    return foo() + inc(4)
-}
-
-test demo_allocator_propagation {
-    def allocator #TestAllocator
-    eval allocator&.init(1024)
-    defer eval allocator&.deinit()
-    return test_equal(boo(@allocator&) = 0, 0)
-}
-
-</code></pre>
-<h3 id="2.3">Allocator overriding</h3>
-An @-function can call @-function with overriding its allocator with a new one.
-<pre><code>func .doo@() -> #I {
-    def allocator #TestAllocator
-    eval allocator&.init(1024)
-    defer eval allocator&.deinit()
-    return foo(@allocator&)
-}
-
-test demo_allocator_overriding {
-    def allocator #TestAllocator
-    eval allocator&.init(1024)
-    defer eval allocator&.deinit()
-    def x := boo(@allocator&)
-    def y := doo(@allocator&)
-    return test_equal((y - x) = 27, 0)
-}
-</code></pre>
-<h2 id="3">Arithmetic</h2>
-<h3 id="3.1">Addition and subtraction</h3>
+<h2 id="2">Arithmetic</h2>
+<h3 id="2.1">Addition and subtraction</h3>
 We can add with <code>+</code> operator and subtract with <code>-</code> operator.
 <pre><code>test demo_addition_and_subtraction {
     def a := 4 + 15             // now `a` is equal to 19
@@ -234,7 +175,7 @@ We can add with <code>+</code> operator and subtract with <code>-</code> operato
 }
 
 </code></pre>
-<h3 id="3.2">Multiplication and division</h3>
+<h3 id="2.2">Multiplication and division</h3>
 We can multiply with <code>*</code> operator, divide with <code>/</code> operator and take modulo with <code>%</code> operator. These operators have higher precedence, than operators <code>+</code> and <code>-</code>.
 <pre><code>test demo_multiplication_and_division {
     def a := 4 + 3 * 9 + 6 * 2  // now `a` is equal to 43
@@ -244,7 +185,7 @@ We can multiply with <code>*</code> operator, divide with <code>/</code> operato
 }
 
 </code></pre>
-<h3 id="3.3">Parenthesis</h3>
+<h3 id="2.3">Parenthesis</h3>
 We can set higher precedence to expression by enclosing it into parenthesis.
 <pre><code>test demo_parenthesis {
     def a := (4 + 3) * (9 + 6) * 2
@@ -252,7 +193,7 @@ We can set higher precedence to expression by enclosing it into parenthesis.
 }
 
 </code></pre>
-<h3 id="3.4">Unary minus</h3>
+<h3 id="2.4">Unary minus</h3>
 We can use <code>-</code> as a unary operator.
 <pre><code>test demo_unary_minus {
     def a := 5
@@ -260,8 +201,8 @@ We can use <code>-</code> as a unary operator.
     return test_equal(b, 3)
 }
 </code></pre>
-<h2 id="4">Block Expressions</h2>
-<h3 id="4.1">Return with expression</h3>
+<h2 id="3">Block Expressions</h2>
+<h3 id="3.1">Return with expression</h3>
 We can return value from a block using <code>return</code> statement. All return expressions have to have equal types.
 <pre><code>test demo_return_with_expression {
     def a := {
@@ -271,7 +212,7 @@ We can return value from a block using <code>return</code> statement. All return
 }
 
 </code></pre>
-<h3 id="4.2">Return to label</h3>
+<h3 id="3.2">Return to label</h3>
 We can return to specific block using a label.
 <pre><code>test demo_return_to_label {
     def a := { .foo
@@ -283,20 +224,20 @@ We can return to specific block using a label.
 }
 
 </code></pre>
-<h3 id="4.3">Return void</h3>
+<h3 id="3.3">Return void</h3>
 The expression <code>{}</code> is a block, which returns type <code>#V</code>. We can use it to break from blocks, which are used as statements (don't return anything and have type <code>#V</code>).
 <pre><code>test demo_return_from_block {
     def a := 3
     eval {
         a := 2
         return {}
-        a := 3
+        a := 4
     }
     return test_equal(a, 2)
 }
 </code></pre>
-<h2 id="5">Defer</h2>
-<h3 id="5.1">Defer</h3>
+<h2 id="4">Defer</h2>
+<h3 id="4.1">Defer</h3>
 We can execute the statement at the end of the block, if we prepend it with <code>defer</code>.
 <pre><code>test demo_defer {
     defer return test_equal(a, 2)
@@ -304,7 +245,7 @@ We can execute the statement at the end of the block, if we prepend it with <cod
 }
 
 </code></pre>
-<h3 id="5.2">Multiple defer</h3>
+<h3 id="4.2">Multiple defer</h3>
 All deferred statements are executed in reversed order.
 <pre><code>test demo_multiple_defer {
     defer return test_equal(a, 2)
@@ -317,8 +258,8 @@ All deferred statements are executed in reversed order.
 }
 
 </code></pre>
-<h2 id="6">Definitions</h2>
-<h3 id="6.1">Definition</h3>
+<h2 id="5">Definitions</h2>
+<h3 id="5.1">Definition</h3>
 Use <code>def</code> to define a local variable. The variable must have an initial value after <code>:=</code> operator.
 <pre><code>test demo_definition {
     def a := 5      // this is variable `a`, which has type `integer`
@@ -327,7 +268,7 @@ Use <code>def</code> to define a local variable. The variable must have an initi
 }
 
 </code></pre>
-<h3 id="6.2">Types</h3>
+<h3 id="5.2">Types</h3>
 We can write types of local variables explicitly. The types begin with symbol <code>#</code>.
 <pre><code>test demo_types {
     def a #I := 5   // `#I` is an `integer` type
@@ -336,7 +277,7 @@ We can write types of local variables explicitly. The types begin with symbol <c
 }
 
 </code></pre>
-<h3 id="6.3">Type size</h3>
+<h3 id="5.3">Type size</h3>
 Operator <code>^</code> returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.
 <pre><code>test demo_type_size { .foo
     // The size of `#I` is 8 bytes
@@ -345,7 +286,7 @@ Operator <code>^</code> returns size of the packed type in bytes. However, on st
 }
 
 </code></pre>
-<h3 id="6.4">Global variables</h3>
+<h3 id="5.4">Global variables</h3>
 Variable can be created in global scope. If it is not assigned, it will be stored in <code>.bss</code> section and assigned to <code>0</code>. If it is assigned, it has to be assigned to a simple integer and it will be stored in <code>.data</code> section.
 <pre><code>def var1 #I
 def var2 := 31;
@@ -356,8 +297,8 @@ test demo_global_variable {
     return test_equal(var1 + var2, 80);
 }
 </code></pre>
-<h2 id="7">Functions</h2>
-<h3 id="7.1">Functions</h3>
+<h2 id="6">Functions</h2>
+<h3 id="6.1">Functions</h3>
 We can create functions. The function declaration has to be prepended with a <code>.</code>. To call a function, use parenthesis <code>()</code>. Functions are standard values, and we can store them in any structures. Function have their own types.
 <pre><code>func .add_one(x #I) -> #I {
     return x + 1
@@ -371,7 +312,7 @@ test demo_functions {
 }
 
 </code></pre>
-<h3 id="7.2">Methods</h3>
+<h3 id="6.2">Methods</h3>
 We can create methods for types. The method declaration has to be prepended with a caller type. The first argument of the method has to be the caller type. To call a method, use a <code>.</code> syntax. We can not store the method pointer in a variable (for example, this way: <code>a := b.c()</code>), since it will cause a capture of the caller value.
 <pre><code>func #I.add_one(x #I) -> #I {
     return x + 1
@@ -390,7 +331,7 @@ test demo_methods {
 }
 
 </code></pre>
-<h3 id="7.3">Extern</h3>
+<h3 id="6.3">Extern</h3>
 By default all functions are invisible to all source files, which include the file with the function declaration. In this case the function names are also generated, which makes it possible to have multiple functions with the same name in different scopes. We can make a function (or method) external by prepending <code>^</code> to its name. In this case, if it is a function, then the symbol will be equal to its name, and if it is a method, then the symbol will be mangled. It is not possible, however, to demonstrate it here.
 <pre><code>func ^.foo() -> #I 1
 
@@ -409,8 +350,8 @@ test demo_extern {
     return test_equal(a + b + c, 6)
 }
 </code></pre>
-<h2 id="8">If</h2>
-<h3 id="8.1">If statement</h3>
+<h2 id="7">If</h2>
+<h3 id="7.1">If statement</h3>
 The <code>if</code> statement consists of set of blocks and conditions. The last block may be without a condition.
 <pre><code>test demo_if_statement {
     def a := 3
@@ -427,7 +368,7 @@ The <code>if</code> statement consists of set of blocks and conditions. The last
 }
 
 </code></pre>
-<h3 id="8.2">If expression</h3>
+<h3 id="7.2">If expression</h3>
 The <code>if</code> can be used as expression. All branches of <code>if</code> have to return equal types, and also <code>if</code> has to have an <code>else</code> block, if it returns not <code>#V</code>.
 <pre><code>test demo_if_expression {
     def a := 3
@@ -440,8 +381,8 @@ The <code>if</code> can be used as expression. All branches of <code>if</code> h
     return test_equal(a, 2)
 }
 </code></pre>
-<h2 id="9">Lambda Functions</h2>
-<h3 id="9.1">Simple lambda functions</h3>
+<h2 id="8">Lambda Functions</h2>
+<h3 id="8.1">Simple lambda functions</h3>
 The lambda functions don't require to have name. But we can assign them to variables.
 <pre><code>test demo_lambda_functions {
     def f := \(x #I) -&gt #I {
@@ -451,7 +392,7 @@ The lambda functions don't require to have name. But we can assign them to varia
 }
 
 </code></pre>
-<h3 id="9.2">Higher order functions</h3>
+<h3 id="8.2">Higher order functions</h3>
 We can pass lambda functions to function calls.
 <pre><code>test demo_higher_order_functions {
     def twice := \(f #F(#I) -&gt #I, x #I) -&gt #I {
@@ -460,8 +401,8 @@ We can pass lambda functions to function calls.
     return test_equal(twice(\(x #I) -&gt #I x * x, 2), 16)
 }
 </code></pre>
-<h2 id="10">Operators</h2>
-<h3 id="10.1">Logic operators</h3>
+<h2 id="9">Operators</h2>
+<h3 id="9.1">Logic operators</h3>
 There are following logic operators: binary <code>and</code>, binary <code>or</code>, unary <code>not</code>. In any case both branches will be evaluated.
 <pre><code>test demo_logic_operators {
     def a := 1 and 1    // now `a` is equal to 1
@@ -474,7 +415,7 @@ There are following logic operators: binary <code>and</code>, binary <code>or</c
 }
 
 </code></pre>
-<h3 id="10.2">Bitwise operators</h3>
+<h3 id="9.2">Bitwise operators</h3>
 There are following bitwise operators: binary and <code>&</code>, binary or <code>|</code>, binary xor <code>^</code>, unary not <code>~</code>, binary shift left <code><<</code>, binary shift right <code>>></code>. In any case both branches will be evaluated.
 <pre><code>test demo_bitwise_operators {
     def a := 14 & 7     // now `a` is equal 6
@@ -487,7 +428,7 @@ There are following bitwise operators: binary and <code>&</code>, binary or <cod
 }
 
 </code></pre>
-<h3 id="10.3">Operator precendence</h3>
+<h3 id="9.3">Operator precendence</h3>
 All operators are left-associative. The operators have following precedence.
 <table>
   <tr>
@@ -539,8 +480,8 @@ All operators are left-associative. The operators have following precedence.
     <td><code>or</code></td>
   </tr>
 </table>
-<h2 id="11">Structs</h2>
-<h3 id="11.1">Definition of struct</h3>
+<h2 id="10">Structs</h2>
+<h3 id="10.1">Definition of struct</h3>
 We declare instances of structs with <code>.{ }</code> syntax. The type of struct instance is inferred. Two struct types with different type names, but same type contents are equal. We can get the struct field value from a struct pointer with <code>-></code> syntax. We can get the pointer to the struct field from a struct pointer with <code>-><field>&</code> syntax, which is often used to store value in a struct field with <code><-</code> operator.
 <pre><code>typedef Pt := #S{ x: #I, y: #I }
 
@@ -555,22 +496,26 @@ test demo_definition_of_struct {
 }
 
 </code></pre>
-<h3 id="11.2">Passing structs to functions</h3>
+<h3 id="10.2">Passing structs to functions</h3>
 We can't pass structs to functions (currently). We can return struct from functions, but the implementation <b>doesn't comply with the System V ABI</b>.
-<pre><code>func .store_number(s #1Pt, n #I) -> #V {
+<pre><code>/* func .store_number(s #1Pt, n #I) -> #V {
+    s-&gtx& &lt- n
+} */
+
+func .store_number(s #1S{ x : #I, y : #I }, n #I) -&gt #V {
     s-&gtx& &lt- n
 }
 
 test demo_passing_structs_to_functions {
-    def pt1 #Pt
+    def pt1 #S{ x : #I, y : #I }
     eval store_number(pt1&, 4)
     return test_equal(pt1&-&gtx, 4)
 }
 </code></pre>
-<h2 id="12">Typedef</h2>
-<h3 id="12.1">Int type</h3>
+<h2 id="11">Typedef</h2>
+<h3 id="11.1">Int type</h3>
 We can give names to types.
-<pre><code>typedef T := #I
+<pre><code>/*typedef T := #I
 
 func .add_one(x #T) -&gt #T {
     return x + 1
@@ -581,7 +526,7 @@ test demo_typedef_int {
 }
 
 </code></pre>
-<h3 id="12.2">Function type</h3>
+<h3 id="11.2">Function type</h3>
 The function is also a type.
 <pre><code>typedef K := #F(#I) -> #I
 
@@ -591,10 +536,10 @@ func .apply(f #K, a #T) -&gt #T {
 
 test demo_typedef_function {
     return test_equal(apply(add_one, 1), 2)
-}
+}*/
 </code></pre>
-<h2 id="13">While</h2>
-<h3 id="13.1">While statement</h3>
+<h2 id="12">While</h2>
+<h3 id="12.1">While statement</h3>
 The while statement consists of block an condition.
 <pre><code>test demo_while_statement {
     def i := 0
@@ -607,7 +552,7 @@ The while statement consists of block an condition.
 }
 
 </code></pre>
-<h3 id="13.2">While expression</h3>
+<h3 id="12.2">While expression</h3>
 The <code>while</code> can be used as expression. All <code>break</code> in <code>while</code> and an <code>else</code> block have to return equal types, and also <code>while</code> has to have an <code>else</code> block, if it returns not <code>#V</code>.
 <pre><code>test demo_while_expression {
     def i := 0
@@ -622,7 +567,7 @@ The <code>while</code> can be used as expression. All <code>break</code> in <cod
 }
 
 </code></pre>
-<h3 id="13.3">While else block</h3>
+<h3 id="12.3">While else block</h3>
 The <code>else</code> block will be executed, if we exit the loop when checking a condition, which is false.
 <pre><code>test demo_while_else_block {
     def i := 0
@@ -637,7 +582,7 @@ The <code>else</code> block will be executed, if we exit the loop when checking 
 }
 
 </code></pre>
-<h3 id="13.4">While continue statement</h3>
+<h3 id="12.4">While continue statement</h3>
 We can jump to the start of the loop using a <code>continue</code> statement.
 <pre><code>test demo_while_continue_statement {
     def i := 0
@@ -653,7 +598,7 @@ We can jump to the start of the loop using a <code>continue</code> statement.
 }
 
 </code></pre>
-<h3 id="13.5">While control with labels</h3>
+<h3 id="12.5">While control with labels</h3>
 We can use <code>break</code> and <code>continue</code> not only to nearest loop, but also to given labeled loop.
 <pre><code>test demo_while_control_with_labels {
     def a := while .foo (1) {
