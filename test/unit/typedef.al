@@ -6,7 +6,7 @@ func .test_equal(a #I, b #I) -> #I
 //* Int type
 //* We can give names to types.
 
-/*typedef T := #I
+typedef T := #I
 
 func .add_one(x #T) -> #T {
     return x + 1
@@ -27,4 +27,4 @@ func .apply(f #K, a #T) -> #T {
 
 test demo_typedef_function {
     return test_equal(apply(add_one, 1), 2)
-}*/
+}

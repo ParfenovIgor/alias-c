@@ -21,16 +21,12 @@ test demo_definition_of_struct {
 //* Passing structs to functions
 //* We can't pass structs to functions (currently). We can return struct from functions, but the implementation <b>doesn't comply with the System V ABI</b>.
 
-/* func .store_number(s #1Pt, n #I) -> #V {
-    s->x& <- n
-} */
-
-func .store_number(s #1S{ x : #I, y : #I }, n #I) -> #V {
+func .store_number(s #1Pt, n #I) -> #V {
     s->x& <- n
 }
 
 test demo_passing_structs_to_functions {
-    def pt1 #S{ x : #I, y : #I }
+    def pt1 #Pt
     eval store_number(pt1&, 4)
     return test_equal(pt1&->x, 4)
 }

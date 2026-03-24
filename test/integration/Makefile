@@ -2,18 +2,27 @@ ALFLAGS=-i altlib ../../altlib/
 LDFLAGS=-z noexecstack
 
 SRCS_AL := $(wildcard *.al)
-EXES_AL := $(patsubst %.al, $(BUILD_DIR)/test/integration/%, $(SRCS_AL))
+EXES_x86_64 := $(patsubst %.al, $(BUILD_DIR)/test/integration/x86_64/%, $(SRCS_AL))
+EXES_C := $(patsubst %.al, $(BUILD_DIR)/test/integration/c/%, $(SRCS_AL))
 
 OBJS_ARCH := $(wildcard $(BUILD_DIR)/arch/*.o)
 OBJS_ALTLIB := $(wildcard $(BUILD_DIR)/altlib/*.o)
 
-all: $(EXES_AL)
+all: $(EXES_x86_64) $(EXES_C)
 
-$(BUILD_DIR)/test/integration/%: %.al make_dir
-	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $(patsubst %, %.o, $@)
-	ld $(LDFLAGS) -o $@ $(patsubst %, %.o, $@) $(OBJS_ARCH) $(OBJS_ALTLIB)
+$(BUILD_DIR)/test/integration/x86_64/%: %.al make_dir
+	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $@.o
+	ld $(LDFLAGS) -o $@ $@.o $(OBJS_ARCH) $(OBJS_ALTLIB)
+	$@ > $(patsubst %, %.out, $@)
+	diff $(patsubst %, %.out, $@) $(patsubst %.al, %.out, $<) || (echo "Test failed"; exit 1)
+
+$(BUILD_DIR)/test/integration/c/%: %.al make_dir
+	$(BUILD_DIR)/calias -a -b c $(ALFLAGS) $< -o $@.c
+	gcc -fno-stack-protector -c $@.c -o $@.o -no-pie
+	ld $(LDFLAGS) -o $@ $@.o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	$@ > $(patsubst %, %.out, $@)
 	diff $(patsubst %, %.out, $@) $(patsubst %.al, %.out, $<) || (echo "Test failed"; exit 1)
 
 make_dir:
-	mkdir -p $(BUILD_DIR)/test/integration
+	mkdir -p $(BUILD_DIR)/test/integration/x86_64
+	mkdir -p $(BUILD_DIR)/test/integration/c

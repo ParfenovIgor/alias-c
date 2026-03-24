@@ -418,7 +418,12 @@ void ir_compile_type_prefix(struct TypeNode *type, int fd_text) {
                 case -1: _panic("Unexpected type"); break;
                 case 1: _fputs(fd_text, "char"); break;
                 case 8: _fputs(fd_text, "long"); break;
-                default: _fputs(fd_text, "char(");
+                default: {
+                    _fputs(fd_text, "char(");
+                    for (int i = 0; i < type->degree; i++) {
+                        _fputs(fd_text, "*");
+                    }
+                }
             }
             break;
         }
@@ -722,21 +727,39 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
                     _fputs(fd_text, ";");
                 }
                 else if (type == IRNodeStore) {
-                    _fputs(fd_text, "    *");
-                    ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
-                    _fputs(fd_text, " = ");
-                    ir_compile_value(&values_list, value->value_arg_list.ptr[1], fd_text);
-                    _fputs(fd_text, ";");
+                    struct IRValue *src = value->value_arg_list.ptr[1];
+                    if (src->type->node_type == TypeNodeStruct && src->type->degree == 0) {
+                        for (int i = 0; i < src->type->size; i++) {
+                            _fputs(fd_text, "    ((char*)");
+                            ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                            _fputsi(fd_text, ")[", i, "] = (char)");
+                            ir_compile_value(&values_list, value->value_arg_list.ptr[1], fd_text);
+                            _fputsi(fd_text, "[", i, "];");
+                            if (i + 1 < src->type->size) _fputs(fd_text, "\n");
+                        }
+                    }
+                    else {
+                        _fputs(fd_text, "    *");
+                        ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                        _fputs(fd_text, " = ");
+                        ir_compile_value(&values_list, value->value_arg_list.ptr[1], fd_text);
+                        _fputs(fd_text, ";");
+                    }
                 }
                 else if (type == IRNodeCall) {
                     if (value->type->size == 0) {
                         _fputs(fd_text, "    ");
                     }
+                    ir_compile_type(value->type, fd_text, true);
                     int sz_args = vsize(&value->value_arg_list);
-                    ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                    struct IRValue *value_function = value->value_arg_list.ptr[0];
+                    ir_compile_value(&values_list, value_function, fd_text);
+                    struct TypeFunction *type_function = (struct TypeFunction*)value_function->type->node_ptr;
                     _fputs(fd_text, "(");
                     for (int arg = 1; arg < sz_args; arg++) {
-                        ir_compile_value(&values_list, value->value_arg_list.ptr[arg], fd_text);
+                        ir_compile_type((struct TypeNode*)type_function->types.ptr[arg - 1], fd_text, true);
+                        struct IRValue *value_arg = value->value_arg_list.ptr[arg];
+                        ir_compile_value(&values_list, value_arg, fd_text);
                         if (arg + 1 != sz_args) {
                             _fputs(fd_text, ", ");
                         }
@@ -1369,7 +1392,9 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
     }
     if (node->node_type == NodeAs) {
         struct As *_node = (struct As*)node->node_ptr;
-        return ir_build(builder, _node->expression);
+        struct IRValue *value = ir_build(builder, _node->expression);
+        value->type = _node->type;
+        return value;
     }
     if (node->node_type == NodeAssignment) {
         struct Assignment *_node = (struct Assignment*)node->node_ptr;
@@ -1497,11 +1522,17 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         globalvar->value = (char*)_node->value;
         vpush(&builder->globalvar_list, globalvar);
 
-        struct IRValue *value = ir_build_value_free(builder, IRNodeGlobal);
-        value->type = node->type;
-        vpush(&value->const_arg_list, (char*)identifier);
-        globalvar->ir_value = value;
-        return value;
+        struct IRValue *value_global = ir_build_value_free(builder, IRNodeGlobal);
+        value_global->type = node->type;
+        vpush(&value_global->const_arg_list, (char*)identifier);
+        globalvar->ir_value = value_global;
+
+        struct IRValue *value_load = ir_build_value(builder, IRNodeLoad);
+        value_load->type = node->type;
+        vpush(&value_load->value_arg_list, value_global);
+        vpush(&value_load->const_arg_list, (void*)(long)8);
+
+        return value_load;
     }
     if (node->node_type == NodeArray) {
         _panic("Unimplemented NodeArray");

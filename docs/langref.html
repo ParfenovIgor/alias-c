@@ -498,16 +498,12 @@ test demo_definition_of_struct {
 </code></pre>
 <h3 id="10.2">Passing structs to functions</h3>
 We can't pass structs to functions (currently). We can return struct from functions, but the implementation <b>doesn't comply with the System V ABI</b>.
-<pre><code>/* func .store_number(s #1Pt, n #I) -> #V {
-    s-&gtx& &lt- n
-} */
-
-func .store_number(s #1S{ x : #I, y : #I }, n #I) -&gt #V {
+<pre><code>func .store_number(s #1Pt, n #I) -> #V {
     s-&gtx& &lt- n
 }
 
 test demo_passing_structs_to_functions {
-    def pt1 #S{ x : #I, y : #I }
+    def pt1 #Pt
     eval store_number(pt1&, 4)
     return test_equal(pt1&-&gtx, 4)
 }
@@ -515,7 +511,7 @@ test demo_passing_structs_to_functions {
 <h2 id="11">Typedef</h2>
 <h3 id="11.1">Int type</h3>
 We can give names to types.
-<pre><code>/*typedef T := #I
+<pre><code>typedef T := #I
 
 func .add_one(x #T) -&gt #T {
     return x + 1
@@ -536,7 +532,7 @@ func .apply(f #K, a #T) -&gt #T {
 
 test demo_typedef_function {
     return test_equal(apply(add_one, 1), 2)
-}*/
+}
 </code></pre>
 <h2 id="12">While</h2>
 <h3 id="12.1">While statement</h3>

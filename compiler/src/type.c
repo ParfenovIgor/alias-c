@@ -5,47 +5,55 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool type_check(struct TypeNode *n, struct CPContext *context) {
+struct TypeNode *type_normalize(struct TypeNode *n, struct CPContext *context) {
     if (n->node_type == TypeNodeVoid) {
         n->size = 0;
-        return true;
+        return n;
     }
     if (n->node_type == TypeNodeInt) {
         n->size = 8;
-        return true;
+        return n;
     }
     if (n->node_type == TypeNodeChar) {
         n->size = 1;
-        return true;
+        return n;
     }
     if (n->node_type == TypeNodeStruct) {
         struct TypeStruct *_n = n->node_ptr;
         int res = 0;
         int sz = vsize(&_n->names);
         for (int i = 0; i < sz; i++) {
-            struct TypeNode *type = _n->types.ptr[i];
-            if (!type_check(type, context)) return false;
-            res += type->size;
+            _n->types.ptr[i] = type_normalize(_n->types.ptr[i], context);
+            if (!_n->types.ptr[i]) return NULL;
+            res += ((struct TypeNode*)_n->types.ptr[i])->size;
         }
         n->size = res;
-        return true;
+        return n;
     }
     if (n->node_type == TypeNodeFunction) {
         struct TypeFunction *_n = n->node_ptr;
         int sz = vsize(&_n->types);
         for (int i = 0; i < sz; i++) {
-            if (!type_check(_n->types.ptr[i], context)) return false;
+            _n->types.ptr[i] = type_normalize(_n->types.ptr[i], context);
+            if (!_n->types.ptr[i]) return NULL;
         }
         n->size = 8;
-        return type_check(_n->return_type, context);
+        _n->return_type = type_normalize(_n->return_type, context);
+        if (!_n->return_type) return NULL;
+        return n;
     }
     if (n->node_type == TypeNodeIdentifier) {
         struct TypeIdentifier *_n = n->node_ptr;
         struct TypeInfo *info = context_find_type(context, _n->identifier);
-        if (!info) return false;
-        if (!type_check(info->type, context)) return false;
-        n->size = info->type->size;
-        return true;
+        if (!info) return NULL;
+        if (n->degree == 0) {
+            return info->type;
+        }
+        else {
+            struct TypeNode *_n = type_copy_node(info->type);
+            _n->degree++;
+            return _n;
+        }
     }
 }
 
@@ -143,7 +151,7 @@ struct TypeNode *type_get_function(struct TypeNode *n, struct CPContext *context
 
 int type_size(struct TypeNode *n, struct CPContext *context) {
     if (n->size == -1) {
-        type_check(n, context);
+        _panic("Type was not evaluated");
     }
 
     if (n->degree > 0) return 8;
