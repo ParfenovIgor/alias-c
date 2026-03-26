@@ -97,6 +97,7 @@ struct GetField;
 struct FunctionSignature {
     struct Vector identifiers;
     struct Vector types;
+    struct Vector addressed;
     struct TypeNode *return_type;
     bool propagate_allocator;
 };
@@ -168,6 +169,7 @@ struct Definition {
     const char *identifier;
     struct TypeNode *type;
     struct Node *value;
+    bool addressed;
 };
 
 struct TypeDefinition {

@@ -12,6 +12,7 @@ struct GlobalVariableInfo {
 struct VariableInfo {
     const char *name;
     struct TypeNode *type;
+    bool *to_mark_addressed;
     int sf_phase;
 };
 

@@ -75,7 +75,8 @@
 <ul><li><a href="#1">Address</a>
 <ul>
 <li><a href="#1.1">Get address and movement</a></li>
-<li><a href="#1.2">Dereference</a></li>
+<li><a href="#1.2">Get address of function argument</a></li>
+<li><a href="#1.3">Dereference</a></li>
 </ul></li>
 <li><a href="#2">Arithmetic</a>
 <ul>
@@ -147,7 +148,7 @@
 <h2 id="1">Address</h2>
 <h3 id="1.1">Get address and movement</h3>
 We can take a pointer to local variable or function argument with <code>&</code> syntax. We can store a value by a pointer with <code>-></code> syntax.
-<pre><code>/*test demo_get_address_and_movement {
+<pre><code>test demo_get_address_and_movement {
     def a #I
     def ptr := a&
     ptr &lt- 12
@@ -155,14 +156,27 @@ We can take a pointer to local variable or function argument with <code>&</code>
 }
 
 </code></pre>
-<h3 id="1.2">Dereference</h3>
+<h3 id="1.2">Get address of function argument</h3>
+We can also take address of function arguments.
+<pre><code>func .foo(a #I) -> #I {
+    def ptr := a&
+    ptr &lt- 11
+    return a
+}
+
+test demo_get_address_and_movement_of_function_argument {
+    return test_equal(foo(9), 11)
+}
+
+</code></pre>
+<h3 id="1.3">Dereference</h3>
 We can get a value from a pointer (or a pointer with a lower degree) with a <code>$</code> syntax.
 <pre><code>test demo_dereference {
     def a := 3
     def ptr := a&
     a := 7
     return test_equal(ptr$, 7)
-}*/
+}
 </code></pre>
 <h2 id="2">Arithmetic</h2>
 <h3 id="2.1">Addition and subtraction</h3>
@@ -491,7 +505,9 @@ test demo_definition_of_struct {
         y := 76
     }
     pt1&-&gtx& &lt- 21
-    def pt2 #Pt := pt1
+    //def pt2 #Pt := pt1
+    def pt2 #Pt
+    pt2 := pt1
     return test_equal(pt1&-&gtx, pt2&-&gtx)
 }
 

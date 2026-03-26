@@ -14,7 +14,9 @@ test demo_definition_of_struct {
         y := 76
     }
     pt1&->x& <- 21
-    def pt2 #Pt := pt1
+    //def pt2 #Pt := pt1
+    def pt2 #Pt
+    pt2 := pt1
     return test_equal(pt1&->x, pt2&->x)
 }
 

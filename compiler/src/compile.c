@@ -176,6 +176,8 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
 
     if (this) {
         int sz = vsize(&this->identifiers);
+        this->addressed = vnew();
+        for (int i = 0; i < (sz + 7) / 8; i++) vpush(&this->addressed, NULL);
         this->return_type = type_normalize(this->return_type, context);
         if (!this->return_type) {
             error_semantic("Type identifier was not declared in function signature return type", node);
@@ -206,7 +208,8 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
                 var_info->name = this->identifiers.ptr[i];
                 var_info->type = this->types.ptr[i];
             }
-            int size = align_to_word(type_size(var_info->type, context));
+            int size = align_to_word(type_size(var_info->type));
+            var_info->to_mark_addressed = &((bool*)this->addressed.ptr)[i];
             var_info->sf_phase = context->sf_pos - size;
             context->sf_pos -= size;
             vpush(&context->variables, var_info);
@@ -482,7 +485,7 @@ void compile_global_definition(struct Node *node, struct GlobalDefinition *this,
         context->codegen->buffer_int(this->identifier, ((struct Integer*)(this->value->node_ptr))->value, context);
     }
     else {
-        context->codegen->buffer_zero(this->identifier, type_size(this->type, context), context);
+        context->codegen->buffer_zero(this->identifier, type_size(this->type), context);
     }
 }
 
@@ -515,7 +518,9 @@ void compile_definition(struct Node *node, struct Definition *this, struct CPCon
     struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
     var_info->name = _strdup(this->identifier);
     var_info->type = _type;
-    int sz = align_to_word(type_size(_type, context));
+    this->addressed = false;
+    var_info->to_mark_addressed = &this->addressed;
+    int sz = align_to_word(type_size(_type));
     var_info->sf_phase = context->sf_pos - sz;
     vpush(&context->variables, var_info);
     context->sf_pos -= sz;
@@ -551,7 +556,7 @@ void compile_return(struct Node *node, struct Return *this, struct CPContext *co
         }
     }
 
-    int tsize = type_size(_type, context);
+    int tsize = type_size(_type);
     context->codegen->stackframe_memcpy(label_info->sf_pos - align_to_word(tsize), context->sf_pos - align_to_word(tsize), tsize, context);
 
     context->codegen->stack_shift(label_info->sf_pos - context->sf_pos, context);
@@ -573,7 +578,7 @@ void compile_break(struct Node *node, struct Break *this, struct CPContext *cont
         }
     }
 
-    int tsize = type_size(_type, context);
+    int tsize = type_size(_type);
     context->codegen->stackframe_memcpy(label_info->sf_pos - align_to_word(tsize), context->sf_pos - align_to_word(tsize), tsize, context);
 
     context->codegen->stack_shift(label_info->sf_pos - context->sf_pos, context);
@@ -622,7 +627,7 @@ void compile_assignment(struct Node *node, struct Assignment *this, struct CPCon
         error_semantic("Assignment of not equal types", node);
     }
 
-    int tsize = type_size(_type1, context);
+    int tsize = type_size(_type1);
     if (var_info) {
         context->codegen->stack_pop_memcpy_stackframe(var_info->sf_phase, tsize, context);
     }
@@ -645,7 +650,7 @@ void compile_movement(struct Node *node, struct Movement *this, struct CPContext
     _type2->degree--;
 
     context->codegen->stack_popword_phase(REG_A, 0, context);
-    context->codegen->stack_pop_memcpy(REG_A, type_size(_type2, context), context);
+    context->codegen->stack_pop_memcpy(REG_A, type_size(_type2), context);
 
     context->codegen->stack_shift(WORD, context);
     context->sf_pos += WORD;
@@ -658,6 +663,7 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
         if (this->address) {
             error_semantic("Can't take address of function", node);
         }
+        this->identifier = ((struct FunctionDefinition*)function_info->function_definition->node_ptr)->name;
         _type = function_info->type;
         context->codegen->move_labelreg(REG_A, function_info->name_back, context);
         context->codegen->stack_pushword(REG_A, context);
@@ -676,6 +682,7 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
     }
     if (this->address) {
         if (var_info) {
+            *var_info->to_mark_addressed = true;
             context->codegen->get_stackframe_position(REG_A, var_info->sf_phase, context);
             context->codegen->stack_pushword(REG_A, context);
         }
@@ -686,10 +693,10 @@ struct TypeNode *compile_identifier(struct Node *node, struct Identifier *this, 
     }
     else {
         if (var_info) {
-            context->codegen->from_stackframe_to_stack(var_info->sf_phase, align_to_word(type_size(_type, context)), context);
+            context->codegen->from_stackframe_to_stack(var_info->sf_phase, align_to_word(type_size(_type)), context);
         }
         else {
-            context->codegen->from_global_to_stack(global_var_info->name, align_to_word(type_size(_type, context)), context);
+            context->codegen->from_global_to_stack(global_var_info->name, align_to_word(type_size(_type)), context);
         }
     }
     return _type;
@@ -744,7 +751,7 @@ struct TypeNode *compile_struct_instance(struct Node *node, struct StructInstanc
     int orig_struct_size = 0;
     for (int i = sz - 1; i >= 0; i--) {
         struct TypeNode *_type = compile_node(this->values.ptr[i], context);
-        int field_size = type_size(_type, context);
+        int field_size = type_size(_type);
         orig_struct_size += align_to_word(field_size);
         context->sf_pos -= align_to_word(field_size);
         context->codegen->stack_shift(-align_to_word(field_size), context);
@@ -790,7 +797,7 @@ struct TypeNode *compile_sizeof(struct Node *node, struct Sizeof *this, struct C
         }
     }
 
-    int size = type_size(this->type, context);
+    int size = type_size(this->type);
     context->codegen->stack_pushlabel(_itoa(size), context);
     return context->node_int;
 }
@@ -912,7 +919,7 @@ struct TypeNode *compile_dereference(struct Node *node, struct Dereference *this
     if (_type->degree == 0) error_semantic("Dereference of not pointer value", node);
     _type = type_copy_node(_type);
     _type->degree--;
-    int _type_size = type_size(_type, context);
+    int _type_size = type_size(_type);
 
     context->codegen->stack_popword(REG_A, context);
     context->codegen->stack_push_memcpy(REG_A, _type_size, context);
@@ -935,7 +942,7 @@ struct TypeNode *compile_index(struct Node *node, struct Index *this, struct CPC
     context->codegen->stack_shift(WORD, context);
     context->sf_pos += WORD;
     _type1->degree--;
-    int _type_size = type_size(_type1, context);
+    int _type_size = type_size(_type1);
     _type1->degree++;
     context->codegen->index(_type_size, context);
     if (!this->address) {
@@ -965,7 +972,7 @@ struct TypeNode *compile_get_field(struct Node *node, struct GetField *this, str
             field_type = _type->types.ptr[i];
             break;
         }
-        phase += type_size(_type->types.ptr[i], context);
+        phase += type_size(_type->types.ptr[i]);
     }
 
     if (!field_type) {
@@ -976,7 +983,7 @@ struct TypeNode *compile_get_field(struct Node *node, struct GetField *this, str
     context->codegen->stack_popword(REG_A, context);
     context->codegen->add_const(REG_A, phase, context);
     if (!this->address) {  
-        context->codegen->stack_push_memcpy(REG_A, type_size(field_type, context), context);
+        context->codegen->stack_push_memcpy(REG_A, type_size(field_type), context);
     }
     else {
         context->codegen->stack_pushword(REG_A, context);

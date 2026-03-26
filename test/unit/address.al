@@ -6,11 +6,24 @@ func .test_equal(a #I, b #I) -> #I
 //* Get address and movement
 //* We can take a pointer to local variable or function argument with `&` syntax. We can store a value by a pointer with `->` syntax.
 
-/*test demo_get_address_and_movement {
+test demo_get_address_and_movement {
     def a #I
     def ptr := a&
     ptr <- 12
     return test_equal(a, 12)
+}
+
+//* Get address of function argument
+//* We can also take address of function arguments.
+
+func .foo(a #I) -> #I {
+    def ptr := a&
+    ptr <- 11
+    return a
+}
+
+test demo_get_address_and_movement_of_function_argument {
+    return test_equal(foo(9), 11)
 }
 
 //* Dereference
@@ -21,4 +34,4 @@ test demo_dereference {
     def ptr := a&
     a := 7
     return test_equal(ptr$, 7)
-}*/
+}

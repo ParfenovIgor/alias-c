@@ -149,7 +149,7 @@ struct TypeNode *type_get_function(struct TypeNode *n, struct CPContext *context
     }
 }
 
-int type_size(struct TypeNode *n, struct CPContext *context) {
+int type_size(struct TypeNode *n) {
     if (n->size == -1) {
         _panic("Type was not evaluated");
     }
