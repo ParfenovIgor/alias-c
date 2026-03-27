@@ -100,8 +100,9 @@
 <ul>
 <li><a href="#5.1">Definition</a></li>
 <li><a href="#5.2">Types</a></li>
-<li><a href="#5.3">Type size</a></li>
-<li><a href="#5.4">Global variables</a></li>
+<li><a href="#5.3">Scopes</a></li>
+<li><a href="#5.4">Type size</a></li>
+<li><a href="#5.5">Global variables</a></li>
 </ul></li>
 <li><a href="#6">Functions</a>
 <ul>
@@ -291,7 +292,18 @@ We can write types of local variables explicitly. The types begin with symbol <c
 }
 
 </code></pre>
-<h3 id="5.3">Type size</h3>
+<h3 id="5.3">Scopes</h3>
+Local variable only visible in block, where it is defined.
+<pre><code>test demo_scopes {
+    def a := 2
+    eval {
+        def a := 3
+    }
+    return test_equal(a, 2)
+}
+
+</code></pre>
+<h3 id="5.4">Type size</h3>
 Operator <code>^</code> returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.
 <pre><code>test demo_type_size { .foo
     // The size of `#I` is 8 bytes
@@ -300,7 +312,7 @@ Operator <code>^</code> returns size of the packed type in bytes. However, on st
 }
 
 </code></pre>
-<h3 id="5.4">Global variables</h3>
+<h3 id="5.5">Global variables</h3>
 Variable can be created in global scope. If it is not assigned, it will be stored in <code>.bss</code> section and assigned to <code>0</code>. If it is assigned, it has to be assigned to a simple integer and it will be stored in <code>.data</code> section.
 <pre><code>def var1 #I
 def var2 := 31;
@@ -505,9 +517,7 @@ test demo_definition_of_struct {
         y := 76
     }
     pt1&-&gtx& &lt- 21
-    //def pt2 #Pt := pt1
-    def pt2 #Pt
-    pt2 := pt1
+    def pt2 #Pt := pt1
     return test_equal(pt1&-&gtx, pt2&-&gtx)
 }
 

@@ -8,7 +8,7 @@ EXES_C := $(patsubst %.al, $(BUILD_DIR)/test/integration/c/%, $(SRCS_AL))
 OBJS_ARCH := $(wildcard $(BUILD_DIR)/arch/*.o)
 OBJS_ALTLIB := $(wildcard $(BUILD_DIR)/altlib/*.o)
 
-all: $(EXES_C)
+all: $(EXES_x86_64) $(EXES_C)
 
 $(BUILD_DIR)/test/integration/x86_64/%: %.al make_dir
 	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $@.o
@@ -18,7 +18,7 @@ $(BUILD_DIR)/test/integration/x86_64/%: %.al make_dir
 
 $(BUILD_DIR)/test/integration/c/%: %.al make_dir
 	$(BUILD_DIR)/calias -a -b c $(ALFLAGS) $< -o $@.c
-	gcc -fno-stack-protector -c $@.c -o $@.o -no-pie
+	gcc -fno-stack-protector -g -c $@.c -o $@.o -no-pie
 	ld $(LDFLAGS) -o $@ $@.o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	$@ > $(patsubst %, %.out, $@)
 	diff $(patsubst %, %.out, $@) $(patsubst %.al, %.out, $<) || (echo "Test failed"; exit 1)

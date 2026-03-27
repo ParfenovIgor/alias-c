@@ -2,13 +2,13 @@ include altlib."posix.al"
 include altlib."stdio.al"
 include altlib."test_allocator.al"
 
-func .merge_sort@(a #1I, lx #I, rx #I) -> #V {
+func .merge_sort(a #1I, lx #I, rx #I, allocator #1TestAllocator) -> #V {
     eval if (rx - lx > 1) {
         def m := (lx + rx) / 2
-        eval merge_sort(a, lx, m)
-        eval merge_sort(a, m, rx)
+        eval merge_sort(a, lx, m, allocator)
+        eval merge_sort(a, m, rx, allocator)
         
-        def b := @.alloc((rx - lx) * $#I)
+        def b := allocator.alloc((rx - lx) * $#I)
         def ptr1 := lx
         def ptr2 := m
         def ptr3 := 0
@@ -44,7 +44,7 @@ func ^._start() -> #V {
         i := i + 1
     }
 
-    eval merge_sort(@allocator&, a, 0, n)
+    eval merge_sort(a, 0, n, allocator&)
 
     i := 0
     eval while (i < n) {

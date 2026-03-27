@@ -21,6 +21,17 @@ test demo_types {
     return 0
 }
 
+//* Scopes
+//* Local variable only visible in block, where it is defined.
+
+test demo_scopes {
+    def a := 2
+    eval {
+        def a := 3
+    }
+    return test_equal(a, 2)
+}
+
 //* Type size
 //* Operator `^` returns size of the packed type in bytes. However, on stack data occupies more space, as it has to be word-aligned.
 

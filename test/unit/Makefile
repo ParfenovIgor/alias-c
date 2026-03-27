@@ -19,7 +19,7 @@ $(BUILD_DIR)/test/unit/x86_64/%: %.al make_dir
 
 $(BUILD_DIR)/test/unit/c/%: %.al make_dir
 	$(BUILD_DIR)/calias -a -b c $(ALFLAGS) $< -o $@.c
-	gcc -fno-stack-protector -c $@.c -o $@.o -no-pie
+	gcc -fno-stack-protector -g -c $@.c -o $@.o -no-pie
 	ld $(LDFLAGS) -o $@ $@.o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	$@ || (echo "Test failed"; exit 1)
 

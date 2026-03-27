@@ -177,7 +177,7 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
     if (this) {
         int sz = vsize(&this->identifiers);
         this->addressed = vnew();
-        for (int i = 0; i < (sz + 7) / 8; i++) vpush(&this->addressed, NULL);
+        for (int i = 0; i < sz; i++) vpush(&this->addressed, NULL);
         this->return_type = type_normalize(this->return_type, context);
         if (!this->return_type) {
             error_semantic("Type identifier was not declared in function signature return type", node);
