@@ -24,7 +24,119 @@ struct IRBuilder *ir_builder(bool testing) {
     return builder;
 }
 
-struct IRValue *ir_build_value(struct IRBuilder *builder, enum IRValueType value_type) {
+struct IRNode *ir_build_node_free(struct IRBuilder *builder, void *node_ptr, enum IRValueType node_type, struct TypeNode *type) {
+    struct IRNode *node = (struct IRNode*)_malloc(sizeof(struct IRNode));
+    node->node_ptr = node_ptr;
+    node->node_type = node_ptr;
+    node->type = type;
+    return node;
+}
+
+struct IRNode *ir_build_node(struct IRBuilder *builder, void *node_ptr, enum IRValueType node_type, struct TypeNode *type) {
+    struct IRNode *node = (struct IRNode*)_malloc(sizeof(struct IRNode));
+    node->node_ptr = node_ptr;
+    node->node_type = node_ptr;
+    node->type = type;
+    vpush(&builder->current_block->value_list, node);
+    return node;
+}
+
+struct IRNode *ir_build_arg(struct IRBuilder *builder, struct TypeNode *type) {
+    struct IRArg *arg = (struct IRArg*)_malloc(sizeif(struct IRArg));
+    return ir_build_node_free(builder, arg, IRNodeArg, type);
+}
+
+struct IRNode *ir_build_const(struct IRBuilder *builder, struct TypeNode *type, long size, long value) {
+    struct IRConst *_const = (struct IRConst*)_malloc(sizeif(struct IRConst));
+    arg->size = size;
+    arg->value = value;
+    return ir_build_node(builder, _const, IRNodeConst, type);
+}
+
+struct IRNode *ir_build_global(struct IRBuilder *builder, struct TypeNode *type, const char *name) {
+    struct IRGlobal *global = (struct IRGlobal*)_malloc(sizeif(struct IRGlobal));
+    global->name = name;
+    return ir_build_node_free(builder, global, IRNodeGlobal, type);
+}
+
+struct IRNode *ir_build_phi(struct IRBuilder *builder, struct TypeNode *type, struct Vector *values, struct Vector *blocks) {
+    struct IRPhi *phi = (struct IRPhi*)_malloc(sizeif(struct IRPhi));
+    phi->values = values;
+    phi->blocks = blocks;
+    return ir_build_node(builder, phi, IRNodePhi, type);
+}
+
+struct IRNode *ir_build_gep(struct IRBuilder *builder, struct TypeNode *type, struct IRNode *base, struct IRNode *index, long size) {
+    struct IRGEP *gep = (struct IRGEP*)_malloc(sizeif(struct IRGEP));
+    gep->base = base;
+    gep->index = index;
+    gep->size = size;
+    return ir_build_node(builder, gep, IRNodeGEP, type);
+}
+
+struct IRNode *ir_build_sgep(struct IRBuilder *builder, struct TypeNode *type, struct IRNode *instance, long phase) {
+    struct IRSGEP *sgep = (struct IRSGEP*)_malloc(sizeif(struct IRSGEP));
+    sgep->instance = instance;
+    sgep->phase = phase;
+    return ir_build_node(builder, sgep, IRNodeSGEP, type);
+}
+
+struct IRNode *ir_build_alloca(struct IRBuilder *builder, struct TypeNode *type, long size) {
+    struct IRAlloca *alloca = (struct IRAlloca*)_malloc(sizeif(struct IRAlloca));
+    alloca->size = size;
+    return ir_build_node(builder, alloca, IRNodeAlloca, type);
+}
+
+struct IRNode *ir_build_load(struct IRBuilder *builder, struct TypeNode *type, struct IRNode *src, long size) {
+    struct IRLoad *load = (struct IRLoad*)_malloc(sizeif(struct IRLoad));
+    load->src = src;
+    load->size = size;
+    return ir_build_node(builder, load, IRNodeLoad, type);
+}
+
+struct IRNode *ir_build_store(struct IRBuilder *builder, struct IRNode *dst, struct IRNode *src, long size) {
+    struct IRStore *store = (struct IRStore*)_malloc(sizeif(struct IRStore));
+    store->dst = dst;
+    store->src = src;
+    store->size = size;
+    return ir_build_node(builder, store, IRNodeStore, NULL);
+}
+
+struct IRNode *ir_build_call(struct IRBuilder *builder, struct TypeNode *type, struct IRNode *function, struct Vector *arguments) {
+    struct IRCall *call = (struct IRCall*)_malloc(sizeif(struct IRCall));
+    call->function = function;
+    call->arguments = arguments;
+    return ir_build_node(builder, call, IRNodeCall, type);
+}
+
+struct IRNode *ir_build_br(struct IRBuilder *builder, struct IRBlock *block) {
+    struct IRBr *br = (struct IRBr*)_malloc(sizeif(struct IRBr));
+    br->block = block;
+    return ir_build_node(builder, br, IRNodeBr, NULL);
+}
+
+struct IRNode *ir_build_condbr(struct IRBuilder *builder, struct IRNode *condition, struct IRBlock *block_then , struct IRBlock *block_else) {
+    struct IRCondBr *condbr = (struct IRCondBr*)_malloc(sizeif(struct IRCondBr));
+    condbr->condition = condition;
+    condbr->block_then = block_then;
+    condbr->block_else = block_else;
+    return ir_build_node(builder, condbr, IRNodeCondBr, NULL);
+}
+
+struct IRNode *ir_build_ret(struct IRBuilder *builder, struct IRNode *value) {
+    struct IRRet *ret = (struct IRRet*)_malloc(sizeif(struct IRRet));
+    ret->value = value;
+    return ir_build_node(builder, ret, IRNodeRet, NULL);
+}
+
+struct IRNode *ir_build_binary_operator(struct IRBuilder *builder, enum IRValueType *node_type, struct TypeNode *type, struct IRNode *left, struct IRNode *right) {
+    struct IRBinaryOperator *binary_operator = (struct IRBinaryOperator*)_malloc(sizeif(struct IRBinaryOperator));
+    binary_operator->left = left;
+    binary_operator->right = right;
+    return ir_build_node(builder, binary_operator, node_type, NULL);
+}
+
+struct IRNode *ir_build_value(struct IRBuilder *builder, enum IRValueType value_type) {
     struct IRValue *value = (struct IRValue*)_malloc(sizeof(struct IRValue));
     vpush(&builder->current_block->value_list, value);
     value->value_type = value_type;
@@ -83,6 +195,9 @@ void ir_build_phi(struct IRBuilder *builder) {
     int cnt_val = vsize(&first_prv->variable_list);
 
     for (int i = 0; i < cnt_val; i++) {
+        struct Vector phi_values = vnew();
+        struct Vector phi_blocks = vnew();
+        struct TypeNode *phi_type;
         struct IRValue *phi = ir_build_value(builder, IRNodePhi);
         bool use_phi = false;
         const char *name = ((struct IRVariableInfo*)first_prv->variable_list.ptr[i])->name;
@@ -93,9 +208,9 @@ void ir_build_phi(struct IRBuilder *builder) {
             vpush(&block->variable_list, first_prv->variable_list.ptr[i]);
             continue;
         }
-        vpush(&phi->value_arg_list, value);
-        vpush(&phi->block_arg_list, first_prv);
-        phi->type = value->type;
+        vpush(&phi_values, value);
+        vpush(&phi_blocks, first_prv);
+        phi_type = value->type;
         bool in_all_preds = true;
         for (int j = 1; j < cnt_prv; j++) {
             struct IRBlock *prv_block = block->pred_list.ptr[j];
@@ -115,15 +230,15 @@ void ir_build_phi(struct IRBuilder *builder) {
             if(value != value_this) {
                 use_phi = true;
             }
-            vpush(&phi->value_arg_list, value_this);
-            vpush(&phi->block_arg_list, prv_block);
+            vpush(&phi_values, value_this);
+            vpush(&phi_blocks, prv_block);
         }
         if (in_all_preds) {
             struct IRVariableInfo *variable_info = (struct IRVariableInfo*)_malloc(sizeof(struct IRVariableInfo));
             variable_info->name = name;
             variable_info->addressed = false;
             if (use_phi) {
-                variable_info->value = phi;
+                variable_info->value = ir_build_phi(builder, phi_type, phi_values, phi_blocks);
             }
             else {
                 vpop(&block->value_list);
@@ -164,15 +279,14 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
             int cnt = vsize(&builder->current_block->value_list);
             if (cnt == 0) continue;
             struct IRValue *value_last = builder->current_block->value_list.ptr[cnt - 1];
-            if (value_last->value_type == IRNodeRet || 
-                value_last->value_type == IRNodeBr || 
-                value_last->value_type == IRNodeCondBr) {
+            if (value_last->node_type == IRNodeRet || 
+                value_last->node_type == IRNodeBr || 
+                value_last->node_type == IRNodeCondBr) {
                 break;
             }
         }
 
-        struct IRValue *value_br = ir_build_value(builder, IRNodeBr);
-        vpush(&value_br->block_arg_list, _block);
+        struct IRValue *value_br = ir_build_br(builder, _block);
         ir_build_edge(builder->current_block, _block);
         builder->current_block = _block;
         if (vsize(&value_phi->value_arg_list)) {
@@ -226,8 +340,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         
         if (!builder->header) {
             struct IRValue *body_value = ir_build(builder, _node->block);
-            struct IRValue *ret_value = ir_build_value(builder, IRNodeRet);
-            vpush(&ret_value->value_arg_list, body_value);
+            struct IRValue *ret_value = ir_build_ret(builder, body_value);
         }
 
         vpush(&builder->test_names, (void*)_node->name);
@@ -248,17 +361,13 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
             ir_build_edge(builder->current_block, block_else);
 
             struct IRValue *value_condition = ir_build(builder, _node->condition_list.ptr[i]);
-            struct IRValue *value_condbr = ir_build_value(builder, IRNodeCondBr);
-            vpush(&value_condbr->value_arg_list, value_condition);
-            vpush(&value_condbr->block_arg_list, block_then);
-            vpush(&value_condbr->block_arg_list, block_else);
+            struct IRValue *value_condbr = ir_build_condbr(builder, value_condition, block_then, block_else);
             
             builder->current_block = block_then;
             ir_build_phi(builder);
             struct IRValue *value_then = ir_build(builder, _node->block_list.ptr[i]);
-            struct IRValue *value_br_then = ir_build_value(builder, IRNodeBr);
+            struct IRValue *value_br_then = ir_build_br(builder, block_end);
             ir_build_edge(builder->current_block, block_end);
-            vpush(&value_br_then->block_arg_list, block_end);
 
             if (node->type->node_type != TypeNodeVoid) {
                 vpush(&value_phi->value_arg_list, value_then);
@@ -273,9 +382,8 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         if (_node->else_block) {
             value_else = ir_build(builder, _node->else_block);
         }
-        struct IRValue *value_br_else = ir_build_value(builder, IRNodeBr);
+        struct IRValue *value_br_else = ir_build_br(builder, block_end);
         ir_build_edge(builder->current_block, block_end);
-        vpush(&value_br_else->block_arg_list, block_end);
         if (_node->else_block) {
             vpush(&value_phi->value_arg_list, value_else);
             vpush(&value_phi->block_arg_list, builder->current_block);
@@ -308,8 +416,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         vpush(&builder->irloop_phi_stack, value_phi);
         
         ir_build_edge(builder->current_block, block_cond);
-        struct IRValue *value_br_tocond = ir_build_value(builder, IRNodeBr);
-        vpush(&value_br_tocond->block_arg_list, block_cond);
+        struct IRValue *value_br_tocond = ir_build_br(builder, block_cond);
 
         builder->current_block = block_cond;
         ir_build_phi(builder);
@@ -325,19 +432,15 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
             ((struct IRVariableInfo*)block_cond->variable_list.ptr[i])->value = new_value_phi;
         }
         struct IRValue *value_condition = ir_build(builder, _node->condition);
-        struct IRValue *value_condbr = ir_build_value(builder, IRNodeCondBr);
-        vpush(&value_condbr->value_arg_list, value_condition);
-        vpush(&value_condbr->block_arg_list, block_then);
-        vpush(&value_condbr->block_arg_list, block_else);
+        struct IRValue *value_condbr = ir_build_condbr(builder, value_condition, block_then, block_else);
         ir_build_edge(builder->current_block, block_then);
         ir_build_edge(builder->current_block, block_else);
 
         builder->current_block = block_then;
         ir_build_phi(builder);
         struct IRValue *value_then = ir_build(builder, _node->block);
-        struct IRValue *value_br_then = ir_build_value(builder, IRNodeBr);
+        struct IRValue *value_br_then = ir_build_br(builder, block_cond);
         ir_build_edge(builder->current_block, block_cond);
-        vpush(&value_br_then->block_arg_list, block_cond);
 
         int cnt = 0;
         for (int i = 0; i < sz_var; i++) {
@@ -357,9 +460,8 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         if (_node->else_block) {
             value_else = ir_build(builder, _node->else_block);
         }
-        struct IRValue *value_br_else = ir_build_value(builder, IRNodeBr);
+        struct IRValue *value_br_else = ir_build_br(builder, block_end);
         ir_build_edge(builder->current_block, block_end);
-        vpush(&value_br_else->block_arg_list, block_end);
 
         builder->current_block = block_end;
         ir_build_phi(builder);
@@ -395,9 +497,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
             builder->current_identifier++;
         }
 
-        struct IRValue *value = ir_build_value_free(builder, IRNodeGlobal);
-        value->type = _node->type;
-        vpush(&value->const_arg_list, (void*)function->name_generate);
+        struct IRValue *value = ir_build_global(builder, _node->type, function->name_generate);
         function->ir_value = value;
         
         struct IRBlock *block;
@@ -411,8 +511,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
 
         int sz = vsize(&signature->identifiers);
         for (int i = 0; i < sz; i++) {
-            struct IRValue *value = ir_build_value_free(builder, IRNodeArg);
-            value->type = signature->types.ptr[i];
+            struct IRNode *value = ir_build_arg(builder, signature->types.ptr[i]);
             vpush(&function->arg_list, value);
             if (!builder->header) {
                 struct IRVariableInfo *variable_info = (struct IRVariableInfo*)_malloc(sizeof(struct IRVariableInfo));
@@ -420,14 +519,8 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
                 variable_info->name = signature->identifiers.ptr[i];
                 variable_info->addressed = addressed;
                 if (addressed) {
-                    struct IRValue *value_alloca = ir_build_value(builder, IRNodeAlloca);
-                    value_alloca->type = type_copy_node(value->type);
-                    value_alloca->type->degree++;
-                    vpush(&value_alloca->const_arg_list, (void*)(long)type_size(value->type));
-                    struct IRValue *value_store = ir_build_value(builder, IRNodeStore);
-                    vpush(&value_store->value_arg_list, value_alloca);
-                    vpush(&value_store->value_arg_list, value);
-                    vpush(&value_store->const_arg_list, (void*)(long)type_size(value->type));
+                    struct IRValue *value_alloca = ir_build_value_alloca(builder, type_pointer(value->type), type_size(value->type));
+                    struct IRValue *value_store = ir_build_store(builder, value->alloca, value, type_size(value->type));
                     variable_info->value = value_alloca;
                     value_alloca->spill = true;
                 }
@@ -440,8 +533,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         
         if (!builder->header) {
             struct IRValue *body_value = ir_build(builder, _node->block);
-            struct IRValue *ret_value = ir_build_value(builder, IRNodeRet);
-            vpush(&ret_value->value_arg_list, body_value);
+            struct IRValue *ret_value = ir_build_ret(builder, body_value);
         }
 
         builder->current_function = old_current_function;
@@ -458,15 +550,12 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         function->type = _node->type;
         function->function_definition = node;
 
-        struct IRValue *value = ir_build_value_free(builder, IRNodeGlobal);
-        value->type = _node->type;
-        vpush(&value->const_arg_list, (void*)_node->name);
+        struct IRValue *value = ir_build_global(builder, _node->type, _node->name);
         function->ir_value = value;
 
         int sz = vsize(&signature->identifiers);
         for (int i = 0; i < sz; i++) {
-            struct IRValue *value = ir_build_value_free(builder, IRNodeArg);
-            value->type = signature->types.ptr[i];
+            struct IRNode *value = ir_build_arg(builder, signature->types.ptr[i]);
             vpush(&function->arg_list, value);
         }
 
@@ -485,9 +574,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
             globalvar->value = 0;
         }
 
-        struct IRValue *value = ir_build_value_free(builder, IRNodeGlobal);
-        value->type = _node->type;
-        vpush(&value->const_arg_list, (char*)_node->identifier);
+        struct IRValue *value = ir_build_global(builder, _node->type, _node->identifier);
         globalvar->ir_value = value;
 
         vpush(&builder->globalvar_list, globalvar);
@@ -504,14 +591,8 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         if (_node->value) {
             value = ir_build(builder, _node->value);
             if (_node->addressed || (_node->type->node_type == TypeNodeStruct && _node->type->degree == 0)) {
-                struct IRValue *value_alloca = ir_build_value(builder, IRNodeAlloca);
-                value_alloca->type = type_copy_node(_node->type);
-                value_alloca->type->degree++;
-                vpush(&value_alloca->const_arg_list, (void*)(long)type_size(_node->type));
-                struct IRValue *value_store = ir_build_value(builder, IRNodeStore);
-                vpush(&value_store->value_arg_list, value_alloca);
-                vpush(&value_store->value_arg_list, value);
-                vpush(&value_store->const_arg_list, (void*)(long)type_size(_node->type));
+                struct IRValue *value_alloca = ir_build_value_alloca(builder, type_pointer(_node->type), type_size(_node->type));
+                struct IRValue *value_store = ir_build_store(builder, value_alloca, value, type_size(_node->type));
                 variable_info->value = value_alloca;
                 value_alloca->spill = true;
                 value = value_alloca;
@@ -519,17 +600,11 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         }
         else {
             if (_node->addressed || (node->type->node_type == TypeNodeStruct && _node->type->degree == 0)) {
-                value = ir_build_value(builder, IRNodeAlloca);
-                value->type = type_copy_node(_node->type);
-                value->type->degree++;
-                vpush(&value->const_arg_list, (void*)(long)type_size(_node->type));
+                value = ir_build_value_alloca(builder, type_pointer(_node->type), type_size(_node->type));
                 value->spill = true;
             }
             else {
-                value = ir_build_value(builder, IRNodeConst);
-                value->type = _node->type;
-                vpush(&value->const_arg_list, (void*)8);
-                vpush(&value->const_arg_list, (void*)0);
+                value = ir_build_const(builder, _node->type, 8, 0);
             }
         }
         variable_info->value = value;
@@ -558,8 +633,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         if (!block) {
             _panic("Block not found in NodeReturn");
         }
-        struct IRValue *value_br = ir_build_value(builder, IRNodeBr);
-        vpush(&value_br->block_arg_list, block);
+        struct IRValue *value_br = ir_build_br(builder, block);
         if (value->type->size) {
             vpush(&phi->value_arg_list, value);
         }
@@ -587,8 +661,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         if (!block) {
             _panic("Block not found in NodeBreak");
         }
-        struct IRValue *value_br = ir_build_value(builder, IRNodeBr);
-        vpush(&value_br->block_arg_list, block);
+        struct IRValue *value_br = ir_build_br(builder, block);
         vpush(&phi->value_arg_list, value);
         vpush(&phi->block_arg_list, builder->current_block);
 
@@ -611,8 +684,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         if (!block) {
             _panic("Block not found in NodeContinue");
         }
-        struct IRValue *value_br = ir_build_value(builder, IRNodeBr);
-        vpush(&value_br->block_arg_list, block);
+        struct IRValue *value_br = ir_build_br(builder, block);
 
         ir_build_edge(builder->current_block, block);
 
@@ -648,10 +720,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
                 struct IRValue *value_to = variable_info->value;
                 if (value_to->spill || 
                     (_node->src->type->node_type == TypeNodeStruct && _node->src->type->degree == 0)) {
-                    struct IRValue *value_store = ir_build_value(builder, IRNodeStore);
-                    vpush(&value_store->value_arg_list, value_to);
-                    vpush(&value_store->value_arg_list, value);
-                    vpush(&value_store->const_arg_list, (void*)(long)type_size(_node->src->type));
+                    struct IRValue *value_store = ir_build_store(builder, value_to, value, type_size(_node->src->type));
                 }
                 else {
                     variable_info->value = value;
@@ -665,10 +734,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
             struct IRGlobalVar *globalvar = builder->globalvar_list.ptr[i];
             if (!_strcmp(globalvar->name, _identifier->identifier)) {
                 {
-                    struct IRValue *value_store = ir_build_value(builder, IRNodeStore);
-                    vpush(&value_store->value_arg_list, globalvar->ir_value);
-                    vpush(&value_store->value_arg_list, value);
-                    vpush(&value_store->const_arg_list, (void*)(long)type_size(_node->src->type));
+                    struct IRValue *value_store = ir_build_store(builder, globalvar->ir_value, value, type_size(_node->src->type));
                 }
                 return NULL;
             }
@@ -680,11 +746,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         struct Assignment *_node = (struct Assignment*)node->node_ptr;
         struct IRValue *value_dst = ir_build(builder, _node->dst);
         struct IRValue *value_src = ir_build(builder, _node->src);
-        struct IRValue *value_store = ir_build_value(builder, IRNodeStore);
-        vpush(&value_store->value_arg_list, value_dst);
-        vpush(&value_store->value_arg_list, value_src);
-        vpush(&value_store->const_arg_list, (void*)(long)type_size(_node->src->type));
-
+        struct IRValue *value_store = ir_build_store(builder, value_dst, value_src, type_size(_node->src->type));
         return NULL;
     }
     if (node->node_type == NodeIdentifier) {
@@ -707,14 +769,9 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
             for (int i = sz - 1; i >= 0; i--) {
                 struct IRVariableInfo *variable_info = block->variable_list.ptr[i];
                 if (!_strcmp(_node->identifier, variable_info->name)) {
-                    // if (node->type->degree != variable_info->value->type->degree) {
                     if (variable_info->addressed && !_node->address && 
                         !(node->type->node_type == TypeNodeStruct && node->type->degree == 0)) {
-                        struct IRValue *value_load = ir_build_value(builder, IRNodeLoad);
-                        value_load->type = type_copy_node(variable_info->value->type);
-                        value_load->type->degree--;
-                        vpush(&value_load->value_arg_list, variable_info->value);
-                        vpush(&value_load->const_arg_list, (void*)(long)type_size(node->type));
+                        struct IRValue *value_load = ir_build_load(builder, type_deref(variable_info->value->type), variable_info->value, type_size(node->type));
                         value = value_load;
                     }
                     else {
@@ -735,10 +792,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
                         return value;
                     }
                     else {
-                        struct IRValue *value_address = ir_build_value(builder, IRNodeLoad);
-                        vpush(&value_address->value_arg_list, value);
-                        vpush(&value_address->const_arg_list, (void*)(long)type_size(node->type));
-                        value_address->type = node->type;
+                        struct IRValue *value_address = ir_build_load(builder, node->type, value, type_size(node->type));
                         return value_address;
                     }
                 }
@@ -753,15 +807,12 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
     }
     if (node->node_type == NodeInteger) {
         struct Integer *_node = (struct Integer*)node->node_ptr;
-        struct IRValue *value = ir_build_value(builder, IRNodeConst);
-        value->type = node->type;
-        vpush(&value->const_arg_list, (void*)8);
-        vpush(&value->const_arg_list, (void*)(long)_node->value);
+        struct IRValue *value = ir_build_const(builder, node->type, 8, _node->value);
         return value;
     }
     if (node->node_type == NodeChar) {
         struct Char *_node = (struct Char*)node->node_ptr;
-        struct IRValue *value = ir_build_value(builder, IRNodeConst);
+        struct IRValue *value = ir_build_const(builder, node->type, 1, _node->value);
         value->type = node->type;
         vpush(&value->const_arg_list, (void*)1);
         vpush(&value->const_arg_list, (void*)(long)_node->value);
@@ -776,15 +827,10 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         globalvar->value = (char*)_node->value;
         vpush(&builder->globalvar_list, globalvar);
 
-        struct IRValue *value_global = ir_build_value_free(builder, IRNodeGlobal);
-        value_global->type = node->type;
-        vpush(&value_global->const_arg_list, (char*)identifier);
+        struct IRValue *value_global = ir_build_global(builder, node->type, identifier);
         globalvar->ir_value = value_global;
 
-        struct IRValue *value_load = ir_build_value(builder, IRNodeLoad);
-        value_load->type = node->type;
-        vpush(&value_load->value_arg_list, value_global);
-        vpush(&value_load->const_arg_list, (void*)(long)8);
+        struct IRValue *value_load = ir_build_load(builder, node->type, value_global, 8);
 
         return value_load;
     }
@@ -793,10 +839,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
     }
     if (node->node_type == NodeStructInstance) {
         struct StructInstance *_node = (struct StructInstance*)node->node_ptr;
-        struct IRValue *value_alloca = ir_build_value(builder, IRNodeAlloca);
-        value_alloca->type = type_copy_node(node->type);
-        value_alloca->type->degree++;
-        vpush(&value_alloca->const_arg_list, (void*)(long)value_alloca->type->size);
+        struct IRValue *value_alloca = ir_build_alloca(builder, type_pointer(node->type), type_size(node->type));
 
         struct TypeStruct *type_struct = (struct TypeStruct*)value_alloca->type->node_ptr;
         int sz = vsize(&type_struct->types);
@@ -807,14 +850,8 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
             sgep_type->degree++;
 
             struct IRValue *value = ir_build(builder, (struct Node*)_node->values.ptr[i]);
-            struct IRValue *value_sgep = ir_build_value(builder, IRNodeSGEP);
-            vpush(&value_sgep->value_arg_list, value_alloca);
-            vpush(&value_sgep->const_arg_list, (void*)(long)phase);
-            value_sgep->type = sgep_type;
-            struct IRValue *value_store = ir_build_value(builder, IRNodeStore);
-            vpush(&value_store->value_arg_list, value_sgep);
-            vpush(&value_store->value_arg_list, value);
-            vpush(&value_store->const_arg_list, (void*)(long)type_size(type));
+            struct IRValue *value_sgep = ir_build_value_sgep(builder, sgep_type, value_alloca, phase);
+            struct IRValue *value_store = ir_build_store(builder, value_sgep, value, type_size(type));
 
             phase += type->size;
         }
@@ -832,9 +869,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         function->name_generate = function->name;
         builder->current_identifier++;
 
-        struct IRValue *value = ir_build_value_free(builder, IRNodeGlobal);
-        value->type = node->type;
-        vpush(&value->const_arg_list, (void*)function->name_generate);
+        struct IRValue *value = ir_build_global(builder, node->type, function->name_generate);
         function->ir_value = value;
         
         struct IRBlock *block;
@@ -847,8 +882,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
 
         int sz = vsize(&signature->identifiers);
         for (int i = 0; i < sz; i++) {
-            struct IRValue *value = ir_build_value_free(builder, IRNodeArg);
-            value->type = signature->types.ptr[i];
+            struct IRNode *value = ir_build_arg(builder, signature->types.ptr[i]);
             vpush(&function->arg_list, value);
             if (!builder->header) {
                 struct IRVariableInfo *variable_info = (struct IRVariableInfo*)_malloc(sizeof(struct IRVariableInfo));
@@ -856,14 +890,8 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
                 variable_info->name = signature->identifiers.ptr[i];
                 variable_info->addressed = addressed;
                 if (addressed) {
-                    struct IRValue *value_alloca = ir_build_value(builder, IRNodeAlloca);
-                    value_alloca->type = type_copy_node(node->type);
-                    value_alloca->type->degree++;
-                    vpush(&value_alloca->const_arg_list, (void*)(long)type_size(value->type));
-                    struct IRValue *value_store = ir_build_value(builder, IRNodeStore);
-                    vpush(&value_store->value_arg_list, value_alloca);
-                    vpush(&value_store->value_arg_list, value);
-                    vpush(&value_store->const_arg_list, (void*)(long)type_size(value->type));
+                    struct IRValue *value_alloca = ir_build_alloca(builder, type_pointer(node->type), type_size(value->type));
+                    struct IRValue *value_store = ir_build_store(builder, value_alloca, value, type_size(value->type));
                     variable_info->value = value_alloca;
                     value_alloca->spill = true;
                 }
@@ -875,8 +903,7 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         }
 
         struct IRValue *body_value = ir_build(builder, _node->block);
-        struct IRValue *ret_value = ir_build_value(builder, IRNodeRet);
-        vpush(&ret_value->value_arg_list, body_value);
+        struct IRValue *ret_value = ir_build_ret(builder, body_value);
 
         builder->current_function = old_current_function;
         builder->current_block = old_current_block;
@@ -885,62 +912,51 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
     }
     if (node->node_type == NodeSizeof) {
         struct Sizeof *_node = (struct Sizeof*)node->node_ptr;
-        struct IRValue *value = ir_build_value(builder, IRNodeConst);
-        value->type = node->type;
-        vpush(&value->const_arg_list, (void*)8);
-        vpush(&value->const_arg_list, (void*)(long)_node->type->size);
+        struct IRValue *value = ir_build_const(builder, node->type, 8, type_get_size(_node->type));
         return value;
     }
     if (node->node_type == NodeFunctionCall) {
         struct FunctionCall *_node = (struct FunctionCall*)node->node_ptr;
         
+        struct IRNode *value_function = ir_build(builder, _node->function);
         struct Vector arguments = vnew();
         int sz = vsize(&_node->arguments);
-        vpush(&arguments, ir_build(builder, _node->function));
         for (int i = 0; i < sz; i++) {
             vpush(&arguments, ir_build(builder, _node->arguments.ptr[i]));
         }
 
-        struct IRValue *call = ir_build_value(builder, IRNodeCall);
-        call->type = node->type;
-        call->value_arg_list = arguments;
+        struct IRValue *call = ir_build_call(builder, node->type, value_function, arguments);
         return call;
     }
     if (node->node_type == NodeMethodCall) {
         struct MethodCall *_node = (struct MethodCall*)node->node_ptr;
         
-        struct Vector arguments = vnew();
+        struct IRNode *value_function = NULL;
         bool found = false;
         int sz = vsize(&builder->function_list);
         for (int i = 0; i < sz; i++) {
             struct IRFunction *function = builder->function_list.ptr[i];
             if (function->function_definition == _node->function_definition) {
-                vpush(&arguments, function->ir_value);
-                found = true;
+                value_function = function->ir_value;
                 break;
             }
         }
-        _assert(found);
+        _assert(value_function);
+        struct Vector arguments = vnew();
         sz = vsize(&_node->arguments);
         vpush(&arguments, ir_build(builder, _node->caller));
         for (int i = 0; i < sz; i++) {
             vpush(&arguments, ir_build(builder, _node->arguments.ptr[i]));
         }
 
-        struct IRValue *call = ir_build_value(builder, IRNodeCall);
-        call->type = node->type;
-        call->value_arg_list = arguments;
-        vpush(&call->const_arg_list, (void*)_node->name);
+        struct IRValue *call = ir_build_call(builder, node->type, value_function, arguments);
+        // vpush(&call->const_arg_list, (void*)_node->name);
         return call;
     }
     if (node->node_type == NodeDereference) {
         struct Dereference *_node = (struct Dereference*)node->node_ptr;
         struct IRValue *value = ir_build(builder, _node->expression);
-        struct IRValue *value_load = ir_build_value(builder, IRNodeLoad);
-        value_load->type = type_copy_node(node->type);
-        value_load->type->degree--;
-        vpush(&value_load->value_arg_list, value);
-        vpush(&value_load->const_arg_list, (void*)(long)type_size(_node->expression->type));
+        struct IRValue *value_load = ir_build_load(builder, type_deref(node->type), value, type_size(_node->expression->type));
         return value_load;
     }
     if (node->node_type == NodeIndex) {
@@ -952,37 +968,20 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         
         struct IRValue *value_base = ir_build(builder, _node->left);
         struct IRValue *value_index = ir_build(builder, _node->right);
-        struct IRValue *value_gep = ir_build_value(builder, IRNodeGEP);
-        value_gep->type = _node->left->type;
-        vpush(&value_gep->value_arg_list, value_base);
-        vpush(&value_gep->value_arg_list, value_index);
-        vpush(&value_gep->const_arg_list, (void*)(long)size);
-        
+        struct IRValue *value_gep = ir_build_gep(builder, _node->left->type, value_base, value_index, size);
         if (_node->address) {
             return value_gep;
         }
 
-        struct IRValue *value_load = ir_build_value(builder, IRNodeLoad);
-        value_load->type = node->type;
-        vpush(&value_load->value_arg_list, value_gep);
-        vpush(&value_load->const_arg_list, (void*)(long)size);
+        struct IRValue *value_load = ir_build_load(builder, node->type, value_gep, size);
         return value_load;
     }
     if (node->node_type == NodeGetField) {
         struct GetField *_node = (struct GetField*)node->node_ptr;
         struct IRValue *value = ir_build(builder, _node->left);
 
-        struct IRValue *value_sgep = ir_build_value(builder, IRNodeSGEP);
-        value_sgep->type = node->type;
-        vpush(&value_sgep->value_arg_list, value);
-        vpush(&value_sgep->const_arg_list, (void*)(long)_node->phase);
-
-        // if (!_node->address && node->type->node_type == TypeNodeStruct && node->type->degree == 0) {
-        //     value_sgep->type = type_copy_node(node->type);
-        //     value_sgep->type->degree++;
-        //     return value_sgep;
-        // }
-        if (/*_node->address || */(node->type->node_type == TypeNodeStruct && node->type->degree == 0)) {
+        struct IRValue *value_sgep = ir_build_value_sgep(builder, node->type, value, _node->phase);
+        if ((node->type->node_type == TypeNodeStruct && node->type->degree == 0)) {
             value_sgep->type = type_copy_node(value_sgep->type);
             value_sgep->type->degree++;
             return value_sgep;
@@ -991,12 +990,10 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
             return value_sgep;
         }
         
-        struct IRValue *value_load = ir_build_value(builder, IRNodeLoad);
-        value_load->type = node->type;
         value_sgep->type = type_copy_node(value_sgep->type);
         value_sgep->type->degree++;
-        vpush(&value_load->value_arg_list, value_sgep);
-        vpush(&value_load->const_arg_list, (void*)(long)type_size(value_sgep->type));
+        
+        struct IRValue *value_load = ir_build_load(builder, node->type, node->type, value_sgep, type_size(value_sgep->type));
         return value_load;
     }
 
@@ -1026,30 +1023,19 @@ struct IRValue *ir_build(struct IRBuilder *builder, struct Node *node) {
         if (_node->left) {
             value1 = ir_build(builder, _node->left);
             if (value1->spill) {
-                struct IRValue *value_load = ir_build_value(builder, IRNodeLoad);
-                value_load->type = _node->left->type;
-                vpush(&value_load->value_arg_list, value1);
-                vpush(&value_load->const_arg_list, (void*)(long)type_size(_node->left->type));
+                struct IRValue *value_load = ir_build_load(builder, _node->left->type, value1, type_size(_node->left->type));
                 value1 = value_load;
             }
         }
 
         struct IRValue *value2 = ir_build(builder, _node->right);
         if (value2->spill) {
-            struct IRValue *value_load = ir_build_value(builder, IRNodeLoad);
-            value_load->type = _node->right->type;
-            vpush(&value_load->value_arg_list, value2);
-            vpush(&value_load->const_arg_list, (void*)(long)type_size(_node->right->type));
+            struct IRValue *value_load = ir_build_load(builder, _node->right->type, value2, type_size(_node->right->type));
             value2 = value_load;
         }
 
-        struct IRValue *value = ir_build_value(builder, node->node_type - NodeAnd + IRNodeAnd);
-        value->type = node->type;
-        if (value1) {
-            vpush(&value->value_arg_list, value1);
-        }
-        vpush(&value->value_arg_list, value2);
+        struct IRValue *value = ir_build_binary_operator(builder, node->node_type - NodeAnd + IRNodeAnd, node->type, value1, value2);
         return value;
     }
-    _panic("Unknows ast node");
+    _panic("Unknown ast node");
 }

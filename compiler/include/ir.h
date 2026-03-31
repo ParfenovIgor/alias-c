@@ -12,7 +12,6 @@ enum IRValueType {
     IRNodeConst,
     IRNodeGlobal,
     IRNodePhi,
-    IRNodeAddress,
     IRNodeGEP,
     IRNodeSGEP,
     IRNodeAlloca,
@@ -45,18 +44,84 @@ enum IRValueType {
     IRNodeNotEqual,
 };
 
-struct IRValue {
-    enum IRValueType value_type;
+struct IRNode {
+    void *node_ptr;
+    enum IRValueType node_type;
     struct TypeNode *type;
-    struct Vector value_arg_list;
-    struct Vector block_arg_list;
-    struct Vector const_arg_list;
     bool spill;
+};
+
+struct IRArg {
+
+};
+
+struct IRConst {
+    long size;
+    long value;
+};
+
+struct IRGlobal {
+    const char *name;
+};
+
+struct IRPhi {
+    struct Vector values;
+    struct Vector blocks;
+};
+
+struct IRGEP {
+    struct IRNode *base;
+    struct IRNode *index;
+    long size;
+};
+
+struct IRSGEP {
+    struct IRNode *instance;
+    long phase;
+};
+
+struct IRAlloca {
+    long size;
+};
+
+struct IRLoad {
+    struct IRNode *src;
+    long size;
+};
+
+struct IRStore {
+    struct IRNode *dst;
+    struct IRNode *src;
+    long size;
+};
+
+struct IRCall {
+    struct IRNode *function;
+    struct Vector arguments;
+};
+
+struct IRBr {
+    struct IRBlock *block;
+};
+
+struct IRCondBr {
+    struct IRNode *condition;
+    struct IRBlock *block_then;
+    struct IRBlock *block_else;
+};
+
+struct IRRet {
+    struct IRNode *value;
+};
+
+struct IRBinaryOperator {
+    struct IRNode *left;
+    struct IRNode *right;
 };
 
 struct IRVariableInfo {
     const char *name;
-    struct IRValue *value;
+    struct IRNode *value;
     bool addressed;
 };
 
@@ -74,7 +139,7 @@ struct IRFunction {
     struct TypeNode *type;
     struct Vector arg_list;
     struct Vector block_list;
-    struct IRValue *ir_value;
+    struct IRNode *ir_value;
     struct Node *function_definition;
 };
 
@@ -88,5 +153,5 @@ struct IRGlobalVar {
     const char *name;
     enum IRGlobalVarType type;
     void *value;
-    struct IRValue *ir_value;
+    struct IRNode *ir_value;
 };
