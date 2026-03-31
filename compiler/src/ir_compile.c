@@ -1,0 +1,555 @@
+#include <ir_compile.h>
+#include <stdio.h>
+#include <string.h>
+#include <posix.h>
+
+void ir_compile_type_prefix(struct TypeNode *type, int fd_text) {
+    switch (type->node_type) {
+        case TypeNodeVoid: {
+            _fputs(fd_text, "void");
+            for (int i = 0; i < type->degree; i++) {
+                _fputs(fd_text, "*");
+            }
+            break;    
+        }
+        case TypeNodeChar: {
+            _fputs(fd_text, "char");
+            for (int i = 0; i < type->degree; i++) {
+                _fputs(fd_text, "*");
+            }
+            break;
+        }
+        case TypeNodeInt: {
+            _fputs(fd_text, "long");
+            for (int i = 0; i < type->degree; i++) {
+                _fputs(fd_text, "*");
+            }
+            break;
+        }
+        case TypeNodeFunction: {
+            struct TypeFunction *type_function = (struct TypeFunction*)type->node_ptr;
+            ir_compile_type(type_function->return_type, fd_text, false);
+            _fputs(fd_text, "(");
+            for (int i = 0; i < type->degree + 1; i++) {
+                _fputs(fd_text, "*");
+            }
+            break;
+        }
+        case TypeNodeStruct: {
+            switch (type->size) {
+                case -1: _panic("Unexpected type"); break;
+                case 1: _fputs(fd_text, "char"); break;
+                case 8: _fputs(fd_text, "long"); break;
+                default: {
+                    _fputs(fd_text, "char(");
+                    for (int i = 0; i < type->degree; i++) {
+                        _fputs(fd_text, "*");
+                    }
+                }
+            }
+            break;
+        }
+        default: {
+            _panic("Unexpected type");
+        }
+    }
+    _fputs(fd_text, " ");
+}
+
+void ir_compile_type_suffix(struct TypeNode *type, int fd_text) {
+    switch (type->node_type) {
+        case TypeNodeVoid:
+        case TypeNodeChar:
+        case TypeNodeInt: {
+            break;
+        }
+        case TypeNodeFunction: {
+            struct TypeFunction *type_function = (struct TypeFunction*)type->node_ptr;
+            _fputs(fd_text, ")(");
+            int cnt_args = vsize(&type_function->types);
+            for (int i = 0; i < cnt_args; i++) {
+                struct TypeNode *arg = type_function->types.ptr[i];
+                ir_compile_type(arg, fd_text, false);
+                if (i + 1 < cnt_args) {
+                    _fputs(fd_text, ", ");
+                }
+            }
+            _fputs(fd_text, ")");
+            break;
+        }
+        case TypeNodeStruct: {
+            switch (type->size) {
+                case -1: _panic("Unexpected type"); break;
+                case 1: ; break;
+                case 8: ; break;
+                default: _fputsi(fd_text, ")[", type->size, "]");
+            }
+            break;
+        }
+        default: {
+            _panic("Unexpected type");
+        }
+    }
+}
+
+void ir_compile_type(struct TypeNode *type, int fd_text, bool in_parenthesis) {
+    if (in_parenthesis) _fputs(fd_text, "(");
+    ir_compile_type_prefix(type, fd_text);
+    ir_compile_type_suffix(type, fd_text);
+    if (in_parenthesis) _fputs(fd_text, ")");
+}
+
+void ir_compile_value(struct Vector *values_list, struct IRValue *value, int fd_text) {
+    if (value->value_type == IRNodeConst && !value->spill) {
+        _assert(vsize(&value->const_arg_list) == 2);
+        _assert(value->type->degree == 0);
+        if (value->type->node_type == TypeNodeFunction) {
+            char *val = (char*)value->const_arg_list.ptr[1];
+            _fputs(fd_text, val);
+        }
+        else {
+            int val = (long)value->const_arg_list.ptr[1];
+            _fputi(fd_text, val);
+        }
+    }
+    else if (value->value_type == IRNodeGlobal) {
+        _assert(vsize(&value->const_arg_list) == 1);
+        if (!(value->type->node_type == TypeNodeFunction && value->type->degree == 0)) {
+            _fputs(fd_text, "&");
+        }
+        _fputs(fd_text, (const char*)value->const_arg_list.ptr[0]);
+    }
+    else{
+        int sz = vsize(values_list);
+        int res = -1;
+        for (int i = 0; i < sz; i++) {
+            if (values_list->ptr[i] == value) {
+                res = i;
+                break;
+            }
+        }
+
+        if (res == -1) {
+            res = sz;
+            vpush(values_list, value);
+        }
+
+        _fputsi(fd_text, "_v", res, "");
+    }
+}
+
+void ir_compile_block(struct Vector *blocks_list, struct IRBlock *block, int fd_text) {
+    int sz = vsize(blocks_list);
+    int res = -1;
+    for (int i = 0; i < sz; i++) {
+        if (blocks_list->ptr[i] == block) {
+            res = i;
+            break;
+        }
+    }
+
+    if (res == -1) {
+        res = sz;
+        vpush(blocks_list, block);
+    }
+
+    _fputsi(fd_text, "_b", res, "");
+}
+
+void ir_compile_phi(struct Vector *values_list, struct IRBlock *block, struct IRBlock *succ_block, int fd_text) {
+    int sz_insts = vsize(&succ_block->value_list);
+    for (int i = 0; i < sz_insts; i++) {
+        struct IRValue *value = succ_block->value_list.ptr[i];
+        if (value->value_type == IRNodePhi) {
+            int sz_args = vsize(&value->value_arg_list);
+            for (int j = 0; j < sz_args; j++) {
+                if (block == value->block_arg_list.ptr[j] && value != value->value_arg_list.ptr[j]) {
+                    _fputs(fd_text, "    ");
+                    ir_compile_value(values_list, value, fd_text);
+                    _fputs(fd_text, " = ");
+                    ir_compile_value(values_list, value->value_arg_list.ptr[j], fd_text);
+                    _fputs(fd_text, ";\n");
+                }
+            }
+        }
+    }
+}
+
+void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) {
+    int fd[2];
+    posix_pipe(fd);
+    int fd_text = fd[1];
+    int fd_text_out = fd[0];
+
+    int sz_globalvar = vsize(&builder->globalvar_list);
+    for (int i = 0; i < sz_globalvar; i++) {
+        struct IRGlobalVar *globalvar = builder->globalvar_list.ptr[i];
+        if (globalvar->type == IRGlobalVarFunction) continue;
+        ir_compile_type_prefix(globalvar->ir_value->type, fd_text);
+        _fputs(fd_text, globalvar->name);
+        ir_compile_type_suffix(globalvar->ir_value->type, fd_text);
+        _fputs(fd_text, " = ");
+        if (globalvar->type == IRGlobalVarInt) {
+            int value = (long)globalvar->value;
+            _fputsi(fd_text, "", value, ";\n");
+        }
+        if (globalvar->type == IRGlobalVarString) {
+            const char *value = globalvar->value;
+            _fputs(fd_text, "\"");
+            int len = _strlen(value);
+            for (int j = 0; j < len; j++) {
+                if (value[j] == '\n') _fputs(fd_text, "\\n");
+                else _fputc(fd_text, value[j]);
+            }
+            _fputs(fd_text, "\";\n");
+        }
+    }
+    _fputs(fd_text, "\n");
+
+    int sz_functions = vsize(&builder->function_list);
+    for (int i = 0; i < sz_functions; i++) {
+        struct IRFunction *function = builder->function_list.ptr[i];
+        struct Vector values_list = vnew();
+        struct Vector blocks_list = vnew();
+        
+        int sz_blocks = vsize(&function->block_list);
+        int sz_args = vsize(&function->arg_list);
+
+        struct TypeFunction *type_function = (struct TypeFunction*)(function->type->node_ptr);
+        ir_compile_type_prefix(type_function->return_type, fd_text);
+        _fputs(fd_text, function->name_generate);
+        ir_compile_type_suffix(type_function->return_type, fd_text);
+        _fputs(fd_text, "(");
+        for (int j = 0; j < sz_args; j++) {
+            ir_compile_type_prefix(type_function->types.ptr[j], fd_text);
+            ir_compile_value(&values_list, function->arg_list.ptr[j], fd_text);
+            ir_compile_type_suffix(type_function->types.ptr[j], fd_text);
+            if (j + 1 != sz_args) {
+                _fputs(fd_text, ", ");
+            }
+        }
+        _fputs(fd_text, ");\n\n");
+    }
+
+    for (int i = 0; i < sz_functions; i++) {
+        struct IRFunction *function = builder->function_list.ptr[i];
+        struct Vector values_list = vnew();
+        struct Vector blocks_list = vnew();
+        
+        int sz_blocks = vsize(&function->block_list);
+        if (!sz_blocks) continue;
+        int sz_args = vsize(&function->arg_list);
+
+        struct TypeFunction *type_function = (struct TypeFunction*)(function->type->node_ptr);
+        ir_compile_type_prefix(type_function->return_type, fd_text);
+        _fputs(fd_text, function->name_generate);
+        ir_compile_type_suffix(type_function->return_type, fd_text);
+        _fputs(fd_text, "(");
+        for (int j = 0; j < sz_args; j++) {
+            ir_compile_type_prefix(type_function->types.ptr[j], fd_text);
+            ir_compile_value(&values_list, function->arg_list.ptr[j], fd_text);
+            ir_compile_type_suffix(type_function->types.ptr[j], fd_text);
+            if (j + 1 != sz_args) {
+                _fputs(fd_text, ", ");
+            }
+        }
+        _fputs(fd_text, ") {\n");
+
+        for (int j = 0; j < sz_blocks; j++) {
+            struct IRBlock *block = function->block_list.ptr[j];
+
+            int sz_insts = vsize(&block->value_list);
+            for (int k = 0; k < sz_insts; k++) {
+                struct IRValue *value = block->value_list.ptr[k];
+                enum IRValueType type = value->value_type;
+
+                if (!(type == IRNodeConst && !value->spill) && 
+                    type != IRNodeAlloca && type != IRNodeStore && 
+                    type != IRNodeBr && type != IRNodeCondBr && type != IRNodeRet &&
+                    !(type == IRNodeCall && value->type->size == 0)) {
+                    _fputs(fd_text, "    ");
+                    ir_compile_type_prefix(value->type, fd_text);
+                    ir_compile_value(&values_list, value, fd_text);
+                    ir_compile_type_suffix(value->type, fd_text);
+                    _fputsi(fd_text, "; // ", type, "\n");
+                }
+                if (type == IRNodeAlloca) {
+                    int sz = (long)value->const_arg_list.ptr[0];
+                    // _fputs(fd_text, "    char ");
+                    // ir_compile_value(&values_list, value, fd_text);
+                    // _fputsi(fd_text, "[", sz, "];\n");
+                    _fputs(fd_text, "    char _");
+                    ir_compile_value(&values_list, value, fd_text);
+                    _fputsi(fd_text, "[", sz, "];\n");
+                    _fputs(fd_text, "    ");
+                    ir_compile_type_prefix(value->type, fd_text);
+                    ir_compile_value(&values_list, value, fd_text);
+                    ir_compile_type_suffix(value->type, fd_text);
+                    _fputs(fd_text, " = ");
+                    ir_compile_type(value->type, fd_text, true);
+                    _fputs(fd_text, "&_");
+                    ir_compile_value(&values_list, value, fd_text);
+                    _fputsi(fd_text, "; // ", type, "\n");
+                }
+            }
+        }
+
+        for (int j = 0; j < sz_blocks; j++) {
+            struct IRBlock *block = function->block_list.ptr[j];
+            ir_compile_block(&blocks_list, block, fd_text);
+            _fputs(fd_text, ": //");
+            {
+                int cnt_succ = vsize(&block->succ_list);
+                for (int jj = 0; jj < cnt_succ; jj++) {
+                    struct IRBlock *succ_block = block->succ_list.ptr[jj];
+                    ir_compile_block(&blocks_list, succ_block, fd_text);
+                    if (jj + 1 < cnt_succ) {
+                        _fputs(fd_text, ", ");
+                    }
+                }
+            }
+            _fputs(fd_text, "\n");
+            // {
+            //     _fputs(fd_text, "/*");
+            //     int cnt = vsize(&block->variable_list);
+            //     for (int jj = 0; jj < cnt; jj++) {
+            //         struct IRVariableInfo *var_info = block->variable_list.ptr[jj];
+            //         _fputi(fd_text, var_info);
+            //         _fputs2(fd_text, var_info->name, " :: ");
+            //         _fputi(fd_text, var_info->value);
+            //         ir_compile_value(&values_list, var_info->value, fd_text);
+            //         _fputs(fd_text, "\n");
+            //     }
+            //     _fputs(fd_text, "*/");
+            // }
+
+            int sz_insts = vsize(&block->value_list);
+            for (int k = 0; k < sz_insts; k++) {
+                struct IRValue *value = block->value_list.ptr[k];
+                enum IRValueType type = value->value_type;
+
+                if (type == IRNodePhi) {
+                    _fputs(fd_text, "// ");
+                }
+                
+                if (type == IRNodeConst || type == IRNodeAlloca) continue;
+                if (type != IRNodeLoad && type != IRNodeStore && 
+                    type != IRNodeBr && type != IRNodeCondBr && type != IRNodeRet && 
+                    !(type == IRNodeCall && value->type->size == 0)) {
+                    _fputs(fd_text, "    ");
+                    ir_compile_value(&values_list, value, fd_text);
+                    _fputs(fd_text, " = ");
+                }
+
+                if (type == IRNodePhi) {
+                    int sz_args = vsize(&value->value_arg_list);
+                    _fputs(fd_text, "phi ");
+                    for (int arg = 0; arg < sz_args; arg++) {
+                        _fputs(fd_text, "[");
+                        ir_compile_value(&values_list, value->value_arg_list.ptr[arg], fd_text);
+                        _fputs(fd_text, ", ");
+                        ir_compile_block(&blocks_list, value->block_arg_list.ptr[arg], fd_text);
+                        _fputs(fd_text, "]");
+                        if (arg + 1 != sz_args) {
+                            _fputs(fd_text, ", ");
+                        }
+                    }
+                    _fputs(fd_text, ";");
+                }
+                else if (type == IRNodeAddress) {
+                    _fputs(fd_text, "&");
+                    ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                    _fputs(fd_text, ";");
+                }
+                else if (type == IRNodeGEP) {
+                    ir_compile_type(value->type, fd_text, true);
+                    _fputs(fd_text, "((void*)");
+                    ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                    _fputs(fd_text, " + ");
+                    ir_compile_value(&values_list, value->value_arg_list.ptr[1], fd_text);
+                    _fputsi(fd_text, " * ", (long)value->const_arg_list.ptr[0], ");");
+                }
+                else if (type == IRNodeSGEP) {
+                    ir_compile_type(value->type, fd_text, true);
+                    _fputs(fd_text, "((void*)");
+                    ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                    _fputsi(fd_text, " + ", (long)value->const_arg_list.ptr[0], ");");
+                }
+                else if (type == IRNodeLoad) {
+                    int sz = (long)value->const_arg_list.ptr[0];
+                    if (sz > 8) {
+                        for (int i = 0; i < sz; i++) {
+                            _fputs(fd_text, "    ((char*)");
+                            ir_compile_value(&values_list, value, fd_text);
+                            _fputsi(fd_text, ")[", i, "] = (char)");
+                            ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                            _fputsi(fd_text, "[", i, "]; // load");
+                            if (i + 1 < sz) _fputs(fd_text, "\n");
+                        }
+                    }
+                    else {
+                        _fputs(fd_text, "    ");
+                        ir_compile_value(&values_list, value, fd_text);
+                        _fputs(fd_text, " = *");
+                        ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                        _fputs(fd_text, ";");
+                    }
+                }
+                else if (type == IRNodeStore) {
+                    struct IRValue *src = value->value_arg_list.ptr[1];
+                    int sz = (long)value->const_arg_list.ptr[0];
+                    if (sz > 8) {
+                        for (int i = 0; i < sz; i++) {
+                            _fputs(fd_text, "    ((char*)");
+                            ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                            _fputsi(fd_text, ")[", i, "] = (char)(*");
+                            ir_compile_value(&values_list, value->value_arg_list.ptr[1], fd_text);
+                            _fputsi(fd_text, ")[", i, "]; // store");
+                            if (i + 1 < sz) _fputs(fd_text, "\n");
+                        }
+                    }
+                    else {
+                        _fputs(fd_text, "    *");
+                        ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                        _fputs(fd_text, " = ");
+                        ir_compile_value(&values_list, value->value_arg_list.ptr[1], fd_text);
+                        _fputs(fd_text, ";");
+                    }
+                }
+                else if (type == IRNodeCall) {
+                    if (value->type->size == 0) {
+                        _fputs(fd_text, "    ");
+                    }
+                    ir_compile_type(value->type, fd_text, true);
+                    int sz_args = vsize(&value->value_arg_list);
+                    struct IRValue *value_function = value->value_arg_list.ptr[0];
+                    ir_compile_value(&values_list, value_function, fd_text);
+                    struct TypeFunction *type_function = (struct TypeFunction*)value_function->type->node_ptr;
+                    _fputs(fd_text, "(");
+                    for (int arg = 1; arg < sz_args; arg++) {
+                        ir_compile_type((struct TypeNode*)type_function->types.ptr[arg - 1], fd_text, true);
+                        struct IRValue *value_arg = value->value_arg_list.ptr[arg];
+                        ir_compile_value(&values_list, value_arg, fd_text);
+                        if (arg + 1 != sz_args) {
+                            _fputs(fd_text, ", ");
+                        }
+                    }
+                    _fputs(fd_text, ");");
+                }
+                else if (type == IRNodeBr) {
+                    ir_compile_phi(&values_list, block, value->block_arg_list.ptr[0], fd_text);
+                    _fputs(fd_text, "    goto ");
+                    ir_compile_block(&blocks_list, value->block_arg_list.ptr[0], fd_text);
+                    _fputs(fd_text, ";\n");
+                    break;
+                }
+                else if (type == IRNodeCondBr) {
+                    _fputs(fd_text, "    if (");
+                    ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                    _fputs(fd_text, ") {\n");
+                    ir_compile_phi(&values_list, block, value->block_arg_list.ptr[0], fd_text);
+                    _fputs(fd_text, "    goto ");
+                    ir_compile_block(&blocks_list, value->block_arg_list.ptr[0], fd_text);
+                    _fputs(fd_text, ";\n    } else {\n");
+                    ir_compile_phi(&values_list, block, value->block_arg_list.ptr[1], fd_text);
+                    _fputs(fd_text, "    goto ");
+                    ir_compile_block(&blocks_list, value->block_arg_list.ptr[1], fd_text);
+                    _fputs(fd_text, ";\n    }\n");
+                    break;
+                }
+                else if (type == IRNodeRet) {
+                    _fputs(fd_text, "    return");
+                    struct IRValue *ret_value = value->value_arg_list.ptr[0];
+                    if (ret_value->type->node_type != TypeNodeVoid) {
+                        _fputs(fd_text, " ");
+                        ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                    }
+                    _fputs(fd_text, ";\n");
+                    break;
+                }
+                else if (type == IRNodeAnd ||
+                    type == IRNodeOr ||
+                    type == IRNodeNot ||
+                    type == IRNodeBitwiseAnd ||
+                    type == IRNodeBitwiseOr ||
+                    type == IRNodeBitwiseXor ||
+                    type == IRNodeBitwiseNot ||
+                    type == IRNodeBitwiseShiftLeft ||
+                    type == IRNodeBitwiseShiftRight ||
+                    type == IRNodeAddition ||
+                    type == IRNodeSubtraction ||
+                    type == IRNodeMultiplication ||
+                    type == IRNodeDivision ||
+                    type == IRNodeModulo ||
+                    type == IRNodeLess ||
+                    type == IRNodeGreater ||
+                    type == IRNodeEqual ||
+                    type == IRNodeLessEqual ||
+                    type == IRNodeGreaterEqual ||
+                    type == IRNodeNotEqual
+                ) {
+                    int sz_args = vsize(&value->value_arg_list);
+                    if (sz_args == 2) {
+                        ir_compile_value(&values_list, value->value_arg_list.ptr[0], fd_text);
+                        _fputs(fd_text, " ");
+                    }
+                    switch (type) {
+                        case IRNodeAnd:                 _fputs(fd_text, "&&"); break;
+                        case IRNodeOr:                  _fputs(fd_text, "||"); break;
+                        case IRNodeNot:                 _fputs(fd_text, "!"); break;
+                        case IRNodeBitwiseAnd:          _fputs(fd_text, "&"); break;
+                        case IRNodeBitwiseOr:           _fputs(fd_text, "|"); break;
+                        case IRNodeBitwiseXor:          _fputs(fd_text, "^"); break;
+                        case IRNodeBitwiseNot:          _fputs(fd_text, "~"); break;
+                        case IRNodeBitwiseShiftLeft:    _fputs(fd_text, "<<"); break;
+                        case IRNodeBitwiseShiftRight:   _fputs(fd_text, ">>"); break;
+                        case IRNodeAddition:            _fputs(fd_text, "+"); break;
+                        case IRNodeSubtraction:         _fputs(fd_text, "-"); break;
+                        case IRNodeMultiplication:      _fputs(fd_text, "*"); break;
+                        case IRNodeDivision:            _fputs(fd_text, "/"); break;
+                        case IRNodeModulo:              _fputs(fd_text, "%"); break;
+                        case IRNodeLess:                _fputs(fd_text, "<"); break;
+                        case IRNodeGreater:             _fputs(fd_text, ">"); break;
+                        case IRNodeEqual:               _fputs(fd_text, "=="); break;
+                        case IRNodeLessEqual:           _fputs(fd_text, "<="); break;
+                        case IRNodeGreaterEqual:        _fputs(fd_text, ">="); break;
+                        case IRNodeNotEqual:            _fputs(fd_text, "!="); break;
+                    }
+                    _fputs(fd_text, " ");
+                    ir_compile_value(&values_list, value->value_arg_list.ptr[sz_args - 1], fd_text);
+                    _fputs(fd_text, ";");
+                }
+                else {
+                    _panic("Uncompilable value");
+                }
+
+                _fputs(fd_text, "\n");
+            }
+        }
+
+        _fputs(fd_text, "}\n\n");
+    }
+
+    if (builder->testing) {
+        _fputs(fd_text, "void posix_exit(int);\n");
+        _fputs(fd_text, "void test() {\n");
+        int sz = vsize(&builder->test_names);
+
+        if (sz) {
+            _fputs(fd_text, "    if (");
+            for (int i = 0; i < sz; i++) {
+                _fputs2(fd_text, builder->test_names.ptr[i], "()");
+                if (i + 1 < sz) _fputs(fd_text, " || ");
+            }
+            _fputs(fd_text, ") posix_exit(1);\n");
+        }
+        _fputs(fd_text, "    posix_exit(0);\n}\n");
+    }
+
+    posix_close(fd_text);
+    char *str_text = read_file_descriptor(fd_text_out);
+    posix_close(fd_text_out);
+    if (filename_compile_output) {
+        write_file(filename_compile_output, str_text);
+    }
+}

@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <ir.h>
+#include <ir_build.h>
+#include <ir_compile.h>
 
 int _execvp(const char *filename, const char *const argv[], const char *const envp[], const char *path) {
     int n = _strlen(path);
@@ -103,7 +105,6 @@ int process(struct Settings *settings) {
                 vpop(&builder->nodes);
                 ir_build(builder, node);
             }
-            // ir_print(builder);
             posix_unlink(settings->filename_output);
             ir_compile(builder, settings->filename_output);
         }
