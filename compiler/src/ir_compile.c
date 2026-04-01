@@ -100,11 +100,11 @@ void ir_compile_type(struct TypeNode *type, int fd_text, bool in_parenthesis) {
 }
 
 void ir_compile_value(struct Vector *values_list, struct IRNode *value, int fd_text) {
-    if (value->value_type == IRNodeConst && !value->spill) {
+    if (value->node_type == IRNodeConst && !value->spill) {
         struct IRConst *_value = value->node_ptr;
         _fputi(fd_text, _value->value);
     }
-    else if (value->value_type == IRNodeGlobal) {
+    else if (value->node_type == IRNodeGlobal) {
         struct IRGlobal *_value = value->node_ptr;
         if (!(value->type->node_type == TypeNodeFunction && value->type->degree == 0)) {
             _fputs(fd_text, "&");
@@ -151,7 +151,7 @@ void ir_compile_block(struct Vector *blocks_list, struct IRBlock *block, int fd_
 void ir_compile_phi(struct Vector *values_list, struct IRBlock *block, struct IRBlock *succ_block, int fd_text) {
     int sz_insts = vsize(&succ_block->value_list);
     for (int i = 0; i < sz_insts; i++) {
-        struct IRValue *value = succ_block->value_list.ptr[i];
+        struct IRNode *value = succ_block->value_list.ptr[i];
         if (value->node_type == IRNodePhi) {
             struct IRPhi *phi = value->node_ptr;
             int sz_args = vsize(&phi->values);
@@ -168,15 +168,16 @@ void ir_compile_phi(struct Vector *values_list, struct IRBlock *block, struct IR
     }
 }
 
-void ir_compile_function_signature(struct IRFunction *function, int fd_text) {
+void ir_compile_function_signature(struct Vector *values_list, struct IRFunction *function, int fd_text) {
     struct TypeFunction *type_function = (struct TypeFunction*)(function->type->node_ptr);
     ir_compile_type_prefix(type_function->return_type, fd_text);
     _fputs(fd_text, function->name_generate);
     ir_compile_type_suffix(type_function->return_type, fd_text);
     _fputs(fd_text, "(");
+    int sz_args = vsize(&type_function->types);
     for (int j = 0; j < sz_args; j++) {
         ir_compile_type_prefix(type_function->types.ptr[j], fd_text);
-        ir_compile_value(&values_list, function->arg_list.ptr[j], fd_text);
+        ir_compile_value(values_list, function->arg_list.ptr[j], fd_text);
         ir_compile_type_suffix(type_function->types.ptr[j], fd_text);
         if (j + 1 != sz_args) {
             _fputs(fd_text, ", ");
@@ -225,7 +226,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
         int sz_blocks = vsize(&function->block_list);
         int sz_args = vsize(&function->arg_list);
 
-        compile_function_signature(function, fd_text);
+        ir_compile_function_signature(&values_list, function, fd_text);
         _fputs(fd_text, ";\n\n");
     }
 
@@ -238,7 +239,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
         if (!sz_blocks) continue;
         int sz_args = vsize(&function->arg_list);
 
-        compile_function_signature(function, fd_text);
+        ir_compile_function_signature(&values_list, function, fd_text);
         _fputs(fd_text, " {\n");
 
         for (int j = 0; j < sz_blocks; j++) {
@@ -247,7 +248,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
             int sz_insts = vsize(&block->value_list);
             for (int k = 0; k < sz_insts; k++) {
                 struct IRNode *value = block->value_list.ptr[k];
-                enum IRNodeType type = value->node_type;
+                enum IRValueType type = value->node_type;
 
                 if (!(type == IRNodeConst && !value->spill) && 
                     type != IRNodeAlloca && type != IRNodeStore && 
@@ -296,7 +297,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
             int sz_insts = vsize(&block->value_list);
             for (int k = 0; k < sz_insts; k++) {
                 struct IRNode *value = block->value_list.ptr[k];
-                enum IRNodeType type = value->node_type;
+                enum IRValueType type = value->node_type;
 
                 if (type == IRNodePhi) {
                     _fputs(fd_text, "// ");
@@ -341,7 +342,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
                     ir_compile_type(value->type, fd_text, true);
                     _fputs(fd_text, "((void*)");
                     ir_compile_value(&values_list, sgep->instance, fd_text);
-                    _fputsi(fd_text, " + ", sgep->size, ");");
+                    _fputsi(fd_text, " + ", sgep->phase, ");");
                 }
                 else if (type == IRNodeLoad) {
                     struct IRLoad *load = value->node_ptr;
@@ -397,7 +398,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
                     _fputs(fd_text, "(");
                     for (int arg = 0; arg < sz_args; arg++) {
                         ir_compile_type((struct TypeNode*)type_function->types.ptr[arg], fd_text, true);
-                        struct IRValue *value_arg = call->arguments.ptr[arg];
+                        struct IRNode *value_arg = call->arguments.ptr[arg];
                         ir_compile_value(&values_list, value_arg, fd_text);
                         if (arg + 1 != sz_args) {
                             _fputs(fd_text, ", ");
@@ -414,7 +415,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
                     break;
                 }
                 else if (type == IRNodeCondBr) {
-                    struct IRCondbr *condbr = value->node_ptr;
+                    struct IRCondBr *condbr = value->node_ptr;
                     _fputs(fd_text, "    if (");
                     ir_compile_value(&values_list, condbr->condition, fd_text);
                     _fputs(fd_text, ") {\n");
@@ -431,8 +432,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
                 else if (type == IRNodeRet) {
                     struct IRRet *ret = value->node_ptr;
                     _fputs(fd_text, "    return");
-                    struct IRValue *ret_value = ret->value;
-                    if (ret->value->type->node_type != TypeNodeVoid) {
+                    if (ret->value) {
                         _fputs(fd_text, " ");
                         ir_compile_value(&values_list, ret->value, fd_text);
                     }

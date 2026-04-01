@@ -167,6 +167,18 @@ struct TypeNode *type_copy_node(struct TypeNode *n1) {
     return n2;
 }
 
+struct TypeNode *type_pointer(struct TypeNode *n) {
+    struct TypeNode *_n = type_copy_node(n);
+    _n->degree++;
+    return _n;
+}
+
+struct TypeNode *type_deref(struct TypeNode *n) {
+    struct TypeNode *_n = type_copy_node(n);
+    _n->degree--;
+    return _n;
+}
+
 int type_mangle_helper(struct TypeNode *n, struct CPContext *context, char *buffer, int pos) {
     int sum_degree = 0;
     while (n->node_type == TypeNodeIdentifier) {
