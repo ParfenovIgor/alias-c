@@ -93,13 +93,7 @@ int process(struct Settings *settings) {
         else {
             posix_unlink(settings->filename_compile_output);
             struct IRBuilder *builder = ir_builder(settings->testing);
-            vpush(&builder->nodes, node);
-            while (vsize(&builder->nodes))
-            {
-                struct Node *node = vback(&builder->nodes);
-                vpop(&builder->nodes);
-                ir_build(builder, node);
-            }
+            ir_build(builder, node);
             posix_unlink(settings->filename_output);
             ir_compile(builder, settings->filename_output);
         }

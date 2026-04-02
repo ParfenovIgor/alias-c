@@ -155,3 +155,29 @@ struct IRGlobalVar {
     void *value;
     struct IRNode *ir_value;
 };
+
+struct IRBuilder {
+    struct Vector function_list;
+    struct Vector function_stack;
+    struct Vector globalvar_list;
+    struct IRFunction *current_function;
+    struct IRBlock *current_block;
+
+    bool header;
+    bool testing;
+    int current_identifier;
+    struct Vector test_names;
+
+    struct Vector nodes;
+    struct Vector irblock_label_stack;
+    struct Vector irblock_block_stack;
+    struct Vector irblock_phi_stack_values;
+    struct Vector irblock_phi_stack_blocks;
+    struct Vector irloop_label_stack;
+    struct Vector irloop_blockcond_stack;
+    struct Vector irloop_blockend_stack;
+    struct Vector irloop_phi_stack_values;
+    struct Vector irloop_phi_stack_blocks;
+};
+
+struct IRBuilder *ir_builder(bool testing);

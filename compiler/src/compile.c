@@ -1,4 +1,4 @@
-#include "token.h"
+#include <token.h>
 #include <ast.h>
 #include <type.h>
 #include <process.h>
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <panic.h>
 
 int align_to_word(int x) {
     return (x + WORD - 1) / WORD * WORD;
@@ -1032,137 +1033,37 @@ struct TypeNode *compile_arithmetic(struct Node *node, struct BinaryOperator *th
 }
 
 struct TypeNode *compile_node(struct Node *node, struct CPContext *context) {
-    // _fputs(context->fd_text, "; ");
-    // _fputs(context->fd_text, node->filename);
-    // _fputs(context->fd_text, " ");
-    // _fputi(context->fd_text, node->line_begin + 1);
-    // _fputs(context->fd_text, ":");
-    // _fputi(context->fd_text, node->position_begin + 1);
-    // _fputs(context->fd_text, " -> ");
-
-    if (node->node_type == NodeModule) {
-        // _fputs(context->fd_text, "module\n");
-        compile_module(node, (struct Module*)node->node_ptr, context);
+    switch (node->node_type) {
+        case NodeModule: compile_module(node, (struct Module*)node->node_ptr, context); return NULL;
+        case NodeBlock: return node->type = compile_block(node, (struct Block*)node->node_ptr, context);
+        case NodeInclude: compile_include(node, (struct Include*)node->node_ptr, context); return NULL;
+        case NodeTest: compile_test(node, (struct Test*)node->node_ptr, context); return NULL;
+        case NodeIf: return node->type = compile_if(node, (struct If*)node->node_ptr, context);
+        case NodeWhile: return node->type = compile_while(node, (struct While*)node->node_ptr, context);
+        case NodeFunctionDefinition: compile_function_definition(node, (struct FunctionDefinition*)node->node_ptr, context); return NULL;
+        case NodePrototype: compile_prototype(node, (struct Prototype*)node->node_ptr, context); return NULL;
+        case NodeGlobalDefinition: compile_global_definition(node, (struct GlobalDefinition*)node->node_ptr, context); return NULL;
+        case NodeDefinition: compile_definition(node, (struct Definition*)node->node_ptr, context); return NULL;
+        case NodeTypeDefinition: compile_type_definition(node, (struct TypeDefinition*)node->node_ptr, context); return NULL;
+        case NodeReturn: compile_return(node, (struct Return*)node->node_ptr, context); return NULL;
+        case NodeBreak: compile_break(node, (struct Break*)node->node_ptr, context); return NULL;
+        case NodeContinue: compile_continue(node, (struct Continue*)node->node_ptr, context); return NULL;
+        case NodeAs: return node->type = compile_as(node, (struct As*)node->node_ptr, context);
+        case NodeAssignment: compile_assignment(node, (struct Assignment*)node->node_ptr, context); return NULL;
+        case NodeMovement: compile_movement(node, (struct Movement*)node->node_ptr, context); return NULL;
+        case NodeIdentifier: return node->type = compile_identifier(node, (struct Identifier*)node->node_ptr, context);
+        case NodeInteger: return node->type = compile_integer(node, (struct Integer*)node->node_ptr, context);
+        case NodeChar: return node->type = compile_char(node, (struct Char*)node->node_ptr, context);
+        case NodeString: return node->type = compile_string(node, (struct String*)node->node_ptr, context);
+        case NodeArray: return node->type = compile_array(node, (struct Array*)node->node_ptr, context);
+        case NodeStructInstance: return node->type = compile_struct_instance(node, (struct StructInstance*)node->node_ptr, context);
+        case NodeLambdaFunction: return node->type = compile_lambda_function(node, (struct LambdaFunction*)node->node_ptr, context);
+        case NodeSizeof: return node->type = compile_sizeof(node, (struct Sizeof*)node->node_ptr, context);
+        case NodeFunctionCall: return node->type = compile_function_call(node, (struct FunctionCall*)node->node_ptr, context);
+        case NodeMethodCall: return node->type = compile_method_call(node, (struct MethodCall*)node->node_ptr, context);
+        case NodeDereference: return node->type = compile_dereference(node, (struct Dereference*)node->node_ptr, context);
+        case NodeIndex: return node->type = compile_index(node, (struct Index*)node->node_ptr, context);
+        case NodeGetField: return node->type = compile_get_field(node, (struct GetField*)node->node_ptr, context);
+        default: return node->type = compile_arithmetic(node, (struct BinaryOperator*)node->node_ptr, context);
     }
-    else if (node->node_type == NodeBlock) {
-        // _fputs(context->fd_text, "block\n");
-        return node->type = compile_block(node, (struct Block*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeInclude) {
-        // _fputs(context->fd_text, "include\n");
-        compile_include(node, (struct Include*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeTest) {
-        // _fputs(context->fd_text, "test\n");
-        compile_test(node, (struct Test*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeIf) {
-        // _fputs(context->fd_text, "if\n");
-        return node->type = compile_if(node, (struct If*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeWhile) {
-        // _fputs(context->fd_text, "while\n");
-        return node->type = compile_while(node, (struct While*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeFunctionDefinition) {
-        // _fputs(context->fd_text, "function definition\n");
-        compile_function_definition(node, (struct FunctionDefinition*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodePrototype) {
-        // _fputs(context->fd_text, "prototype\n");
-        compile_prototype(node, (struct Prototype*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeGlobalDefinition) {
-        // _fputs(context->fd_text, "global definition\n");
-        compile_global_definition(node, (struct GlobalDefinition*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeDefinition) {
-        // _fputs(context->fd_text, "definition\n");
-        compile_definition(node, (struct Definition*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeTypeDefinition) {
-        // _fputs(context->fd_text, "type definition\n");
-        compile_type_definition(node, (struct TypeDefinition*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeReturn) {
-        // _fputs(context->fd_text, "return node->type = n");
-        compile_return(node, (struct Return*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeBreak) {
-        // _fputs(context->fd_text, "break\n");
-        compile_break(node, (struct Break*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeContinue) {
-        // _fputs(context->fd_text, "continue\n");
-        compile_continue(node, (struct Continue*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeAs) {
-        // _fputs(context->fd_text, "as\n");
-        return node->type = compile_as(node, (struct As*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeAssignment) {
-        // _fputs(context->fd_text, "assignment\n");
-        compile_assignment(node, (struct Assignment*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeMovement) {
-        // _fputs(context->fd_text, "movement\n");
-        compile_movement(node, (struct Movement*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeIdentifier) {
-        // _fputs(context->fd_text, "identifier\n");
-        return node->type = compile_identifier(node, (struct Identifier*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeInteger) {
-        // _fputs(context->fd_text, "integer\n");
-        return node->type = compile_integer(node, (struct Integer*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeChar) {
-        // _fputs(context->fd_text, "char\n");
-        return node->type = compile_char(node, (struct Char*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeString) {
-        // _fputs(context->fd_text, "string\n");
-        return node->type = compile_string(node, (struct String*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeArray) {
-        // _fputs(context->fd_text, "array\n");
-        return node->type = compile_array(node, (struct Array*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeStructInstance) {
-        // _fputs(context->fd_text, "struct instance\n");
-        return node->type = compile_struct_instance(node, (struct StructInstance*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeLambdaFunction) {
-        // _fputs(context->fd_text, "lambda function\n");
-        return node->type = compile_lambda_function(node, (struct LambdaFunction*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeSizeof) {
-        // _fputs(context->fd_text, "sizeof\n");
-        return node->type = compile_sizeof(node, (struct Sizeof*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeFunctionCall) {
-        // _fputs(context->fd_text, "function call\n");
-        return node->type = compile_function_call(node, (struct FunctionCall*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeMethodCall) {
-        // _fputs(context->fd_text, "method call\n");
-        return node->type = compile_method_call(node, (struct MethodCall*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeDereference) {
-        // _fputs(context->fd_text, "dereference\n");
-        return node->type = compile_dereference(node, (struct Dereference*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeIndex) {
-        // _fputs(context->fd_text, "index\n");
-        return node->type = compile_index(node, (struct Index*)node->node_ptr, context);
-    }
-    else if (node->node_type == NodeGetField) {
-        // _fputs(context->fd_text, "get field\n");
-        return node->type = compile_get_field(node, (struct GetField*)node->node_ptr, context);
-    }
-    else {
-        // _fputs(context->fd_text, "arithmetic\n");
-        return node->type = compile_arithmetic(node, (struct BinaryOperator*)node->node_ptr, context);
-    }
-    return node->type = NULL;
 }
