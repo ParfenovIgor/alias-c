@@ -95,12 +95,15 @@
 <li><a href="#4.4">posix_close</a></li>
 <li><a href="#4.5">posix_mmap</a></li>
 <li><a href="#4.6">posix_munmap</a></li>
-<li><a href="#4.7">posix_fork</a></li>
-<li><a href="#4.8">posix_execve</a></li>
-<li><a href="#4.9">posix_exit</a></li>
-<li><a href="#4.10">posix_wait4</a></li>
-<li><a href="#4.11">posix_getcwd</a></li>
-<li><a href="#4.12">posix_unlink</a></li>
+<li><a href="#4.7">posix_pipe</a></li>
+<li><a href="#4.8">posix_dup2</a></li>
+<li><a href="#4.9">posix_getpid</a></li>
+<li><a href="#4.10">posix_fork</a></li>
+<li><a href="#4.11">posix_execve</a></li>
+<li><a href="#4.12">posix_exit</a></li>
+<li><a href="#4.13">posix_wait4</a></li>
+<li><a href="#4.14">posix_getcwd</a></li>
+<li><a href="#4.15">posix_unlink</a></li>
 </ul></li>
 <li><a href="#5">stdio</a>
 <ul>
@@ -216,32 +219,47 @@ System call. Performs memory unmapping from address <code>start</code> with size
 <pre><code>proto .posix_munmap(start #1I, length #I) -> #I
 
 </code></pre>
-<h3 id="4.7">posix_fork</h3>
+<h3 id="4.7">posix_pipe</h3>
+System call. Creates a pipe.
+<pre><code>proto .posix_pipe() -> #I
+
+</code></pre>
+<h3 id="4.8">posix_dup2</h3>
+System call. Creates a new file descriptor with the same stream, as the old one.
+<pre><code>proto .posix_dup2(oldfd #I, newfd #I) -> #I
+
+</code></pre>
+<h3 id="4.9">posix_getpid</h3>
+System call. Returns the PID of the current process.
+<pre><code>proto .posix_getpid() -> #I
+
+</code></pre>
+<h3 id="4.10">posix_fork</h3>
 System call. Starts a new process. Returns the <code>PID</code> of the child for the parent and <code>0</code> for the child.
 <pre><code>proto .posix_fork() -> #I
 
 </code></pre>
-<h3 id="4.8">posix_execve</h3>
+<h3 id="4.11">posix_execve</h3>
 System call. Starts a program in file <code>filename</code> with arguments <code>args</code> and environmental variables <code>envp</code>. Returns "never type".
 <pre><code>proto .posix_execve(filename #1I, argv #2C, envp #2C) -> #I
 
 </code></pre>
-<h3 id="4.9">posix_exit</h3>
+<h3 id="4.12">posix_exit</h3>
 System call. Terminates the process with exit code <code>error_code</code>. Returns "never type".
 <pre><code>proto .posix_exit(error_code #I) -> #I
 
 </code></pre>
-<h3 id="4.10">posix_wait4</h3>
+<h3 id="4.13">posix_wait4</h3>
 System call. Locks the process until a condition on process <code>pid</code> is satisfied. Read external documentation.
 <pre><code>proto .posix_wait4(pid #I, stat_addr #1I, options #I, rusage #1I) -> #I
 
 </code></pre>
-<h3 id="4.11">posix_getcwd</h3>
+<h3 id="4.14">posix_getcwd</h3>
 System call. Writes the current working directory to a buffer <code>buf</code> with size <code>size</code>. Returns <code>buf</code>.
 <pre><code>proto .posix_getcwd(buf #1C, size #I) -> #1C
 
 </code></pre>
-<h3 id="4.12">posix_unlink</h3>
+<h3 id="4.15">posix_unlink</h3>
 System call. Unlinks the file <code>pathname</code>. Returns <code>0</code> on success.
 <pre><code>proto .posix_unlink(pathname #1I) -> #I
 </code></pre>

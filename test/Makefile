@@ -2,7 +2,7 @@ BUILD_DIR=$(abspath build)
 
 .PHONY: algo integration perf unit
 
-all: algo integration unit
+all: unit integration algo
 
 algo:
 	$(MAKE) -C algo BUILD_DIR=$(BUILD_DIR)

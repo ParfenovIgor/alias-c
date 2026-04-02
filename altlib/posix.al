@@ -24,6 +24,18 @@ proto .posix_mmap(start #1I, length #I, prot #I, flags #I, fd #I, offset #I) -> 
 //* System call. Performs memory unmapping from address `start` with size `length`.
 proto .posix_munmap(start #1I, length #I) -> #I
 
+//* posix_pipe
+//* System call. Creates a pipe.
+proto .posix_pipe() -> #I
+
+//* posix_dup2
+//* System call. Creates a new file descriptor with the same stream, as the old one.
+proto .posix_dup2(oldfd #I, newfd #I) -> #I
+
+//* posix_getpid
+//* System call. Returns the PID of the current process.
+proto .posix_getpid() -> #I
+
 //* posix_fork
 //* System call. Starts a new process. Returns the `PID` of the child for the parent and `0` for the child.
 proto .posix_fork() -> #I

@@ -72,27 +72,22 @@ int process(struct Settings *settings) {
     filename[_strlen(filename) - 3] = '\0';
 
     struct Node *node = process_parse(settings->filename_input, settings);
-    
-    if (settings->compile && settings->filename_output) {
-        settings->filename_compile_output = _strdup(settings->filename_output);
+
+    if (settings->compile) {
+        settings->filename_compile_output = settings->filename_output;
     }
-    else {
-        settings->filename_compile_output = _concat(filename, ".asm");
+    if (settings->assemble) {
+        settings->filename_compile_output = _concat(_itoa(posix_getpid()), ".asm");
     }
 
     posix_unlink(settings->filename_compile_output);
     compile_process(node, settings);
     if (settings->compile || settings->assemble) {    
-        
         if (settings->backend == x86_64_asm) {
             if (settings->assemble) {
-                char *assemble_in_filename, *assemble_out_filename;
-                assemble_in_filename = _concat(filename, ".asm");
-                assemble_out_filename = _strdup(settings->filename_output);
-                
-                posix_unlink(assemble_out_filename);
-                process_assemble(assemble_in_filename, assemble_out_filename, settings);
-                posix_unlink(assemble_in_filename);
+                posix_unlink(settings->filename_output);
+                process_assemble(settings->filename_compile_output, settings->filename_output, settings);
+                posix_unlink(settings->filename_compile_output);
             }
         }
         else {

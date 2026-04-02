@@ -104,6 +104,10 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
         return NULL;
     }
 
+    if (!settings->filename_output) {
+        return NULL;
+    }
+
     settings->included_files = vnew();
     const char *filename = _strrchr(settings->filename_input, '/');
     if (!filename) filename = settings->filename_input;

@@ -22,6 +22,7 @@ void *posix_mmap(void *start, int length, int prot, int flags, int fd, int offse
 int posix_munmap(void *start, int length);
 int posix_pipe(int *fildes);
 int posix_dup2(int oldfd, int newfd);
+int posix_getpid();
 int posix_fork();
 int posix_execve(const char *filename, const char *const *argv, const char *const *envp);
 void posix_exit(int error_code);

@@ -6,6 +6,7 @@ global posix_mmap
 global posix_munmap
 global posix_pipe
 global posix_dup2
+global posix_getpid
 global posix_fork
 global posix_execve
 global posix_exit
@@ -51,6 +52,11 @@ posix_pipe:
 
 posix_dup2:
     mov rax, 0x21
+    syscall
+    ret
+
+posix_getpid:
+    mov rax, 0x27
     syscall
     ret
 

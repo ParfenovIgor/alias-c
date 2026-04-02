@@ -250,8 +250,8 @@ void x86_64_codegen_call_label(const char *label, struct CPContext *context) {
 
 void x86_64_codegen_index(int multiplier, struct CPContext *context) {
     _fputs(context->fd_text, "mov rax, [rsp - 16]\n");
-    _fputsi(context->fd_text, "mov rbx, ", multiplier, "\n");
-    _fputs(context->fd_text, "mul rbx\n");
+    _fputsi(context->fd_text, "mov rdx, ", multiplier, "\n");
+    _fputs(context->fd_text, "mul rdx\n");
     _fputs(context->fd_text, "add rax, [rsp - 8]\n");
 }
 
@@ -337,19 +337,19 @@ void x86_64_codegen_arithmetic(enum NodeType node_type, bool unary, struct CPCon
             _fputs(context->fd_text, "xor rax, rax\n");
             _fputs(context->fd_text, "sub qword [rsp - 8], 0\n");
             _fputs(context->fd_text, "setne al\n");
-            _fputs(context->fd_text, "xor rbx, rbx\n");
+            _fputs(context->fd_text, "xor rdx, rdx\n");
             _fputs(context->fd_text, "sub qword [rsp - 16], 0\n");
-            _fputs(context->fd_text, "setne bl\n");
-            _fputs(context->fd_text, "and rax, rbx\n");
+            _fputs(context->fd_text, "setne dl\n");
+            _fputs(context->fd_text, "and rax, rdx\n");
         }; break;
         case NodeOr: {
             _fputs(context->fd_text, "xor rax, rax\n");
             _fputs(context->fd_text, "sub qword [rsp - 8], 0\n");
             _fputs(context->fd_text, "setne al\n");
-            _fputs(context->fd_text, "xor rbx, rbx\n");
+            _fputs(context->fd_text, "xor rdx, rdx\n");
             _fputs(context->fd_text, "sub qword [rsp - 16], 0\n");
-            _fputs(context->fd_text, "setne bl\n");
-            _fputs(context->fd_text, "or rax, rbx\n");
+            _fputs(context->fd_text, "setne dl\n");
+            _fputs(context->fd_text, "or rax, rdx\n");
         } break;
         case NodeNot: {
             _fputs(context->fd_text, "xor rax, rax\n");
@@ -358,38 +358,38 @@ void x86_64_codegen_arithmetic(enum NodeType node_type, bool unary, struct CPCon
         } break;
         case NodeLess: {
             _fputs(context->fd_text, "xor rax, rax\n");
-            _fputs(context->fd_text, "mov rbx, [rsp - 8]\n");
-            _fputs(context->fd_text, "sub rbx, [rsp - 16]\n");
+            _fputs(context->fd_text, "mov rdx, [rsp - 8]\n");
+            _fputs(context->fd_text, "sub rdx, [rsp - 16]\n");
             _fputs(context->fd_text, "setl al\n");
         } break;
         case NodeGreater: {
             _fputs(context->fd_text, "xor rax, rax\n");
-            _fputs(context->fd_text, "mov rbx, [rsp - 8]\n");
-            _fputs(context->fd_text, "sub rbx, [rsp - 16]\n");
+            _fputs(context->fd_text, "mov rdx, [rsp - 8]\n");
+            _fputs(context->fd_text, "sub rdx, [rsp - 16]\n");
             _fputs(context->fd_text, "setg al\n");
         } break;
         case NodeEqual: {
             _fputs(context->fd_text, "xor rax, rax\n");
-            _fputs(context->fd_text, "mov rbx, [rsp - 8]\n");
-            _fputs(context->fd_text, "sub rbx, [rsp - 16]\n");
+            _fputs(context->fd_text, "mov rdx, [rsp - 8]\n");
+            _fputs(context->fd_text, "sub rdx, [rsp - 16]\n");
             _fputs(context->fd_text, "sete al\n");
         } break;
         case NodeLessEqual: {
             _fputs(context->fd_text, "xor rax, rax\n");
-            _fputs(context->fd_text, "mov rbx, [rsp - 8]\n");
-            _fputs(context->fd_text, "sub rbx, [rsp - 16]\n");
+            _fputs(context->fd_text, "mov rdx, [rsp - 8]\n");
+            _fputs(context->fd_text, "sub rdx, [rsp - 16]\n");
             _fputs(context->fd_text, "setle al\n");
         } break;
         case NodeGreaterEqual: {
             _fputs(context->fd_text, "xor rax, rax\n");
-            _fputs(context->fd_text, "mov rbx, [rsp - 8]\n");
-            _fputs(context->fd_text, "sub rbx, [rsp - 16]\n");
+            _fputs(context->fd_text, "mov rdx, [rsp - 8]\n");
+            _fputs(context->fd_text, "sub rdx, [rsp - 16]\n");
             _fputs(context->fd_text, "setge al\n");
         } break;
         case NodeNotEqual: {
             _fputs(context->fd_text, "xor rax, rax\n");
-            _fputs(context->fd_text, "mov rbx, [rsp - 8]\n");
-            _fputs(context->fd_text, "sub rbx, [rsp - 16]\n");
+            _fputs(context->fd_text, "mov rdx, [rsp - 8]\n");
+            _fputs(context->fd_text, "sub rdx, [rsp - 16]\n");
             _fputs(context->fd_text, "setne al\n");
         } break;
         default: {
