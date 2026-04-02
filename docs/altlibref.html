@@ -150,7 +150,8 @@
 <li><a href="#9.2">#1Vector.push</a></li>
 <li><a href="#9.3">#1Vector.pop</a></li>
 <li><a href="#9.4">#1Vector.size</a></li>
-<li><a href="#9.5">#1Vector.get</a></li>
+<li><a href="#9.5">#1Vector.set</a></li>
+<li><a href="#9.6">#1Vector.get</a></li>
 </ul></li>
 </ul></nav></div>
 <div id="contents-wrapper"><main id="contents">
@@ -615,7 +616,6 @@ Pushes the value <code>x</code> to the back of the vector.
 <pre><code>func ^#1Vector.push(this #1Vector, x #I) -> #V {
     eval if (this-&gtsize = this-&gtreserved) {
         def buffer #1I := this-&gtallocator.alloc(this-&gtreserved * 2 * $#I)
-        eval puti_(this-&gtdata as #I)
         eval _memcpy(buffer, this-&gtdata, this-&gtsize * $#I)
         this-&gtdata& &lt- buffer
         this-&gtreserved& &lt- this-&gtreserved * 2
@@ -643,8 +643,15 @@ Returns the size of vector.
 }
 
 </code></pre>
-<h3 id="9.5">#1Vector.get</h3>
-Returns the element of vector at position <code>x</code>. Doens't check if the element exists.
+<h3 id="9.5">#1Vector.set</h3>
+Sets the element of vector at position <code>x</code> to <code>y</code>. Doesn't check if the element exists.
+<pre><code>func ^#1Vector.set(this #1Vector, x #I, y #I) -> #V {
+    this-&gtdata[x]& &lt- y
+}
+
+</code></pre>
+<h3 id="9.6">#1Vector.get</h3>
+Returns the element of vector at position <code>x</code>. Doesn't check if the element exists.
 <pre><code>func ^#1Vector.get(this #1Vector, x #I) -> #I {
     return this-&gtdata[x]
 }

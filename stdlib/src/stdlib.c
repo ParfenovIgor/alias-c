@@ -60,7 +60,7 @@ void _free(void *ptr) {
     free_heap(heap, ptr);
 }
 
-int _rand(int seed) {
+long _rand(long seed) {
     seed = seed * 1103515245 + 12345;
     seed = (seed / 65536) % 32768;
     if (seed < 0) {

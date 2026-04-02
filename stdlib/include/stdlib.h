@@ -6,4 +6,4 @@ char *_itoa(int n);
 void _init_malloc();
 void *_malloc(int sz);
 void _free(void *ptr);
-int _rand(int seed);
+long _rand(long seed);

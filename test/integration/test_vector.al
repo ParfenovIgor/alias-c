@@ -24,6 +24,7 @@ func ^._start() -> #V {
 
     eval vec&.pop()
     eval vec&.pop()
+    eval vec&.set(1, 7)
     eval vec&.push(5)
     eval vec&.push(6)
 

@@ -26,7 +26,6 @@ func ^#1Vector.init(this #1Vector, allocator #1TestAllocator) -> #V {
 func ^#1Vector.push(this #1Vector, x #I) -> #V {
     eval if (this->size = this->reserved) {
         def buffer #1I := this->allocator.alloc(this->reserved * 2 * $#I)
-        eval puti_(this->data as #I)
         eval _memcpy(buffer, this->data, this->size * $#I)
         this->data& <- buffer
         this->reserved& <- this->reserved * 2
@@ -51,8 +50,14 @@ func ^#1Vector.size(this #1Vector) -> #I {
     return this->size
 }
 
+//* #1Vector.set
+//* Sets the element of vector at position `x` to `y`. Doesn't check if the element exists.
+func ^#1Vector.set(this #1Vector, x #I, y #I) -> #V {
+    this->data[x]& <- y
+}
+
 //* #1Vector.get
-//* Returns the element of vector at position `x`. Doens't check if the element exists.
+//* Returns the element of vector at position `x`. Doesn't check if the element exists.
 func ^#1Vector.get(this #1Vector, x #I) -> #I {
     return this->data[x]
 }
