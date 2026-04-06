@@ -84,6 +84,6 @@ void tokenstream_push(struct TokenStream*, struct Token);
 struct Token tokenstream_get(struct TokenStream*);
 struct Token *tokenstream_pget(struct TokenStream*);
 struct Token tokenstream_get_prev(struct TokenStream*);
-void tokenstream_next(struct TokenStream*);
+struct Token tokenstream_next(struct TokenStream*);
 
 struct Token token_build(TokenType type, int line_begin, int position_begin, int line_end, int position_end, const char *filename);

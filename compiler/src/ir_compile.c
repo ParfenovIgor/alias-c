@@ -248,7 +248,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
             int sz_insts = vsize(&block->value_list);
             for (int k = 0; k < sz_insts; k++) {
                 struct IRNode *value = block->value_list.ptr[k];
-                enum IRValueType type = value->node_type;
+                enum IRNodeType type = value->node_type;
 
                 if (!(type == IRNodeConst && !value->spill) && 
                     type != IRNodeAlloca && type != IRNodeStore && 
@@ -297,7 +297,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
             int sz_insts = vsize(&block->value_list);
             for (int k = 0; k < sz_insts; k++) {
                 struct IRNode *value = block->value_list.ptr[k];
-                enum IRValueType type = value->node_type;
+                enum IRNodeType type = value->node_type;
 
                 if (type == IRNodePhi) {
                     _fputs(fd_text, "// ");

@@ -22,6 +22,8 @@ struct TypeIdentifier;
 
 
 struct TypeNode {
+    int line_begin, position_begin, line_end, position_end;
+    const char *filename;
     void *node_ptr;
     enum TypeNodeType node_type;
     int degree;
@@ -54,3 +56,11 @@ struct TypeFunction {
 struct TypeIdentifier {
     const char *identifier;
 };
+
+struct TypeNode *create_type_node(void *ptr, enum TypeNodeType type, int degree);
+struct TypeNode *create_type_void(int degree);
+struct TypeNode *create_type_int(int degree);
+struct TypeNode *create_type_char(int degree);
+struct TypeNode *create_type_struct(int degree, struct Vector names, struct Vector types);
+struct TypeNode *create_type_function(int degree, struct Vector types, struct TypeNode *return_type);
+struct TypeNode *create_type_identifier(int degree, const char *identifier);

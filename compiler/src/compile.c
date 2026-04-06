@@ -34,7 +34,7 @@ void generate_test_function(struct CPContext *context, struct Settings *settings
     context->codegen->syscall("0x3c", "1", context);
 }
 
-void compile_init_descriptors(struct Node *node, struct CPContext *context) {
+void compile_init_descriptors(struct CPContext *context) {
     int fd[2];
 
     posix_pipe(fd);
@@ -51,14 +51,6 @@ void compile_init_descriptors(struct Node *node, struct CPContext *context) {
     context->fd_bss = fd[1];
     context->fd_bss_out = fd[0];
     _fputs(context->fd_bss, "section .bss\n");
-  
-    _fputs(context->fd_text, "; ");
-    _fputs(context->fd_text, node->filename);
-    _fputs(context->fd_text, " ");
-    _fputi(context->fd_text, node->line_begin + 1);
-    _fputs(context->fd_text, ":");
-    _fputi(context->fd_text, node->position_begin + 1);
-    _fputs(context->fd_text, " -> program\n");
 }
 
 void compile_flush_descriptors(struct Node *node, const char *filename_output, struct CPContext *context) {
@@ -87,7 +79,7 @@ void compile_process(struct Node *node, struct Settings *settings) {
         context->codegen = x86_64_codegen_init();
         // context->codegen = c_codegen_init();
     }
-    compile_init_descriptors(node, context);
+    compile_init_descriptors(context);
     compile_node(node, context);
     if (settings->testing) {
         generate_test_function(context, settings);
@@ -180,14 +172,8 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
         this->addressed = vnew();
         for (int i = 0; i < sz; i++) vpush(&this->addressed, NULL);
         this->return_type = type_normalize(this->return_type, context);
-        if (!this->return_type) {
-            error_semantic("Type identifier was not declared in function signature return type", node);
-        }
         for (int i = 0; i < sz; i++) {
             this->types.ptr[i] = type_normalize(this->types.ptr[i], context);
-            if (!this->types.ptr[i]) {
-                error_semantic("Type identifier was not declared in function signature argument type", node);
-            }
         }
 
         sz += (this->propagate_allocator != NULL);
@@ -353,9 +339,6 @@ struct TypeNode *from_signature_to_type(struct FunctionSignature *signature, str
 void compile_function_definition(struct Node *node, struct FunctionDefinition *this, struct CPContext *context) { 
     if (this->caller_type) {
         this->caller_type = type_normalize(this->caller_type, context);
-        if (!this->caller_type) {
-            error_semantic("Type identifier was not declared in function caller type", node);    
-        }
     }
 
     const char *identifier_front, *identifier_back, *identifier_end;
@@ -416,9 +399,6 @@ void compile_function_definition(struct Node *node, struct FunctionDefinition *t
 void compile_prototype(struct Node *node, struct Prototype *this, struct CPContext *context) {
     if (this->caller_type) {
         this->caller_type = type_normalize(this->caller_type, context);
-        if (!this->caller_type) {
-            error_semantic("Type identifier was not declared in function caller type", node);    
-        }
     }
 
     const char *identifier;
@@ -467,9 +447,6 @@ void compile_global_definition(struct Node *node, struct GlobalDefinition *this,
     else {
         if (this->type) {
             this->type = type_normalize(this->type, context);
-            if (!this->type) {
-                error_semantic("Type identifier was not declared in global definition type", node);    
-            }
             _type = this->type;
         }
         else {
@@ -493,9 +470,6 @@ void compile_global_definition(struct Node *node, struct GlobalDefinition *this,
 void compile_definition(struct Node *node, struct Definition *this, struct CPContext *context) {
     if (this->type) {
         this->type = type_normalize(this->type, context);
-        if (!this->type) {
-            error_semantic("Type identifier was not declared in definition type", node);    
-        }
     }
 
     struct TypeNode *_type;
@@ -531,9 +505,6 @@ void compile_definition(struct Node *node, struct Definition *this, struct CPCon
 void compile_type_definition(struct Node *node, struct TypeDefinition *this, struct CPContext *context) {
     if (this->type) {
         this->type = type_normalize(this->type, context);
-        if (!this->type) {
-            error_semantic("Type identifier was not declared in type definition type", node);    
-        }
     }
     
     struct TypeInfo *type_info = (struct TypeInfo*)_malloc(sizeof(struct TypeInfo));
@@ -598,9 +569,6 @@ void compile_continue(struct Node *node, struct Continue *this, struct CPContext
 struct TypeNode *compile_as(struct Node *node, struct As *this, struct CPContext *context) {
     if (this->type) {
         this->type = type_normalize(this->type, context);
-        if (!this->type) {
-            error_semantic("Type identifier was not declared in as type", node);    
-        }
     }
     struct TypeNode *_type = compile_node(this->expression, context);
     return this->type;
@@ -793,9 +761,6 @@ struct TypeNode *compile_lambda_function(struct Node *node, struct LambdaFunctio
 struct TypeNode *compile_sizeof(struct Node *node, struct Sizeof *this, struct CPContext *context) {
     if (this->type) {
         this->type = type_normalize(this->type, context);
-        if (!this->type) {
-            error_semantic("Type identifier was not declared in sizeof type", node);    
-        }
     }
 
     int size = type_size(this->type);

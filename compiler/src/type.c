@@ -1,4 +1,5 @@
 #include <type.h>
+#include <exception.h>
 #include <memory.h>
 #include <panic.h>
 #include <cassert.h>
@@ -24,7 +25,6 @@ struct TypeNode *type_normalize(struct TypeNode *n, struct CPContext *context) {
         int sz = vsize(&_n->names);
         for (int i = 0; i < sz; i++) {
             _n->types.ptr[i] = type_normalize(_n->types.ptr[i], context);
-            if (!_n->types.ptr[i]) return NULL;
             res += ((struct TypeNode*)_n->types.ptr[i])->size;
         }
         n->size = res;
@@ -35,17 +35,17 @@ struct TypeNode *type_normalize(struct TypeNode *n, struct CPContext *context) {
         int sz = vsize(&_n->types);
         for (int i = 0; i < sz; i++) {
             _n->types.ptr[i] = type_normalize(_n->types.ptr[i], context);
-            if (!_n->types.ptr[i]) return NULL;
         }
         n->size = 8;
         _n->return_type = type_normalize(_n->return_type, context);
-        if (!_n->return_type) return NULL;
         return n;
     }
     if (n->node_type == TypeNodeIdentifier) {
         struct TypeIdentifier *_n = n->node_ptr;
         struct TypeInfo *info = context_find_type(context, _n->identifier);
-        if (!info) return NULL;
+        if (!info) {
+            error_semantic_type("Type identifier was not declared", n);
+        }
         if (n->degree == 0) {
             return info->type;
         }

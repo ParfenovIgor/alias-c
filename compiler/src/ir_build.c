@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct IRNode *ir_create_node_free(struct IRBuilder *builder, void *node_ptr, enum IRValueType node_type, struct TypeNode *type) {
+struct IRNode *ir_create_node_free(struct IRBuilder *builder, void *node_ptr, enum IRNodeType node_type, struct TypeNode *type) {
     struct IRNode *node = (struct IRNode*)_malloc(sizeof(struct IRNode));
     node->node_ptr = node_ptr;
     node->node_type = node_type;
@@ -12,7 +12,7 @@ struct IRNode *ir_create_node_free(struct IRBuilder *builder, void *node_ptr, en
     return node;
 }
 
-struct IRNode *ir_create_node(struct IRBuilder *builder, void *node_ptr, enum IRValueType node_type, struct TypeNode *type) {
+struct IRNode *ir_create_node(struct IRBuilder *builder, void *node_ptr, enum IRNodeType node_type, struct TypeNode *type) {
     struct IRNode *node = (struct IRNode*)_malloc(sizeof(struct IRNode));
     node->node_ptr = node_ptr;
     node->node_type = node_type;
@@ -110,7 +110,7 @@ struct IRNode *ir_build_ret(struct IRBuilder *builder, struct IRNode *value) {
     return ir_create_node(builder, ret, IRNodeRet, NULL);
 }
 
-struct IRNode *ir_build_binary_operator(struct IRBuilder *builder, enum IRValueType node_type, struct TypeNode *type, struct IRNode *left, struct IRNode *right) {
+struct IRNode *ir_build_binary_operator(struct IRBuilder *builder, enum IRNodeType node_type, struct TypeNode *type, struct IRNode *left, struct IRNode *right) {
     struct IRBinaryOperator *binary_operator = (struct IRBinaryOperator*)_malloc(sizeof(struct IRBinaryOperator));
     binary_operator->left = left;
     binary_operator->right = right;

@@ -52,3 +52,20 @@ void error_semantic(const char *value, struct Node *node) {
     _fputs(STDERR, "\n");
     posix_exit(1);
 }
+
+void error_semantic_type(const char *value, struct TypeNode *node) {
+    _fputs(STDERR, "Error\n");
+    _fputs(STDERR, node->filename);
+    _fputs(STDERR, "\n");
+    _fputi(STDERR, node->line_begin + 1);
+    _fputs(STDERR, ":");
+    _fputi(STDERR, node->position_begin + 1);
+    _fputs(STDERR, "-");
+    _fputi(STDERR, node->line_end + 1);
+    _fputs(STDERR, ":");
+    _fputi(STDERR, node->position_end + 1);
+    _fputs(STDERR, "\nSemantic Error: ");
+    _fputs(STDERR, value);
+    _fputs(STDERR, "\n");
+    posix_exit(1);
+}

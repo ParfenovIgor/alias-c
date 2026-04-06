@@ -38,8 +38,9 @@ struct Token tokenstream_get_prev(struct TokenStream *this) {
     return this->stream[this->pos - 1];
 }
 
-void tokenstream_next(struct TokenStream *this) {
+struct Token tokenstream_next(struct TokenStream *this) {
     this->pos++;
+    return this->stream[this->pos - 1];
 }
 
 struct Token token_build(TokenType type, int line_begin, int position_begin, int line_end, int position_end, const char *filename) {

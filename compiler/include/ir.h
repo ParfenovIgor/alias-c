@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <panic.h>
 
-enum IRValueType {
+enum IRNodeType {
     IRNodeArg,
     IRNodeConst,
     IRNodeGlobal,
@@ -46,7 +46,7 @@ enum IRValueType {
 
 struct IRNode {
     void *node_ptr;
-    enum IRValueType node_type;
+    enum IRNodeType node_type;
     struct TypeNode *type;
     bool spill;
 };
