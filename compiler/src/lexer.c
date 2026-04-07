@@ -5,20 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool is_operator(const char *str, const char *word, int i) {
-    return _strncmp(str + i, word, _strlen(word)) == 0;
-}
-
-char *string_push_back(char *a, char x) {
-    int sz = _strlen(a);
-    char *b = (char*)_malloc(sz + 2);
-    _strcpy(b, a);
-    _free(a);
-    b[sz] = x;
-    b[sz + 1] = '\0';
-    return b;
-}
-
 int get_int_value(const char *str, int l, int r) {
     int res = 0;
     int sign = 1;
@@ -33,82 +19,48 @@ int get_int_value(const char *str, int l, int r) {
     return res;
 }
 
-bool check_char(char format, char *out) {
-    if (format == '0') {
-        *out = 0x0;
-        return true;
-    }
-    if (format == 'a') {
-        *out = 0x7;
-        return true;
-    }
-    if (format == 'b') {
-        *out = 0x8;
-        return true;
-    }
-    if (format == 'e') {
-        *out = 0x1B;
-        return true;
-    }
-    if (format == 'f') {
-        *out = 0xC;
-        return true;
-    }
-    if (format == 'n') {
-        *out = 0xA;
-        return true;
-    }
-    if (format == 'r') {
-        *out = 0xD;
-        return true;
-    }
-    if (format == 't') {
-        *out = 0x9;
-        return true;
-    }
-    if (format == 'v') {
-        *out = 0xB;
-        return true;
-    }
-    if (format == '\\') {
-        *out = 0x5C;
-        return true;
-    }
-    if (format == '\'') {
-        *out = 0x27;
-        return true;
-    }
-    if (format == '\"') {
-        *out = 0x22;
-        return true;
-    }
-    if (format == '?') {
-        *out = 0x3F;
-        return true;
+bool parse_format(char format, char *out) {
+    switch (format) {
+        case '0': *out = 0x0; return true;
+        case 'a': *out = 0x7; return true;
+        case 'b': *out = 0x8; return true;
+        case 't': *out = 0x9; return true;
+        case 'n': *out = 0xA; return true;
+        case 'v': *out = 0xB; return true;
+        case 'f': *out = 0xC; return true;
+        case 'r': *out = 0xD; return true;
+        case 'e': *out = 0x1B; return true;
+        case '\"': *out = 0x22; return true;
+        case '\'': *out = 0x27; return true;
+        case '?': *out = 0x3F; return true;
+        case '\\': *out = 0x5C; return true;
     }
     return false;
 }
 
-bool check_token(const char *str, int len, const char *word, int i, bool oper) {
-    if (!oper && i + _strlen(word) < len && 
-        (_isdigit(str[i + _strlen(word)]) || 
-         _isalpha(str[i + _strlen(word)]))) return false;
-
-    return _strncmp(str + i, word, _strlen(word)) == 0;
+#define AppendOperator(Str, Type)                                                                   \
+{                                                                                                   \
+    struct Token token = token_build(Type, line, position, line, position + sizeof(Str), filename); \
+    tokenstream_push(token_stream, token);                                                          \
+    i += sizeof(Str) - 1;                                                                           \
+    position += sizeof(Str) - 1;                                                                    \
+    break;                                                                                          \
 }
 
-bool append_token(const char *str, int len, int *i, const char *token_str, TokenType token_type, bool oper, int line, int *position, const char *filename, struct TokenStream *token_stream) {
-    if (!oper && *i + _strlen(token_str) < len && 
-        (_isdigit(str[*i + _strlen(token_str)]) || 
-         _isalpha(str[*i + _strlen(token_str)]))) return false;
-    if (_strncmp(str + *i, token_str, _strlen(token_str)) == 0) {
-        struct Token token = token_build(token_type, line, *position, line, *position + _strlen(token_str) - 1, filename);
-        tokenstream_push(token_stream, token);
-        *i += _strlen(token_str);
-        *position += _strlen(token_str);
-        return true;
-    }
-    else return false;
+#define AppendKeyword(Str, Type)                                                                    \
+if (_strncmp(str + i, Str, sizeof(Str) - 1) == 0 && i + sizeof(Str) <= N &&                         \
+    !_isalnum(str[i + sizeof(Str) - 1]) && str[i + sizeof(Str) - 1] != '_'){                        \
+    struct Token token = token_build(Type, line, position, line, position + sizeof(Str), filename); \
+    tokenstream_push(token_stream, token);                                                          \
+    i += sizeof(Str) - 1;                                                                           \
+    position += sizeof(Str) - 1;                                                                    \
+    break;                                                                                          \
+}
+
+#define Case(Char, Block) \
+case Char: { \
+    Block \
+    goto identifier; \
 }
 
 struct TokenStream *lexer_process(const char *str, const char *filename) {
@@ -116,195 +68,232 @@ struct TokenStream *lexer_process(const char *str, const char *filename) {
     int line = 0, position = 0;
     int N = _strlen(str);
     for (int i = 0; i < N;) {
-        if (check_token(str, N, "//", i, true)) {
-            i++;
-            while(i < N && str[i] != '\n') i++;
-            i = _min(i + 1, N);
-            position = 0;
-            line++;
-        }
-        else if (check_token(str, N, "/*", i, true)) {
-            i += 2;
-            position += 2;
-            while(i + 2 <= N && (str[i] != '*' || str[i + 1] != '/')) {
-                i++;
-                position++;
-                if (str[i] == '\n') {
-                    position = -1;
+        switch (str[i]) {
+            case '/': {
+                if (str[i + 1] == '/') {
+                    i++;
+                    while (i < N && str[i] != '\n') i++;
+                    i = _min(i + 1, N);
+                    position = 0;
                     line++;
+                    break;
                 }
-            }
-            position += 2;
-            i = _min(i + 2, N);
-        }
-        else if (append_token(str, N, &i, "include", TokenInclude, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "defer", TokenDefer, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "if", TokenIf, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "else", TokenElse, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "while", TokenWhile, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "func", TokenFunc, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "proto", TokenProto, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "struct", TokenStruct, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "def", TokenDef, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "typedef", TokenTypedef, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "eval", TokenEval, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "return", TokenReturn, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "break", TokenBreak, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "continue", TokenContinue, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "as", TokenAs, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "const", TokenConst, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "test", TokenTest, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "and", TokenAnd, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "or", TokenOr, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "not", TokenNot, false, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ":=", TokenAssign, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "<-", TokenMove, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ",", TokenComma, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ".", TokenDot, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ":", TokenColon, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ";", TokenSemicolon, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "{", TokenBraceOpen, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "}", TokenBraceClose, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "(", TokenParenthesisOpen, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ")", TokenParenthesisClose, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "[", TokenBracketOpen, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "]", TokenBracketClose, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "\\", TokenBackslash, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "&", TokenAmpersand, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "|", TokenPipe, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "^", TokenCaret, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "~", TokenTilde, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "<<", TokenBitwiseShiftLeft, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ">>", TokenBitwiseShiftRight, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "$", TokenDereference, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "->", TokenGetField, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "#", TokenSharp, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "@", TokenAt, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "+", TokenPlus, true, line, &position, filename, token_stream)) {}
-        else if (check_token(str, N, "-", i, true)) {
-            if (i + 2 <= N && _isdigit(str[i + 1]) && 
-               (token_stream->size == 0 || 
-                   (token_stream->stream[token_stream->size - 1].type != TokenInteger && 
-                    token_stream->stream[token_stream->size - 1].type != TokenIdentifier))) {
-                int l = i;
-                i += 2;
-                while (i + 1 <= N && _isdigit(str[i])) i++;
-                int r = i - 1;
-                struct Token token = token_build(TokenInteger, line, position, line, position + r - l, filename);
-                token.value_int = get_int_value(str, l, r);
-                tokenstream_push(token_stream, token);
-                position += r - l + 1;
-            }
-            else append_token(str, N, &i, "-", TokenMinus, true, line, &position, filename, token_stream);
-        }
-        else if (append_token(str, N, &i, "*", TokenMult, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "/", TokenDiv, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "%", TokenMod, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "<=", TokenLessEqual, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ">=", TokenGreaterEqual, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "<>", TokenNotEqual, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "<", TokenLess, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, ">", TokenGreater, true, line, &position, filename, token_stream)) {}
-        else if (append_token(str, N, &i, "=", TokenEqual, true, line, &position, filename, token_stream)) {}
-        else if (_isdigit(str[i])) {
-            int l = i;
-            i++;
-            while (i + 1 <= N && _isdigit(str[i])) i++;
-            int r = i - 1;
-            struct Token token = token_build(TokenInteger, line, position, line, position + r - l, filename);
-            token.value_int = get_int_value(str, l, r);
-            tokenstream_push(token_stream, token);
-            position += r - l + 1;
-        }
-        else if (check_token(str, N, "\'", i, true)) {
-            i++;
-            int line_begin = line;
-            int position_begin = position;
-            position++;
-
-            char ch;
-            if (str[i] == '\\' && i + 1 < N && check_char(str[i + 1], &ch)) {
-                i += 2;
-                position += 2;
-            }
-            else {
-                ch = str[i];
-                if (str[i] == '\n') {
-                    position = -1;
-                    line++;
-                }
-                i++;
-                position++;
-            }
-
-            if (!(i < N && str[i] == '\'')) {
-                error_lexer("\' expected after char", line_begin, position_begin, line, position, filename);
-            }
-            struct Token token = token_build(TokenChar, line_begin, position_begin, line, position, filename);
-            token.value_int = ch;
-            tokenstream_push(token_stream, token);
-            position++;
-            i++;
-        }
-        else if (check_token(str, N, "\"", i, true)) {
-            i++;
-            int line_begin = line;
-            int position_begin = position;
-            position++;
-            char *buffer = (char*)_malloc(1024);
-            int buf_len = 0;
-            while (i < N && str[i] != '\"') {
-                if (str[i] == '\\' && i + 1 < N) {
-                    char ch;
-                    if (check_char(str[i + 1], &ch)) {
-                        buffer[buf_len] = ch;
-                        buf_len++;
-                        i += 2;
-                        position += 2;
-                        continue;
+                if (str[i + 1] == '*') {
+                    i += 2;
+                    position += 2;
+                    while (i + 2 <= N && (str[i] != '*' || str[i + 1] != '/')) {
+                        i++;
+                        position++;
+                        if (str[i] == '\n') {
+                            position = 0;
+                            line++;
+                        }
                     }
+                    position += 2;
+                    i = _min(i + 2, N);
+                    break;
                 }
-                buffer[buf_len] = str[i];
-                buf_len++;
-                if (str[i] == '\n') {
-                    position = -1;
-                    line++;
+                AppendOperator("/", TokenDiv);
+            }
+            case ':': {
+                if (str[i + 1] == '=') AppendOperator(":=", TokenAssign);
+                AppendOperator(":", TokenColon);
+            }
+            case '<': {
+                if (str[i + 1] == '-') AppendOperator("<-", TokenMove);
+                if (str[i + 1] == '<') AppendOperator("<<", TokenBitwiseShiftLeft);
+                if (str[i + 1] == '=') AppendOperator("<=", TokenLessEqual);
+                if (str[i + 1] == '>') AppendOperator("<>", TokenNotEqual);
+                AppendOperator("<", TokenLess);
+            }
+            case '>': {
+                if (str[i + 1] == '>') AppendOperator(">>", TokenBitwiseShiftRight);
+                if (str[i + 1] == '=') AppendOperator(">=", TokenGreaterEqual);
+                AppendOperator(">", TokenGreater);
+            }
+            case ',': AppendOperator(",", TokenComma);
+            case '.': AppendOperator(".", TokenDot);
+            case ';': AppendOperator(";", TokenSemicolon);
+            case '{': AppendOperator("{", TokenBraceOpen);
+            case '}': AppendOperator("}", TokenBraceClose);
+            case '(': AppendOperator("(", TokenParenthesisOpen);
+            case ')': AppendOperator(")", TokenParenthesisClose);
+            case '[': AppendOperator("[", TokenBracketOpen);
+            case ']': AppendOperator("]", TokenBracketClose);
+            case '\\': AppendOperator("\\", TokenBackslash);
+            case '&': AppendOperator("&", TokenAmpersand);
+            case '|': AppendOperator("|", TokenPipe);
+            case '^': AppendOperator("^", TokenCaret);
+            case '~': AppendOperator("~", TokenTilde);
+            case '$': AppendOperator("$", TokenDereference);
+            case '#': AppendOperator("#", TokenSharp);
+            case '@': AppendOperator("@", TokenAt);
+            case '+': AppendOperator("+", TokenPlus);
+            case '*': AppendOperator("*", TokenMult);
+            case '%': AppendOperator("%", TokenMod);
+            case '=': AppendOperator("=", TokenEqual);
+            case '-': {
+                if (str[i + 1] == '>') AppendOperator("->", TokenGetField);
+                if (i + 2 <= N && _isdigit(str[i + 1]) && 
+                    (token_stream->size == 0 || 
+                    (token_stream->stream[token_stream->size - 1].type != TokenInteger && 
+                     token_stream->stream[token_stream->size - 1].type != TokenIdentifier))) {
+                    int l = i;
+                    i += 2;
+                    while (i + 1 <= N && _isdigit(str[i])) i++;
+                    int r = i - 1;
+                    struct Token token = token_build(TokenInteger, line, position, line, position + r - l, filename);
+                    token.value_int = get_int_value(str, l, r);
+                    tokenstream_push(token_stream, token);
+                    position += r - l + 1;
+                    break;
                 }
+                AppendOperator("-", TokenMinus);
+            }
+            case '\'': {
+                i++;
+                int line_begin = line;
+                int position_begin = position;
+                position++;
+
+                char ch;
+                if (str[i] == '\\' && i + 1 < N && parse_format(str[i + 1], &ch)) {
+                    i += 2;
+                    position += 2;
+                }
+                else {
+                    ch = str[i];
+                    if (str[i] == '\n') {
+                        position = -1;
+                        line++;
+                    }
+                    i++;
+                    position++;
+                }
+
+                if (!(i < N && str[i] == '\'')) {
+                    error_lexer("\' expected after char", line_begin, position_begin, line, position, filename);
+                }
+                struct Token token = token_build(TokenChar, line_begin, position_begin, line, position, filename);
+                token.value_int = ch;
+                tokenstream_push(token_stream, token);
+                position++;
+                i++;
+                break;
+            }
+            case '\"': {
+                i++;
+                int line_begin = line;
+                int position_begin = position;
+                position++;
+                char *buffer = (char*)_malloc(1024);
+                int buf_len = 0;
+                while (i < N && str[i] != '\"') {
+                    if (str[i] == '\\' && i + 1 < N) {
+                        char ch;
+                        if (parse_format(str[i + 1], &ch)) {
+                            buffer[buf_len] = ch;
+                            buf_len++;
+                            i += 2;
+                            position += 2;
+                            continue;
+                        }
+                    }
+                    buffer[buf_len] = str[i];
+                    buf_len++;
+                    if (str[i] == '\n') {
+                        position = -1;
+                        line++;
+                    }
+                    i++;
+                    position++;
+                }
+                if (i == N) {
+                    error_lexer("\" expected after string", line_begin, position_begin, line, position, filename);
+                }
+                buffer[buf_len] = '\0';
+                struct Token token = token_build(TokenString, line_begin, position_begin, line, position, filename);
+                token.value_string = buffer;
+                token.value_int = buf_len;
+                tokenstream_push(token_stream, token);
+                position++;
+                i++;
+                break;
+            }
+            case ' ':
+            case '\t':
+            case '\r': {
                 i++;
                 position++;
+                break;
             }
-            if (i == N) {
-                error_lexer("\" expected after string", line_begin, position_begin, line, position, filename);
+            case '\n': {
+                i++;
+                position = 0;
+                line++;
+                break;
             }
-            buffer[buf_len] = '\0';
-            struct Token token = token_build(TokenString, line_begin, position_begin, line, position, filename);
-            token.value_string = buffer;
-            token.value_int = buf_len;
-            tokenstream_push(token_stream, token);
-            position++;
-            i++;
-        }
-        else if (_isalpha(str[i])) {
-            int l = i;
-            i++;
-            while (i + 1 <= N && (_isalpha(str[i]) || _isdigit(str[i]))) i++;
-            int r = i - 1;
-            struct Token token = token_build(TokenIdentifier, line, position, line, position + r - l, filename);
-            token.value_string = _strndup(str + l, r - l + 1);
-            tokenstream_push(token_stream, token);
-            position += r - l + 1;
-        }
-        else if (str[i] == ' ' || str[i] == '\t' || str[i] == '\r') {
-            i++;
-            position++;
-        }
-        else if (str[i] == '\n') {
-            i++;
-            position = 0;
-            line++;
-        }
-        else {
-            error_lexer("Unexpected symbol", line, position, line, position, filename);
+            Case('i', {
+                AppendKeyword("include", TokenInclude);
+                AppendKeyword("if", TokenIf);
+            });
+            Case('d', {
+                AppendKeyword("defer", TokenDefer);
+                AppendKeyword("def", TokenDef);
+            });
+            Case('e', {
+                AppendKeyword("else", TokenElse);
+                AppendKeyword("eval", TokenEval);
+            });
+            Case('w', AppendKeyword("while", TokenWhile));
+            Case('f', AppendKeyword("func", TokenFunc));
+            Case('p', AppendKeyword("proto", TokenProto));
+            Case('s', AppendKeyword("struct", TokenStruct));
+            Case('t', {
+                AppendKeyword("typedef", TokenTypedef);
+                AppendKeyword("test", TokenTest);
+            });
+            Case('r', AppendKeyword("return", TokenReturn));
+            Case('b', AppendKeyword("break", TokenBreak));
+            Case('c', {
+                AppendKeyword("continue", TokenContinue);
+                AppendKeyword("const", TokenConst);
+            });
+            Case('a', {
+                AppendKeyword("as", TokenAs);
+                AppendKeyword("and", TokenAnd);
+            });
+            Case('o', AppendKeyword("or", TokenOr));
+            Case('n', AppendKeyword("not", TokenNot));
+            default: {
+                if (_isdigit(str[i])) {
+                    int l = i;
+                    i++;
+                    while (i + 1 <= N && _isdigit(str[i])) i++;
+                    int r = i - 1;
+                    struct Token token = token_build(TokenInteger, line, position, line, position + r - l, filename);
+                    token.value_int = get_int_value(str, l, r);
+                    tokenstream_push(token_stream, token);
+                    position += r - l + 1;
+                }
+                else if (_isalpha(str[i]) || str[i] == '_') {
+                identifier:
+                    int l = i;
+                    i++;
+                    while (i + 1 <= N && (_isalnum(str[i]) || str[i] == '_')) i++;
+                    int r = i - 1;
+                    struct Token token = token_build(TokenIdentifier, line, position, line, position + r - l, filename);
+                    char *ptr = (char*)_malloc(r - l + 2);
+                    _strncpy(ptr, str + l, r - l + 1);
+                    ptr[r - l + 1] = '\0';
+                    token.value_string = ptr;
+                    tokenstream_push(token_stream, token);
+                    position += r - l + 1;
+                }
+                else {
+                    error_lexer("Unexpected symbol", line, position, line, position, filename);
+                }
+            }
         }
     }
 

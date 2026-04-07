@@ -4,11 +4,17 @@
 
 bool _isalpha(char c) {
     return ((c >= 'A' && c <= 'Z') ||
-            (c >= 'a' && c <= 'z') || c == '_');
+            (c >= 'a' && c <= 'z'));
 }
 
 bool _isdigit(char c) {
     return (c >= '0' && c <= '9');
+}
+
+bool _isalnum(char c) {
+    return ((c >= '0' && c <= '9') ||
+            (c >= 'A' && c <= 'Z') ||
+            (c >= 'a' && c <= 'z'));
 }
 
 char *_strchr(const char *s, int c) {

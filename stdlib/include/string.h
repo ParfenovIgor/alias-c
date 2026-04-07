@@ -11,6 +11,7 @@
 
 bool _isalpha(char c);
 bool _isdigit(char c);
+bool _isalnum(char c);
 char *_strchr(const char *s, int c);
 char *_strrchr(const char *s, int c);
 
