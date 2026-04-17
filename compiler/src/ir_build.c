@@ -8,6 +8,7 @@ struct IRNode *ir_create_node_free(struct IRBuilder *builder, void *node_ptr, en
     node->node_ptr = node_ptr;
     node->node_type = node_type;
     node->type = type;
+    node->reg = REGNONE;
     node->spill = false;
     return node;
 }
@@ -17,6 +18,7 @@ struct IRNode *ir_create_node(struct IRBuilder *builder, void *node_ptr, enum IR
     node->node_ptr = node_ptr;
     node->node_type = node_type;
     node->type = type;
+    node->reg = REGNONE;
     node->spill = false;
     vpush(&builder->current_block->value_list, node);
     return node;
@@ -552,7 +554,7 @@ void ir_build_definition(struct IRBuilder *builder, struct Node *node, struct De
         }
     }
     else {
-        if (this->addressed || (node->type->node_type == TypeNodeStruct && this->type->degree == 0)) {
+        if (this->addressed || (this->type->node_type == TypeNodeStruct && this->type->degree == 0)) {
             value = ir_build_alloca(builder, type_pointer(this->type), type_size(this->type));
             value->spill = true;
         }
@@ -777,6 +779,8 @@ struct IRNode *ir_build_string(struct IRBuilder *builder, struct Node *node, str
     struct IRNode *value_global = ir_build_global(builder, node->type, identifier);
     globalvar->ir_value = value_global;
 
+    return value_global;
+
     struct IRNode *value_load = ir_build_load(builder, node->type, value_global, 8);
 
     return value_load;
@@ -802,7 +806,7 @@ struct IRNode *ir_build_struct_instance(struct IRBuilder *builder, struct Node *
         struct IRNode *value_sgep = ir_build_sgep(builder, sgep_type, value_alloca, phase);
         struct IRNode *value_store = ir_build_store(builder, value_sgep, value, type_size(type));
 
-        phase += type->size;
+        phase += type_size(type);
     }
 
     return value_alloca;
@@ -909,7 +913,7 @@ struct IRNode *ir_build_dereference(struct IRBuilder *builder, struct Node *node
 struct IRNode *ir_build_index(struct IRBuilder *builder, struct Node *node, struct Index *this) {
     int size;
     if (this->left->type->degree > 1) size = 8;
-    else if(this->left->type->degree == 1) size = node->type->size;
+    else if(this->left->type->degree == 1) size = this->left->type->size;
     else _panic("Non pointer argument in GEP");
     
     struct IRNode *value_base = ir_build(builder, this->left);
@@ -939,7 +943,7 @@ struct IRNode *ir_build_get_field(struct IRBuilder *builder, struct Node *node, 
     value_sgep->type = type_copy_node(value_sgep->type);
     value_sgep->type->degree++;
     
-    struct IRNode *value_load = ir_build_load(builder, node->type, value_sgep, type_size(value_sgep->type));
+    struct IRNode *value_load = ir_build_load(builder, node->type, value_sgep, type_size(node->type));
     return value_load;
 }
 

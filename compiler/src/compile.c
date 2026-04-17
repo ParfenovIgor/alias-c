@@ -66,19 +66,13 @@ void compile_flush_descriptors(struct Node *node, const char *filename_output, s
     char *program = _concat(_concat(str_bss, str_data), str_text);
     if (filename_output) {
         write_file(filename_output, program);
-    }   
+    }
 }
 
 void compile_process(struct Node *node, struct Settings *settings) {
     struct CPContext *context = context_init();   
     context->testing = settings->testing;
-    if (settings->backend == x86_64_asm) {
-        context->codegen = x86_64_codegen_init();
-    }
-    else {
-        context->codegen = x86_64_codegen_init();
-        // context->codegen = c_codegen_init();
-    }
+    context->codegen = x86_64_codegen_init();
     compile_init_descriptors(context);
     compile_node(node, context);
     if (settings->testing) {

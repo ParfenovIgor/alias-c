@@ -3,6 +3,8 @@
 #include <string.h>
 #include <posix.h>
 
+void ir_compile_type(struct TypeNode *type, int fd_text, bool in_parenthesis);
+
 void ir_compile_type_prefix(struct TypeNode *type, int fd_text) {
     switch (type->node_type) {
         case TypeNodeVoid: {
@@ -10,7 +12,7 @@ void ir_compile_type_prefix(struct TypeNode *type, int fd_text) {
             for (int i = 0; i < type->degree; i++) {
                 _fputs(fd_text, "*");
             }
-            break;    
+            break;
         }
         case TypeNodeChar: {
             _fputs(fd_text, "char");
@@ -100,18 +102,19 @@ void ir_compile_type(struct TypeNode *type, int fd_text, bool in_parenthesis) {
 }
 
 void ir_compile_value(struct Vector *values_list, struct IRNode *value, int fd_text) {
-    if (value->node_type == IRNodeConst && !value->spill) {
+    if (value->node_type == IRNodeConst) {
         struct IRConst *_value = value->node_ptr;
         _fputi(fd_text, _value->value);
     }
     else if (value->node_type == IRNodeGlobal) {
         struct IRGlobal *_value = value->node_ptr;
-        if (!(value->type->node_type == TypeNodeFunction && value->type->degree == 0)) {
+        if (!(value->type->node_type == TypeNodeChar && value->type->degree == 1) &&
+            !(value->type->node_type == TypeNodeFunction && value->type->degree == 0)) {
             _fputs(fd_text, "&");
         }
         _fputs(fd_text, _value->name);
     }
-    else{
+    else {
         int sz = vsize(values_list);
         int res = -1;
         for (int i = 0; i < sz; i++) {
@@ -250,7 +253,7 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
                 struct IRNode *value = block->value_list.ptr[k];
                 enum IRNodeType type = value->node_type;
 
-                if (!(type == IRNodeConst && !value->spill) && 
+                if (type != IRNodeConst && 
                     type != IRNodeAlloca && type != IRNodeStore && 
                     type != IRNodeBr && type != IRNodeCondBr && type != IRNodeRet &&
                     !(type == IRNodeCall && value->type->size == 0)) {

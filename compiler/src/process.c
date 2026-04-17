@@ -10,6 +10,7 @@
 #include <string.h>
 #include <ir.h>
 #include <ir_build.h>
+#include <ir_compile_x86_64.h>
 #include <ir_compile.h>
 
 int _execvp(const char *filename, const char *const argv[], const char *const envp[], const char *path) {
@@ -83,7 +84,7 @@ int process(struct Settings *settings) {
     posix_unlink(settings->filename_compile_output);
     compile_process(node, settings);
     if (settings->compile || settings->assemble) {    
-        if (settings->backend == x86_64_asm) {
+        if (settings->backend == x86_64_asm_legacy) {
             if (settings->assemble) {
                 posix_unlink(settings->filename_output);
                 process_assemble(settings->filename_compile_output, settings->filename_output, settings);
@@ -95,7 +96,12 @@ int process(struct Settings *settings) {
             struct IRBuilder *builder = ir_builder(settings->testing);
             ir_build(builder, node);
             posix_unlink(settings->filename_output);
-            ir_compile(builder, settings->filename_output);
+            if (settings->backend == x86_64_asm) {
+                ir_compile_x86_64(builder, settings->filename_output);
+            }
+            else {
+                ir_compile(builder, settings->filename_output);
+            }
         }
     }
 

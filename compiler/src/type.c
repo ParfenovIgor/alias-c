@@ -25,7 +25,7 @@ struct TypeNode *type_normalize(struct TypeNode *n, struct CPContext *context) {
         int sz = vsize(&_n->names);
         for (int i = 0; i < sz; i++) {
             _n->types.ptr[i] = type_normalize(_n->types.ptr[i], context);
-            res += ((struct TypeNode*)_n->types.ptr[i])->size;
+            res += type_size((struct TypeNode*)_n->types.ptr[i]);
         }
         n->size = res;
         return n;

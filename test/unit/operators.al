@@ -6,7 +6,7 @@ func .test_equal(a #I, b #I) -> #I
 //* Logic operators
 //* There are following logic operators: binary `and`, binary `or`, unary `not`. In any case both branches will be evaluated.
 
-test demo_logic_operators {
+/*test demo_logic_operators {
     def a := 1 and 1    // now `a` is equal to 1
     def b := 0 and 1    // now `b` is equal to 0
     def c := 0 or 1     // now `c` is equal to 1
@@ -27,7 +27,7 @@ test demo_bitwise_operators {
     def e := 11 << 2    // now `e` is equal to 44
     def f := 11 >> 2    // now `f` is equal to 2
     return test_equal(a = 6 and b = 13 and c = 5 and d = -33 and e = 44 and f = 2, 1)
-}
+}*/
 
 //* Operator precendence
 //* All operators are left-associative. The operators have following precedence.

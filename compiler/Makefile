@@ -12,7 +12,7 @@ all: $(OBJS_C)
 	gcc $(LDFLAGS) -o $(BUILD_DIR)/calias $(OBJS_C) $(BUILD_DIR)/compiler/httpd.o $(OBJS_ARCH) $(OBJS_STDLIB)
 
 $(BUILD_DIR)/compiler/%.o: src/%.c make_dir
-	gcc $(CFLAGS) -c $< -o $@
+	gcc -fno-omit-frame-pointer $(CFLAGS) -c $< -o $@
 
 make_dir:
 	mkdir -p $(BUILD_DIR)/compiler

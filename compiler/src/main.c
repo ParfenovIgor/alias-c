@@ -23,7 +23,7 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
     settings->compile = false;
     settings->assemble = false;
     settings->testing = false;
-    settings->backend = x86_64_asm;
+    settings->backend = x86_64_asm_legacy;
     settings->include_names = vnew();
     settings->include_paths = vnew();
     settings->filename_input = NULL;
@@ -68,7 +68,8 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
                 _puts("Backend expected after -b flag");
                 return NULL;
             }
-            if (_strcmp(argv[i + 1], "x86_64_asm") == 0) settings->backend = x86_64_asm;
+            if (_strcmp(argv[i + 1], "x86_64_asm_legacy") == 0) settings->backend = x86_64_asm_legacy;
+            else if (_strcmp(argv[i + 1], "x86_64_asm") == 0) settings->backend = x86_64_asm;
             else if (_strcmp(argv[i + 1], "c") == 0) settings->backend = c;
             else {
                 _puts("Undefined backend after -b flag");

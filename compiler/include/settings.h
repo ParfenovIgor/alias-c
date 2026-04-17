@@ -4,6 +4,7 @@
 #include <vector.h>
 
 enum Backend {
+    x86_64_asm_legacy,
     x86_64_asm,
     c
 };

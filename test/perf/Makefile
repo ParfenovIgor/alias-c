@@ -15,9 +15,17 @@ OBJS_STDLIB := $(wildcard $(BUILD_DIR)/stdlib/*.o)
 all: $(REPORTS)
 
 $(BUILD_DIR)/test/perf/%: %.al make_dir
+	echo "calias x86_64_legacy" >> $@
+	$(eval $@_DIR = $(patsubst %.al, $(BUILD_DIR)/test/perf/x86_64_legacy/%, $<))
+	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $($@_DIR).o
+	ld $(LDFLAGS) -o $($@_DIR) $($@_DIR).o $(OBJS_ARCH) $(OBJS_ALTLIB)
+	time -p $($@_DIR) 2> $($@_DIR).time || (echo "Test failed"; exit 1)
+	cat $($@_DIR).time | grep real | awk '{print $$2}' >> $@
+
 	echo "calias x86_64" >> $@
 	$(eval $@_DIR = $(patsubst %.al, $(BUILD_DIR)/test/perf/x86_64/%, $<))
-	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $($@_DIR).o
+	$(BUILD_DIR)/calias -a -b x86_64_asm $(ALFLAGS) $< -o $($@_DIR).asm
+	nasm -f elf64 $($@_DIR).asm -o $($@_DIR).o
 	ld $(LDFLAGS) -o $($@_DIR) $($@_DIR).o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	time -p $($@_DIR) 2> $($@_DIR).time || (echo "Test failed"; exit 1)
 	cat $($@_DIR).time | grep real | awk '{print $$2}' >> $@
@@ -53,6 +61,7 @@ $(BUILD_DIR)/test/perf/%: %.al make_dir
 	cat $($@_DIR).time | grep real | awk '{print $$2}' >> $@
 
 make_dir:
+	mkdir -p $(BUILD_DIR)/test/perf/x86_64_legacy
 	mkdir -p $(BUILD_DIR)/test/perf/x86_64
 	mkdir -p $(BUILD_DIR)/test/perf/c-gcc
 	mkdir -p $(BUILD_DIR)/test/perf/gcc
