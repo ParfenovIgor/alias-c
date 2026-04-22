@@ -114,22 +114,8 @@ void free_reg(struct IRNode *node) {
     }
 }
 
-void ir_compile_block_x86_64(struct Vector *blocks_list, struct IRBlock *block, int fd_text) {
-    int sz = vsize(blocks_list);
-    int res = -1;
-    for (int i = 0; i < sz; i++) {
-        if (blocks_list->ptr[i] == block) {
-            res = i;
-            break;
-        }
-    }
-
-    if (res == -1) {
-        res = sz;
-        vpush(blocks_list, block);
-    }
-
-    _fputsi(fd_text, "._b", res, "");
+void ir_compile_block_x86_64(struct IRBlock *block, int fd_text) {
+    _fputsi(fd_text, "._b", block->idx, "");
 }
 
 void print_value(struct IRNode *value, int fd_text) {
@@ -202,7 +188,7 @@ void bininstr_rr(const char *instr, enum Register left, enum Register right, int
     _fputs(fd_text, "\n");
 }
 
-void ir_compile_phi_x86_64(struct Vector *values_list, struct IRBlock *block, struct IRBlock *succ_block, int fd_text) {
+void ir_compile_phi_x86_64(struct IRBlock *block, struct IRBlock *succ_block, int fd_text) {
     int sz_insts = vsize(&succ_block->value_list);
     for (int i = 0; i < sz_insts; i++) {
         struct IRNode *value = succ_block->value_list.ptr[i];
@@ -235,6 +221,55 @@ enum Register call_reg(int n) {
         case 3: return RCX;
         default: _panic("Unsupported number of arguments"); 
     }
+}
+
+int reg_status[10000];
+
+enum Register find_register(struct IRNode *node) {
+    int left = node->block->idx;
+    int right = node->right_bound;
+    int sz = vsize(&node->uses);
+    for (int i = 0; i < sz; i++) {
+        struct IRNode *use = node->uses.ptr[i];
+        if (left > use->block->idx) left = use->block->idx;
+        if (right < use->block->idx) right = use->block->idx;
+    }
+    if (node->node_type == IRNodePhi) {
+        int cnt_pred = vsize(&node->block->pred_list);
+        for (int i = 0; i < cnt_pred; i++) {
+            struct IRBlock *pred = node->block->pred_list.ptr[i];
+            if (left > pred->idx) left = pred->idx;
+            if (right < pred->idx) right = pred->idx;
+        }
+    }
+    int mask = 0;
+    for (int i = left; i <= right; i++) {
+        mask |= reg_status[i];
+    }
+    for (enum Register reg = R8; reg <= R15; reg++) {
+        if (!(mask & (1 << reg))) {
+            for (int i = left; i <= right; i++) {
+                reg_status[i] |= (1 << reg);
+            }
+            return reg;
+        }
+    }
+    return REGNONE;
+}
+
+long calculate_priority(struct IRNode *value) {
+    long priority = 1;
+    for (int i = 0; i < value->loop_degree; i++) priority *= 10;
+    int cnt_uses = vsize(&value->uses);
+    for (int u = 0; u < cnt_uses; u++) {
+        struct IRNode *use = value->uses.ptr[u];
+        long x = 1;
+        for (int i = 0; i < use->loop_degree; i++) {
+            x *= 10;
+        }
+        priority += x;
+    }
+    return priority;
 }
 
 void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_output) {
@@ -271,8 +306,6 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
 
     for (int i = 0; i < sz_functions; i++) {
         struct IRFunction *function = builder->function_list.ptr[i];
-        struct Vector values_list = vnew();
-        struct Vector blocks_list = vnew();
 
         enum Register cur_register = R8;
         int cur_stack_phase = -32;
@@ -285,6 +318,7 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
         }
         for (int j = 0; j < sz_blocks; j++) {
             struct IRBlock *block = function->block_list.ptr[j];
+            reg_status[j] = 0;
             int sz_insts = vsize(&block->value_list);
             for (int k = 0; k < sz_insts; k++) {
                 struct IRNode *value = block->value_list.ptr[k];
@@ -301,24 +335,18 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
         uninstr_r("push", RBP, 8, fd_text);
         bininstr_rr("mov", RBP, RSP, 8, fd_text);
 
+        for (enum Register reg = R12; reg <= R15; reg++) {
+            uninstr_r("push", reg, 8, fd_text);
+        }
+        
+        struct Vector values_priority = vnew();
+        struct Vector values_idx = vnew();
+
         int sz_args = vsize(&function->arg_list);
         for (int j = 0; j < sz_args; j++) {
-            struct IRNode *arg = function->arg_list.ptr[j];
-            if (have_call) {
-                arg->reg = REGNONE;
-                arg->spill = true;
-                arg->stack_phase = cur_stack_phase - type_size(arg->type);
-                cur_stack_phase -= type_size(arg->type);
-                _fputsi(fd_text, "    mov [rbp + ", arg->stack_phase, "], ");
-                _fputs2(fd_text, get_reg(call_reg(j), 8), "\n");
-
-                // bininstr_rr("mov", cur_register, call_reg(j), 8, fd_text);
-                // arg->reg = cur_register;
-                // cur_register++;
-            }
-            else {
-                arg->reg = call_reg(j);
-            }
+            struct IRNode *value = function->arg_list.ptr[j];
+            vpush(&values_priority, (void*)calculate_priority(value));
+            vpush(&values_idx, value);
         }
 
         for (int j = 0; j < sz_blocks; j++) {
@@ -333,16 +361,8 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                     type != IRNodeAlloca && type != IRNodeStore && 
                     type != IRNodeBr && type != IRNodeCondBr && type != IRNodeRet &&
                     !(type == IRNodeCall && value->type->size == 0)) {
-                    /* if (cur_register <= R15) {
-                        value->reg = cur_register;
-                        cur_register++;
-                    }
-                    else */ {
-                        value->reg = REGNONE;
-                        value->spill = true;
-                        value->stack_phase = cur_stack_phase - type_size(value->type);
-                        cur_stack_phase -= type_size(value->type);
-                    }
+                    vpush(&values_priority, (void*)calculate_priority(value));
+                    vpush(&values_idx, value);
                 }
                 if (type == IRNodeAlloca) {
                     value->spill = true;
@@ -357,14 +377,54 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
             }
         }
 
-        for (enum Register reg = R12; reg <= R15; reg++) {
-            uninstr_r("push", reg, 8, fd_text);
+        int cnt_values = vsize(&values_priority);
+        for (int i = 0; i < cnt_values; i++) {
+            for (int j = 0; j + 1 < cnt_values; j++) {
+                if ((long)values_priority.ptr[j] < (long)values_priority.ptr[j + 1]) {
+                    void *tmp = values_priority.ptr[j];
+                    values_priority.ptr[j] = values_priority.ptr[j + 1];
+                    values_priority.ptr[j + 1] = tmp;
+                    tmp = values_idx.ptr[j];
+                    values_idx.ptr[j] = values_idx.ptr[j + 1];
+                    values_idx.ptr[j + 1] = tmp;
+                }
+            }
         }
+
+        for (int i = 0; i < cnt_values; i++) {
+            struct IRNode *value = values_idx.ptr[i];
+            enum Register reg = find_register(value);
+            value->reg = reg;
+            if (reg == REGNONE) {
+                value->spill = true;
+                value->stack_phase = cur_stack_phase - type_size(value->type);
+                cur_stack_phase -= type_size(value->type);
+            }
+            if (value->node_type == IRNodeArg) {
+                int idx = -1;
+                for (int j = 0; j < sz_args; j++) {
+                    if (function->arg_list.ptr[j] == value) {
+                        idx = j;
+                        break;
+                    }
+                }
+                _assert(idx != -1);
+                if (reg == REGNONE) {
+                    _fputsi(fd_text, "    mov [rbp + ", value->stack_phase, "], ");
+                    _fputs2(fd_text, get_reg(call_reg(idx), 8), "\n");
+                }
+                else {
+                    _fputs3(fd_text, "    mov ", get_reg(reg, 8), ", ");
+                    _fputs2(fd_text, get_reg(call_reg(idx), 8), "\n");
+                }
+            }
+        }
+
         _fputsi(fd_text, "    add rsp, ", cur_stack_phase, "\n");
 
         for (int j = 0; j < sz_blocks; j++) {
             struct IRBlock *block = function->block_list.ptr[j];
-            ir_compile_block_x86_64(&blocks_list, block, fd_text);
+            ir_compile_block_x86_64(block, fd_text);
             _fputs(fd_text, ":\n");
 
             int sz_insts = vsize(&block->value_list);
@@ -372,7 +432,15 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                 struct IRNode *value = block->value_list.ptr[k];
                 enum IRNodeType type = value->node_type;
 
-                if (type == IRNodeConst || type == IRNodeAlloca) continue;
+                if (type == IRNodeAlloca) continue;
+
+                /* _fputsi(fd_text, "; %", value->idx, " : ");
+                int sz = vsize(&value->uses);
+                for (int kk = 0; kk < sz; kk++) {
+                    struct IRNode *use = value->uses.ptr[kk];
+                    _fputsi(fd_text, "%", use->idx, ", ");
+                }
+                _fputs(fd_text, "\n"); */
 
                 if (type == IRNodePhi) {
                     continue;
@@ -477,9 +545,9 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                 }
                 else if (type == IRNodeBr) {
                     struct IRBr *br = value->node_ptr;
-                    ir_compile_phi_x86_64(&values_list, block, br->block, fd_text);
+                    ir_compile_phi_x86_64(block, br->block, fd_text);
                     _fputs(fd_text, "    jmp ");
-                    ir_compile_block_x86_64(&blocks_list, br->block, fd_text);
+                    ir_compile_block_x86_64(br->block, fd_text);
                     _fputs(fd_text, "\n");
                     break;
                 }
@@ -489,24 +557,24 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                         struct IRConst *_const = condbr->condition->node_ptr;
                         if (_const->value == 0) {
                             _fputs(fd_text, "    jmp ");
-                            ir_compile_block_x86_64(&blocks_list, condbr->block_else, fd_text);
+                            ir_compile_block_x86_64(condbr->block_else, fd_text);
                             _fputs(fd_text, "\n");
                         }
                         else {
                             _fputs(fd_text, "    jmp ");
-                            ir_compile_block_x86_64(&blocks_list, condbr->block_then, fd_text);
+                            ir_compile_block_x86_64(condbr->block_then, fd_text);
                             _fputs(fd_text, "\n");
                         }
                     }
                     else {
                         bininstr_vc("cmp", condbr->condition, "0", fd_text);
-                        ir_compile_phi_x86_64(&values_list, block, condbr->block_then, fd_text);
+                        ir_compile_phi_x86_64(block, condbr->block_then, fd_text);
                         _fputs(fd_text, "    jne ");
-                        ir_compile_block_x86_64(&blocks_list, condbr->block_then, fd_text);
+                        ir_compile_block_x86_64(condbr->block_then, fd_text);
                         _fputs(fd_text, "\n");
-                        ir_compile_phi_x86_64(&values_list, block, condbr->block_else, fd_text);
+                        ir_compile_phi_x86_64(block, condbr->block_else, fd_text);
                         _fputs(fd_text, "    jmp ");
-                        ir_compile_block_x86_64(&blocks_list, condbr->block_else, fd_text);
+                        ir_compile_block_x86_64(condbr->block_else, fd_text);
                         _fputs(fd_text, "\n");
                     }
                     break;
@@ -520,7 +588,7 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                     for (enum Register reg = R15; reg >= R12; reg--) {
                         uninstr_r("pop", reg, 8, fd_text);
                     }
-                    _fputs(fd_text, "    leave\n");
+                    _fputs(fd_text, "    pop rbp\n");
                     _fputs(fd_text, "    ret\n");
                     break;
                 }

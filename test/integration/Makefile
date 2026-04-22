@@ -9,7 +9,7 @@ EXES_C := $(patsubst %.al, $(BUILD_DIR)/test/integration/c/%, $(SRCS_AL))
 OBJS_ARCH := $(wildcard $(BUILD_DIR)/arch/*.o)
 OBJS_ALTLIB := $(wildcard $(BUILD_DIR)/altlib/*.o)
 
-all: $(EXES_x86_64) $(EXES_x86_64_LEGACY) $(EXES_C)
+all: $(EXES_x86_64_LEGACY) $(EXES_x86_64) $(EXES_C)
 
 $(BUILD_DIR)/test/integration/x86_64_legacy/%: %.al make_dir
 	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $@.o

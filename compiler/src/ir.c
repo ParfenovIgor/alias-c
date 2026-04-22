@@ -5,6 +5,7 @@
 struct IRBuilder *ir_builder(bool testing) {
     struct IRBuilder *builder = (struct IRBuilder*)_malloc(sizeof(struct IRBuilder));
     builder->current_function = NULL;
+    builder->current_block = NULL;
     builder->function_list = vnew();
     builder->function_stack = vnew();
     builder->globalvar_list = vnew();
@@ -22,5 +23,8 @@ struct IRBuilder *ir_builder(bool testing) {
     builder->testing = testing;
     builder->current_identifier = 0;
     builder->test_names = vnew();
+    builder->value_idx = 0;
+    builder->block_idx = 0;
+    builder->loop_degree = 0;
     return builder;
 }

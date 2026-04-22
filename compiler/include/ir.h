@@ -64,13 +64,21 @@ enum Register {
     R15,
 };
 
+struct IRBlock;
+
 struct IRNode {
+    int idx;
     void *node_ptr;
     enum IRNodeType node_type;
     struct TypeNode *type;
     bool spill;
     int stack_phase;
     enum Register reg;
+    struct Vector uses;
+    struct Vector uses_address;
+    struct IRBlock *block;
+    int loop_degree;
+    int right_bound;
 };
 
 struct IRArg {
@@ -148,6 +156,7 @@ struct IRVariableInfo {
 };
 
 struct IRBlock {
+    int idx;
     struct Vector value_list;
     struct Vector succ_list;
     struct Vector pred_list;
@@ -189,6 +198,10 @@ struct IRBuilder {
     bool testing;
     int current_identifier;
     struct Vector test_names;
+
+    int value_idx;
+    int block_idx;
+    int loop_degree;
 
     struct Vector nodes;
     struct Vector irblock_label_stack;
