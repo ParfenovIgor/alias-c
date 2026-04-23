@@ -647,20 +647,40 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                             free_reg(binary_operator->left);
                             free_reg(binary_operator->right);
                         } break;
-                        case IRNodeNot:                 _fputs(fd_text, "!"); break;
+                        case IRNodeNot: {
+                            occupy_reg(value, RAX);
+                            to_reg(binary_operator->right, RDX, fd_text);
+                            bininstr_rr("xor", RSI, RSI, 8, fd_text);
+                            bininstr_vc("cmp", binary_operator->right, "0", fd_text);
+                            uninstr_r("sete", RSI, 1, fd_text);
+                            bininstr_vr("mov", value, RSI, fd_text);
+                            from_reg(value, fd_text);
+                            free_reg(binary_operator->right);
+                        } break;
                         case IRNodeBitwiseAnd: {
                             occupy_reg(value, RAX);
-                            to_reg(binary_operator->left, RCX, fd_text);
-                            to_reg(binary_operator->right, RDX, fd_text);
                             bininstr_vv("mov", value, binary_operator->left, fd_text);
                             bininstr_vv("and", value, binary_operator->right, fd_text);
                             from_reg(value, fd_text);
-                            free_reg(binary_operator->left);
-                            free_reg(binary_operator->right);
                         } break;
-                        case IRNodeBitwiseOr:           _fputs(fd_text, "or"); break;
-                        case IRNodeBitwiseXor:          _fputs(fd_text, "xor"); break;
-                        case IRNodeBitwiseNot:          _fputs(fd_text, "not"); break;
+                        case IRNodeBitwiseOr: {
+                            occupy_reg(value, RAX);
+                            bininstr_vv("mov", value, binary_operator->left, fd_text);
+                            bininstr_vv("or", value, binary_operator->right, fd_text);
+                            from_reg(value, fd_text);
+                        } break;
+                        case IRNodeBitwiseXor: {
+                            occupy_reg(value, RAX);
+                            bininstr_vv("mov", value, binary_operator->left, fd_text);
+                            bininstr_vv("xor", value, binary_operator->right, fd_text);
+                            from_reg(value, fd_text);
+                        } break;
+                        case IRNodeBitwiseNot: {
+                            occupy_reg(value, RAX);
+                            bininstr_vv("mov", value, binary_operator->right, fd_text);
+                            uninstr_v("not", value, fd_text);
+                            from_reg(value, fd_text);
+                        } break;
                         case IRNodeBitwiseShiftLeft: {
                             occupy_reg(value, RAX);
                             bininstr_vv("mov", value, binary_operator->left, fd_text);
@@ -710,7 +730,9 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                             occupy_reg(value, RCX);
                             to_reg(binary_operator->left, RAX, fd_text);
                             to_reg(binary_operator->right, RDI, fd_text);
-                            bininstr_rv("mov", RAX, binary_operator->left, fd_text);
+                            if (binary_operator->left->reg != RAX) {
+                                bininstr_rv("mov", RAX, binary_operator->left, fd_text);
+                            }
                             bininstr_rr("xor", RDX, RDX, 8, fd_text);
                             uninstr_r("div", binary_operator->right->reg, type_size(binary_operator->right->type), fd_text);
                             bininstr_rr("mov", value->reg, RAX, type_size(value->type), fd_text);
@@ -722,7 +744,9 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                             occupy_reg(value, RCX);
                             to_reg(binary_operator->left, RAX, fd_text);
                             to_reg(binary_operator->right, RDI, fd_text);
-                            bininstr_rv("mov", RAX, binary_operator->left, fd_text);
+                            if (binary_operator->left->reg != RAX) {
+                                bininstr_rv("mov", RAX, binary_operator->left, fd_text);
+                            }
                             bininstr_rr("xor", RDX, RDX, 8, fd_text);
                             uninstr_r("div", binary_operator->right->reg, type_size(binary_operator->right->type), fd_text);
                             bininstr_rr("mov", value->reg, RDX, type_size(value->type), fd_text);
