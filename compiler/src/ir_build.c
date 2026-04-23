@@ -256,7 +256,7 @@ void ir_create_block_transitions(struct IRBuilder *builder) {
             struct IRBlock *prv_block = block->pred_list.ptr[j];
             int sz = vsize(&prv_block->variable_list);
             struct IRNode *value_this = NULL;
-            for (int k = 0; k < sz; k++) {
+            for (int k = sz - 1; k >= 0; k--) {
                 if (!_strcmp(name, ((struct IRVariableInfo*)prv_block->variable_list.ptr[k])->name)) {
                     value_this = ((struct IRVariableInfo*)prv_block->variable_list.ptr[k])->value;
                     break;

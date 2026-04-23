@@ -661,8 +661,18 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                         case IRNodeBitwiseOr:           _fputs(fd_text, "or"); break;
                         case IRNodeBitwiseXor:          _fputs(fd_text, "xor"); break;
                         case IRNodeBitwiseNot:          _fputs(fd_text, "not"); break;
-                        case IRNodeBitwiseShiftLeft:    _fputs(fd_text, "sal"); break;
-                        case IRNodeBitwiseShiftRight:   _fputs(fd_text, "sar"); break;
+                        case IRNodeBitwiseShiftLeft: {
+                            occupy_reg(value, RAX);
+                            bininstr_vv("mov", value, binary_operator->left, fd_text);
+                            bininstr_vv("shl", value, binary_operator->right, fd_text);
+                            from_reg(value, fd_text);
+                        } break;
+                        case IRNodeBitwiseShiftRight: {
+                            occupy_reg(value, RAX);
+                            bininstr_vv("mov", value, binary_operator->left, fd_text);
+                            bininstr_vv("shr", value, binary_operator->right, fd_text);
+                            from_reg(value, fd_text);
+                        } break;
                         case IRNodeAddition: {
                             occupy_reg(value, RAX);
                             bininstr_vv("mov", value, binary_operator->left, fd_text);
@@ -744,9 +754,30 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
                             uninstr_r("sete", RAX, 1, fd_text);
                             bininstr_vr("mov", value, RAX, fd_text);
                         } break;
-                        case IRNodeLessEqual:           _fputs(fd_text, "<="); break;
-                        case IRNodeGreaterEqual:        _fputs(fd_text, ">="); break;
-                        case IRNodeNotEqual:            _fputs(fd_text, "!="); break;
+                        case IRNodeLessEqual: {
+                            bininstr_rr("xor", RAX, RAX, 8, fd_text);
+                            to_reg(binary_operator->left, RCX, fd_text);
+                            bininstr_vv("cmp", binary_operator->left, binary_operator->right, fd_text);
+                            free_reg(binary_operator->left);
+                            uninstr_r("setle", RAX, 1, fd_text);
+                            bininstr_vr("mov", value, RAX, fd_text);
+                        } break;
+                        case IRNodeGreaterEqual: {
+                            bininstr_rr("xor", RAX, RAX, 8, fd_text);
+                            to_reg(binary_operator->left, RCX, fd_text);
+                            bininstr_vv("cmp", binary_operator->left, binary_operator->right, fd_text);
+                            free_reg(binary_operator->left);
+                            uninstr_r("setge", RAX, 1, fd_text);
+                            bininstr_vr("mov", value, RAX, fd_text);
+                        } break;
+                        case IRNodeNotEqual: {
+                            bininstr_rr("xor", RAX, RAX, 8, fd_text);
+                            to_reg(binary_operator->left, RCX, fd_text);
+                            bininstr_vv("cmp", binary_operator->left, binary_operator->right, fd_text);
+                            free_reg(binary_operator->left);
+                            uninstr_r("setne", RAX, 1, fd_text);
+                            bininstr_vr("mov", value, RAX, fd_text);
+                        } break;
                     };
                 }
                 else {
