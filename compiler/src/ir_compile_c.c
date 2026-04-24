@@ -1,4 +1,4 @@
-#include <ir_compile.h>
+#include <ir_compile_c.h>
 #include <stdio.h>
 #include <string.h>
 #include <posix.h>

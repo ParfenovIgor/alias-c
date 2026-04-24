@@ -11,7 +11,7 @@
 #include <ir.h>
 #include <ir_build.h>
 #include <ir_compile_x86_64.h>
-#include <ir_compile.h>
+#include <ir_compile_c.h>
 
 int _execvp(const char *filename, const char *const argv[], const char *const envp[], const char *path) {
     int n = _strlen(path);
