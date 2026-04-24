@@ -262,6 +262,12 @@ static enum Register find_register(struct CodegenContext *context, struct IRNode
 }
 
 static long calculate_priority(struct IRNode *value) {
+    if (value->node_type == IRNodePhi) {
+        struct IRPhi *phi = value->node_ptr;
+        if (vsize(&phi->values) == 0) {
+            return 0;
+        }
+    }
     long priority = 1;
     for (int i = 0; i < value->loop_degree; i++) priority *= 10;
     int cnt_uses = vsize(&value->uses);
