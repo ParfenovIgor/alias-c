@@ -122,6 +122,15 @@ struct TypeNode *syntax_process_type(struct TokenStream *ts, struct Settings *st
     else if (!_strcmp(typestr, "C")) {
         node = create_type_char(degree);
     }
+    else if (!_strcmp(typestr, "A")) {
+        ExpectNext(TokenBracketOpen, "[ expected in array type definition");
+        Expect(TokenInteger, "Size expected in array type definition");
+        int size = Get().value_int;
+        Next();
+        ExpectNext(TokenBracketClose, "] expected in array type definition");
+        struct TypeNode *type = syntax_process_type(ts, st);
+        node = create_type_array(degree, type, size);
+    }
     else if (!_strcmp(typestr, "S")) {
         struct Vector names = vnew();
         struct Vector types = vnew();

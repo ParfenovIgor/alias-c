@@ -27,6 +27,13 @@ struct TypeNode *create_type_char(int degree) {
     return create_type_node(this, TypeNodeChar, degree, 1);
 }
 
+struct TypeNode *create_type_array(int degree, struct TypeNode *type, int size) {
+    Alloc(TypeArray, this);
+    this->type = type;
+    this->size = size;
+    return create_type_node(this, TypeNodeArray, degree, -1);
+}
+
 struct TypeNode *create_type_struct(int degree, struct Vector names, struct Vector types) {
     Alloc(TypeStruct, this);
     this->names = names;

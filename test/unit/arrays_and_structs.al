@@ -1,7 +1,17 @@
 func .test_equal(a #I, b #I) -> #I
     if (a = b) 0 else 1
 
-//* Structs
+//* Arrays and Structs
+
+//* Definition of array
+//* We declare and array with `[ ]` syntax. Array should not be empty, and all its elements should have equal types. The array will not be automatically casted to pointer of its element type.
+
+test demo_definition_of_array {
+    def arr #A[3]#I := [5, 3, 8]
+    def ptr := arr& as #1I
+    ptr[2]& <- 7
+    return test_equal(ptr[1] + ptr[2], 10)
+}
 
 //* Definition of struct
 //* We declare instances of structs with `.{ }` syntax. The type of struct instance is inferred. Two struct types with different type names, but same type contents are equal. We can get the struct field value from a struct pointer with `->` syntax. We can get the pointer to the struct field from a struct pointer with `-><field>&` syntax, which is often used to store value in a struct field with `<-` operator.

@@ -46,6 +46,7 @@ struct Codegen {
     void (*call_reg)                    (enum Register reg, struct CPContext *context);
     void (*call_label)                  (const char *label, struct CPContext *context);
     void (*index)                       (int multiplier, struct CPContext *context);
+    void (*pack_array)                  (int element_size, int array_size, struct CPContext *context);
     void (*pack_struct)                 (struct Vector *type_sizes, struct CPContext *context);
     void (*arithmetic)                  (enum NodeType node_type, bool unary, struct CPContext *context);
 };

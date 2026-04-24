@@ -42,5 +42,5 @@ bool ir_value_has_value(struct IRNode *value) {
 }
 
 bool ir_value_is_complex(struct TypeNode *type) {
-    return type->node_type == TypeNodeStruct && type->degree == 0;
+    return (type->node_type ==TypeNodeArray || type->node_type == TypeNodeStruct) && type->degree == 0;
 }

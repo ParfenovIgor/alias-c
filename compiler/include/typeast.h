@@ -7,6 +7,7 @@ enum TypeNodeType {
     TypeNodeVoid,
     TypeNodeInt,
     TypeNodeChar,
+    TypeNodeArray,
     TypeNodeStruct,
     TypeNodeFunction,
     TypeNodeIdentifier,
@@ -16,6 +17,7 @@ struct TypeNode;
 struct TypeVoid;
 struct TypeInt;
 struct TypeChar;
+struct TypeArray;
 struct TypeStruct;
 struct TypeFunction;
 struct TypeIdentifier;
@@ -42,6 +44,11 @@ struct TypeChar {
 
 };
 
+struct TypeArray {
+    struct TypeNode *type;
+    int size;
+};
+
 struct TypeStruct {
     struct Vector names;
     struct Vector types;
@@ -61,6 +68,7 @@ struct TypeNode *create_type_node(void *ptr, enum TypeNodeType type, int degree,
 struct TypeNode *create_type_void(int degree);
 struct TypeNode *create_type_int(int degree);
 struct TypeNode *create_type_char(int degree);
+struct TypeNode *create_type_array(int degree, struct TypeNode *type, int size);
 struct TypeNode *create_type_struct(int degree, struct Vector names, struct Vector types);
 struct TypeNode *create_type_function(int degree, struct Vector types, struct TypeNode *return_type);
 struct TypeNode *create_type_identifier(int degree, const char *identifier);

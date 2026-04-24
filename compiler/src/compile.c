@@ -691,8 +691,45 @@ struct TypeNode *compile_string(struct Node *node, struct String *this, struct C
 }
 
 struct TypeNode *compile_array(struct Node *node, struct Array *this, struct CPContext *context) {
-    error_semantic("Array is not supported currently", node);
-    return NULL;
+    struct TypeNode *type_node = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
+    type_node->degree = 0;
+    type_node->size = -1;
+    
+    struct TypeArray *type = (struct TypeArray*)_malloc(sizeof(struct TypeArray));
+    type_node->node_type = TypeNodeArray;
+    type_node->node_ptr = type;
+    type->type = NULL;
+
+    int old_sf_pos = context->sf_pos;
+
+    int sz = vsize(&this->values);
+    if (sz == 0) {
+        error_semantic("Array can't be empty", node);
+    }
+    type->size = sz;
+    int orig_array_size = 0;
+    for (int i = sz - 1; i >= 0; i--) {
+        struct TypeNode *_type = compile_node(this->values.ptr[i], context);
+        int element_size = type_size(_type);
+        orig_array_size += align_to_word(element_size);
+        context->sf_pos -= align_to_word(element_size);
+        context->codegen->stack_shift(-align_to_word(element_size), context);
+        if (type->type) {
+            if (!type_equal(type->type, _type, context)) {
+                error_semantic("Array elements have not equal types", node);
+            }
+        }
+        else {
+            type->type = _type;
+        }
+    }
+    type_node = type_normalize(type_node, context);
+
+    context->codegen->stack_shift(orig_array_size, context);
+    context->codegen->pack_array(type_size(type->type), type->size, context);
+
+    context->sf_pos = old_sf_pos;
+    return type_node;
 }
 
 struct TypeNode *compile_struct_instance(struct Node *node, struct StructInstance *this, struct CPContext *context) {

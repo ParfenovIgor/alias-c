@@ -37,6 +37,7 @@ void ir_print_type_prefix(struct TypeNode *type, int fd_text) {
             }
             break;
         }
+        case TypeNodeArray:
         case TypeNodeStruct: {
             switch (type->size) {
                 case -1: _panic("Unexpected type"); break;
@@ -79,6 +80,7 @@ void ir_print_type_suffix(struct TypeNode *type, int fd_text) {
             _fputs(fd_text, ")");
             break;
         }
+        case TypeNodeArray:
         case TypeNodeStruct: {
             switch (type->size) {
                 case -1: _panic("Unexpected type"); break;

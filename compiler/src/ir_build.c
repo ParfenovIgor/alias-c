@@ -909,8 +909,24 @@ struct IRNode *ir_build_string(struct IRBuilder *builder, struct Node *node, str
 }
 
 struct IRNode *ir_build_array(struct IRBuilder *builder, struct Node *node, struct Array *this) {
-    _panic("Unimplemented NodeArray");
-    return NULL;
+    struct IRNode *value_alloca = ir_build_alloca(builder, type_pointer(node->type), type_size(node->type));
+
+    struct TypeArray *type_array = (struct TypeArray*)value_alloca->type->node_ptr;
+    int phase = 0;
+    for (int i = 0; i < type_array->size; i++) {
+        struct TypeNode *gep_type = type_copy_node(type_array->type);
+        gep_type->degree++;
+
+        struct IRNode *value = ir_build(builder, (struct Node*)this->values.ptr[i]);
+        struct IRNode *value_gep = ir_build_gep(builder, gep_type, value_alloca, 
+            ir_build_const(builder, create_type_int(0), 8, i), 
+            type_size(type_array->type));
+        struct IRNode *value_store = ir_build_store(builder, value_gep, value, type_size(type_array->type));
+
+        phase += type_size(type_array->type);
+    }
+
+    return value_alloca;
 }
 
 struct IRNode *ir_build_struct_instance(struct IRBuilder *builder, struct Node *node, struct StructInstance *this) {

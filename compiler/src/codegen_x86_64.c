@@ -255,6 +255,24 @@ void x86_64_codegen_index(int multiplier, struct CPContext *context) {
     _fputs(context->fd_text, "add rax, [rsp - 8]\n");
 }
 
+void x86_64_codegen_pack_array(int element_size, int array_size, struct CPContext *context) {
+    int orig_array_size = array_size * align_to_word(element_size);
+    int packed_array_size = array_size * element_size;
+    int ptr1 = 0;
+    int ptr2 = 0;
+    for (int i = 0; i < array_size; i++) {
+        const char *dst = _concat3("[rsp - ", _itoa(orig_array_size + packed_array_size - ptr1), "]");
+        const char *src = _concat3("[rsp - ", _itoa(orig_array_size - ptr2), "]");
+        x86_64_compile_memcpy(dst, src, element_size, context);
+        ptr1 += element_size;
+        ptr2 += align_to_word(element_size);
+    }
+
+    const char *dst = _concat3("[rsp - ", _itoa(align_to_word(packed_array_size)), "]");
+    const char *src = _concat3("[rsp - ", _itoa(orig_array_size + packed_array_size), "]");
+    x86_64_compile_memcpy(dst, src, packed_array_size, context);
+}
+
 void x86_64_codegen_pack_struct(struct Vector *type_sizes, struct CPContext *context) {
     int sz = vsize(type_sizes);
     int orig_struct_size = 0;
@@ -437,6 +455,7 @@ struct Codegen *x86_64_codegen_init() {
     codegen->call_reg = x86_64_codegen_call_reg;
     codegen->call_label = x86_64_codegen_call_label;
     codegen->index = x86_64_codegen_index;
+    codegen->pack_array = x86_64_codegen_pack_array;
     codegen->pack_struct = x86_64_codegen_pack_struct;
     codegen->arithmetic = x86_64_codegen_arithmetic;
     return codegen;

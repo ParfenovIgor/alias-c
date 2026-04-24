@@ -19,6 +19,12 @@ struct TypeNode *type_normalize(struct TypeNode *n, struct CPContext *context) {
         n->size = 1;
         return n;
     }
+    if (n->node_type == TypeNodeArray) {
+        struct TypeArray *_n = n->node_ptr;
+        type_normalize(_n->type, context);
+        n->size = type_size(_n->type) * _n->size;
+        return n;
+    }
     if (n->node_type == TypeNodeStruct) {
         struct TypeStruct *_n = n->node_ptr;
         int res = 0;
@@ -85,6 +91,15 @@ bool type_equal(struct TypeNode *n1, struct TypeNode *n2, struct CPContext *cont
     if (n1->node_type == TypeNodeVoid) return n2->node_type == TypeNodeVoid;
     if (n1->node_type == TypeNodeInt) return n2->node_type == TypeNodeInt;
     if (n1->node_type == TypeNodeChar) return n2->node_type == TypeNodeChar;
+    if (n1->node_type == TypeNodeArray) {
+        struct TypeArray *_n1 = n1->node_ptr;
+        struct TypeArray *_n2 = n2->node_ptr;
+        if (_n1->size != _n2->size ||
+            !type_equal(_n1->type, _n2->type, context)) {
+            return false;
+        }
+        return true;
+    }
     if (n1->node_type == TypeNodeStruct) {
         struct TypeStruct *_n1 = n1->node_ptr;
         struct TypeStruct *_n2 = n2->node_ptr;
@@ -204,6 +219,17 @@ int type_mangle_helper(struct TypeNode *n, struct CPContext *context, char *buff
     }
     if (n->node_type == TypeNodeChar) {
         buffer[pos++] = 'C';
+        return pos;
+    }
+    if (n->node_type == TypeNodeArray) {
+        buffer[pos++] = 'A';
+        struct TypeArray *_n = n->node_ptr;
+        ptr_str = _itoa(_n->size);
+        _strcpy(buffer + pos, ptr_str);
+        pos += _strlen(ptr_str);
+
+        buffer[pos++] = '_';
+        pos = type_mangle_helper(_n->type, context, buffer, pos);
         return pos;
     }
     if (n->node_type == TypeNodeStruct) {
