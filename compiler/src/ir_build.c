@@ -669,7 +669,7 @@ void ir_build_definition(struct IRBuilder *builder, struct Node *node, struct De
     variable_info->addressed = this->addressed;
     if (this->value) {
         value = ir_build(builder, this->value);
-        if (this->addressed || (this->type->node_type == TypeNodeStruct && this->type->degree == 0)) {
+        if (this->addressed || ir_value_is_complex(this->type)) {
             struct IRNode *value_alloca = ir_build_alloca(builder, type_pointer(this->type), type_size(this->type));
             struct IRNode *value_store = ir_build_store(builder, value_alloca, value, type_size(this->type));
             variable_info->value = value_alloca;
@@ -678,7 +678,7 @@ void ir_build_definition(struct IRBuilder *builder, struct Node *node, struct De
         }
     }
     else {
-        if (this->addressed || (this->type->node_type == TypeNodeStruct && this->type->degree == 0)) {
+        if (this->addressed || ir_value_is_complex(this->type)) {
             value = ir_build_alloca(builder, type_pointer(this->type), type_size(this->type));
             value->spill = true;
         }
@@ -795,8 +795,7 @@ void ir_build_assignment(struct IRBuilder *builder, struct Node *node, struct As
         struct IRVariableInfo *variable_info = block->variable_list.ptr[i];
         if (!_strcmp(variable_info->name, _identifier->identifier)) {
             struct IRNode *value_to = variable_info->value;
-            if (value_to->spill || 
-                (this->src->type->node_type == TypeNodeStruct && this->src->type->degree == 0)) {
+            if (value_to->spill || ir_value_is_complex(this->src->type)) {
                 struct IRNode *value_store = ir_build_store(builder, value_to, value, type_size(this->src->type));
             }
             else {
@@ -845,8 +844,7 @@ struct IRNode *ir_build_identifier(struct IRBuilder *builder, struct Node *node,
         for (int i = sz - 1; i >= 0; i--) {
             struct IRVariableInfo *variable_info = block->variable_list.ptr[i];
             if (!_strcmp(this->identifier, variable_info->name)) {
-                if (variable_info->addressed && !this->address && 
-                    !(node->type->node_type == TypeNodeStruct && node->type->degree == 0)) {
+                if (variable_info->addressed && !this->address && !ir_value_is_complex(node->type)) {
                     struct IRNode *value_load = ir_build_load(builder, type_deref(variable_info->value->type), variable_info->value, type_size(node->type));
                     value = value_load;
                 }
@@ -1055,7 +1053,7 @@ struct IRNode *ir_build_get_field(struct IRBuilder *builder, struct Node *node, 
     struct IRNode *value = ir_build(builder, this->left);
 
     struct IRNode *value_sgep = ir_build_sgep(builder, node->type, value, this->phase);
-    if ((node->type->node_type == TypeNodeStruct && node->type->degree == 0)) {
+    if (ir_value_is_complex(node->type)) {
         value_sgep->type = type_copy_node(value_sgep->type);
         value_sgep->type->degree++;
         return value_sgep;

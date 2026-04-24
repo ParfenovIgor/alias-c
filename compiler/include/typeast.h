@@ -57,7 +57,7 @@ struct TypeIdentifier {
     const char *identifier;
 };
 
-struct TypeNode *create_type_node(void *ptr, enum TypeNodeType type, int degree);
+struct TypeNode *create_type_node(void *ptr, enum TypeNodeType type, int degree, int size);
 struct TypeNode *create_type_void(int degree);
 struct TypeNode *create_type_int(int degree);
 struct TypeNode *create_type_char(int degree);

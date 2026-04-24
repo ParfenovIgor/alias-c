@@ -216,3 +216,6 @@ struct IRBuilder {
 };
 
 struct IRBuilder *ir_builder(bool testing);
+bool ir_value_is_terminator(struct IRNode *value);
+bool ir_value_has_value(struct IRNode *value);
+bool ir_value_is_complex(struct TypeNode *type);

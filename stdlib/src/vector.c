@@ -39,6 +39,10 @@ int vsize(struct Vector *v) {
     return v->size;
 }
 
+void vclear(struct Vector *v) {
+    v->size = 0;
+}
+
 void vreverse(struct Vector *v) {
     for (int i = 0; i < v->size / 2; i++) {
         void *x = v->ptr[i];

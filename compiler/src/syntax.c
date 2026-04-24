@@ -436,6 +436,7 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         Next();
     }
     else if (NextIs(TokenBracketOpen)) {
+        Next();
         struct Vector values = vnew();
         while (!NextIs(TokenBracketClose)) {
             vpush(&values, syntax_process_expression(ts, st));

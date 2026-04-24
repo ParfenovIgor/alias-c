@@ -28,3 +28,19 @@ struct IRBuilder *ir_builder(bool testing) {
     builder->loop_degree = 0;
     return builder;
 }
+
+bool ir_value_is_terminator(struct IRNode *value) {
+    enum IRNodeType type = value->node_type;
+    return type == IRNodeBr || type == IRNodeCondBr || type == IRNodeRet;
+}
+
+bool ir_value_has_value(struct IRNode *value) {
+    enum IRNodeType type = value->node_type;
+    return type != IRNodeStore && 
+        type != IRNodeBr && type != IRNodeCondBr && type != IRNodeRet && 
+        !(type == IRNodeCall && value->type->size == 0);
+}
+
+bool ir_value_is_complex(struct TypeNode *type) {
+    return type->node_type == TypeNodeStruct && type->degree == 0;
+}
