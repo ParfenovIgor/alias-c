@@ -183,7 +183,7 @@ enum IRGlobalVarType {
 struct IRGlobalVar {
     const char *name;
     enum IRGlobalVarType type;
-    void *value;
+    void *const_value;
     struct IRNode *ir_value;
 };
 

@@ -419,11 +419,11 @@ void ir_compile(struct IRBuilder *builder, const char *filename_compile_output) 
         ir_print_type_suffix(globalvar->ir_value->type, fd_text);
         _fputs(fd_text, " = ");
         if (globalvar->type == IRGlobalVarInt) {
-            int value = (long)globalvar->value;
+            int value = (long)globalvar->const_value;
             _fputsi(fd_text, "", value, ";\n");
         }
         if (globalvar->type == IRGlobalVarString) {
-            const char *value = globalvar->value;
+            const char *value = globalvar->const_value;
             _fputs(fd_text, "\"");
             int len = _strlen(value);
             for (int j = 0; j < len; j++) {

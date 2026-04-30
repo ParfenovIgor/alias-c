@@ -807,11 +807,11 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
         if (globalvar->type == IRGlobalVarFunction) continue;
         _fputs2(fd_text, globalvar->name, ": ");
         if (globalvar->type == IRGlobalVarInt) {
-            int value = (long)globalvar->value;
+            int value = (long)globalvar->const_value;
             _fputsi(fd_text, "dq ", value, "\n");
         }
         if (globalvar->type == IRGlobalVarString) {
-            const char *value = globalvar->value;
+            const char *value = globalvar->const_value;
             _fputs(fd_text, "db ");
             for (int i = 0; i < _strlen(value); i++) {
                 _fputi(fd_text, value[i]);
