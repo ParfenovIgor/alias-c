@@ -8,6 +8,13 @@ struct CodegenContext {
     int stack_phase;
 };
 
+struct EffectiveAddress {
+    enum Register base;
+    enum Register index;
+    int scale;
+    int disp;
+};
+
 static const char *get_reg_qword(enum Register reg) {
     switch (reg) {
         case REGNONE: _panic("Value is not in register");
@@ -76,6 +83,20 @@ static const char *get_qualifier(int size) {
         case 8: return "qword";
         default: _panic("Unexpected value size");
     }
+}
+
+static void print_effective_address(struct EffectiveAddress *ea, int fd_text) {
+    _fputs2(fd_text, "[", get_reg_qword(ea->base));
+    if (ea->index != REGNONE) {
+        _fputs2(fd_text, " + ", get_reg_qword(ea->index));
+        if (ea->scale != 1) {
+            _fputsi(fd_text, " * ", ea->scale, "");
+        }
+    }
+    if (ea->disp != 0) {
+        _fputsi(fd_text, " + ", ea->disp, "");
+    }
+    _fputs(fd_text, "]");
 }
 
 static void to_reg(struct IRNode *node, enum Register reg, int fd_text) {
@@ -168,6 +189,12 @@ static void uninstr_r(const char *instr, enum Register arg, int size, int fd_tex
     _fputs2(fd_text, get_reg(arg, size), "\n");
 }
 
+static void uninstr_b(const char *instr, struct IRBlock *arg, int fd_text) {
+    _fputs2(fd_text, instr, " ");
+    ir_print_block(arg, fd_text);
+    _fputs(fd_text, "\n");
+}
+
 static void bininstr_vv(const char *instr, struct IRNode *left, struct IRNode *right, int fd_text) {
     instr_prefix(instr, type_size(left->type), fd_text);
     ir_print_value(left, fd_text);
@@ -197,9 +224,29 @@ static void bininstr_vc(const char *instr, struct IRNode *left, const char *righ
     _fputs(fd_text, "\n");
 }
 
+static void bininstr_ri(const char *instr, enum Register left, int right, int size, int fd_text) {
+    instr_prefix(instr, size, fd_text);
+    _fputs(fd_text, get_reg(left, size));
+    _fputsi(fd_text, ", ", right, "\n");
+}
+
 static void bininstr_rr(const char *instr, enum Register left, enum Register right, int size, int fd_text) {
     instr_prefix(instr, size, fd_text);
     _fputs3(fd_text, get_reg(left, size), ", ", get_reg(right, size));
+    _fputs(fd_text, "\n");
+}
+
+static void bininstr_ra(const char *instr, enum Register left, struct EffectiveAddress right, int size, int fd_text) {
+    instr_prefix(instr, size, fd_text);
+    _fputs2(fd_text, get_reg(left, size), ", ");
+    print_effective_address(&right, fd_text);
+    _fputs(fd_text, "\n");
+}
+
+static void bininstr_ar(const char *instr, struct EffectiveAddress left, enum Register right, int size, int fd_text) {
+    instr_prefix(instr, size, fd_text);
+    print_effective_address(&left, fd_text);
+    _fputs2(fd_text, ", ", get_reg(right, size));
     _fputs(fd_text, "\n");
 }
 
@@ -215,8 +262,7 @@ static void ir_compile_phi(struct IRBlock *block, struct IRBlock *succ_block, in
                     struct IRNode *src = phi->values.ptr[j];
                     if (value->spill && src->spill) {
                         occupy_reg(value, RAX);
-                        _fputs3(fd_text, "    mov ", get_reg(value->reg, type_size(value->type)), ", ");
-                        _fputsi(fd_text, "[rbp + ", src->stack_phase, "]\n");
+                        bininstr_ra("mov", value->reg, (struct EffectiveAddress){RBP, REGNONE, 0, src->stack_phase}, 8, fd_text);
                         from_reg(value, fd_text);
                     }
                     else {
@@ -294,16 +340,13 @@ static void ir_compile_value(struct IRBuilder *builder, struct CodegenContext *c
         to_reg(gep->base, RCX, fd_text);
         to_reg(gep->index, RAX, fd_text);
         if (gep->size == 1 || gep->size == 2 || gep->size == 4 || gep->size == 8 || gep->size == 16) {
-            _fputs3(fd_text, "    lea ", get_reg(value->reg, type_size(value->type)), ", [");
-            _fputs3(fd_text, get_reg(gep->base->reg, type_size(gep->base->type)), " + ", get_reg(gep->index->reg, type_size(gep->index->type)));
-            _fputsi(fd_text, " * ", gep->size, "]\n");
+            bininstr_ra("lea", value->reg, (struct EffectiveAddress){gep->base->reg, gep->index->reg, gep->size, 0}, 8, fd_text);
         }
         else {
             bininstr_rr("mov", RAX, gep->index->reg, type_size(gep->index->type), fd_text);
-            _fputsi(fd_text, "    mov rdi, ", gep->size, "\n");
+            bininstr_ri("mov", RDI, gep->size, 8, fd_text);
             uninstr_r("mul", RDI, 8, fd_text);
-            _fputs3(fd_text, "    lea ", get_reg(value->reg, type_size(value->type)), ", [");
-            _fputs2(fd_text, get_reg(gep->base->reg, type_size(gep->base->type)), " + rax]\n");
+            bininstr_ra("lea", value->reg, (struct EffectiveAddress){gep->base->reg, RAX, 1, 0}, 8, fd_text);
         }
         from_reg(value, fd_text);
         free_reg(gep->base);
@@ -313,28 +356,16 @@ static void ir_compile_value(struct IRBuilder *builder, struct CodegenContext *c
         struct IRSGEP *sgep = value->node_ptr;
         occupy_reg(value, RAX);
         to_reg(sgep->instance, RDX, fd_text);
-        _fputs3(fd_text, "    lea ", get_reg(value->reg, type_size(value->type)), ", [");
-        _fputs(fd_text, get_reg(sgep->instance->reg, type_size(sgep->instance->type)));
-        _fputsi(fd_text, " + ", sgep->phase, "]\n");
+        bininstr_ra("lea", value->reg, (struct EffectiveAddress){sgep->instance->reg, REGNONE, 0, sgep->phase}, 8, fd_text);
         from_reg(value, fd_text);
         free_reg(sgep->instance);
     }
     else if (type == IRNodeLoad) {
         struct IRLoad *load = value->node_ptr;
-        int sz = load->size;
-
         occupy_reg(value, RCX);
         to_reg(load->src, RDX, fd_text);
-
-        if (sz == 1) {
-            _fputs3(fd_text, "    mov byte al, [", get_reg(load->src->reg, type_size(load->src->type)), "]\n");
-            _fputs3(fd_text, "    mov byte ", get_reg(value->reg, sz), ", al\n");
-        }
-        if (sz == 8) {
-            _fputs3(fd_text, "    mov qword rax, [", get_reg(load->src->reg, type_size(load->src->type)), "]\n");
-            _fputs3(fd_text, "    mov qword ", get_reg(value->reg, sz), ", rax\n");
-        }
-
+        bininstr_ra("mov", RAX, (struct EffectiveAddress){load->src->reg, REGNONE, 0, 0}, load->size, fd_text);
+        bininstr_rr("mov", value->reg, RAX, load->size, fd_text);
         from_reg(value, fd_text);
         free_reg(load->src);
     }
@@ -342,22 +373,15 @@ static void ir_compile_value(struct IRBuilder *builder, struct CodegenContext *c
         struct IRStore *store = value->node_ptr;
         int sz = store->size;
         if (sz > 8) {
-            _fputsi(fd_text, "    mov rdi, [rbp + ", store->dst->stack_phase, "]\n");
-            _fputsi(fd_text, "    mov rsi, [rbp + ", store->src->stack_phase, "]\n");
-            _fputsi(fd_text, "    mov rcx, ", sz, "\n");
+            bininstr_ra("mov", RDI, (struct EffectiveAddress){RBP, REGNONE, 0, store->dst->stack_phase}, 8, fd_text);
+            bininstr_ra("mov", RSI, (struct EffectiveAddress){RBP, REGNONE, 0, store->src->stack_phase}, 8, fd_text);
+            bininstr_ri("mov", RCX, sz, 8, fd_text);
             _fputs(fd_text, "    repe movsb\n");
         }
         else {
             to_reg(store->dst, RAX, fd_text);
             to_reg(store->src, RDX, fd_text);
-            if (sz == 1) {
-                _fputs(fd_text, "    mov byte [");
-            }
-            else if (sz == 8) {
-                _fputs(fd_text, "    mov qword [");
-            }
-            _fputs2(fd_text, get_reg(store->dst->reg, type_size(store->dst->type)), "], ");
-            _fputs2(fd_text, get_reg(store->src->reg, type_size(store->src->type)), "\n");
+            bininstr_ar("mov", (struct EffectiveAddress){store->dst->reg, REGNONE, 0, 0}, store->src->reg, sz, fd_text);
             free_reg(store->dst);
             free_reg(store->src);
         }
@@ -388,35 +412,25 @@ static void ir_compile_value(struct IRBuilder *builder, struct CodegenContext *c
     else if (type == IRNodeBr) {
         struct IRBr *br = value->node_ptr;
         ir_compile_phi(block, br->block, fd_text);
-        _fputs(fd_text, "    jmp ");
-        ir_print_block(br->block, fd_text);
-        _fputs(fd_text, "\n");
+        uninstr_b("jmp", br->block, fd_text);
     }
     else if (type == IRNodeCondBr) {
         struct IRCondBr *condbr = value->node_ptr;
         if (condbr->condition->node_type == IRNodeConst) {
             struct IRConst *_const = condbr->condition->node_ptr;
             if (_const->value == 0) {
-                _fputs(fd_text, "    jmp ");
-                ir_print_block(condbr->block_else, fd_text);
-                _fputs(fd_text, "\n");
+                uninstr_b("jmp", condbr->block_else, fd_text);
             }
             else {
-                _fputs(fd_text, "    jmp ");
-                ir_print_block(condbr->block_then, fd_text);
-                _fputs(fd_text, "\n");
+                uninstr_b("jmp", condbr->block_then, fd_text);
             }
         }
         else {
             bininstr_vc("cmp", condbr->condition, "0", fd_text);
             ir_compile_phi(block, condbr->block_then, fd_text);
-            _fputs(fd_text, "    jne ");
-            ir_print_block(condbr->block_then, fd_text);
-            _fputs(fd_text, "\n");
+            uninstr_b("jne", condbr->block_then, fd_text);
             ir_compile_phi(block, condbr->block_else, fd_text);
-            _fputs(fd_text, "    jmp ");
-            ir_print_block(condbr->block_else, fd_text);
-            _fputs(fd_text, "\n");
+            uninstr_b("jmp", condbr->block_else, fd_text);
         }
     }
     else if (type == IRNodeRet) {
@@ -424,11 +438,11 @@ static void ir_compile_value(struct IRBuilder *builder, struct CodegenContext *c
         if (ret->value) {
             bininstr_rv("mov", RAX, ret->value, fd_text);
         }
-        _fputsi(fd_text, "    sub rsp, ", context->stack_phase, "\n");
+        bininstr_ri("sub", RSP, context->stack_phase, 8, fd_text);
         for (enum Register reg = R15; reg >= R12; reg--) {
             uninstr_r("pop", reg, 8, fd_text);
         }
-        _fputs(fd_text, "    pop rbp\n");
+        uninstr_r("pop", RBP, 8, fd_text);
         _fputs(fd_text, "    ret\n");
     }
     else if (type == IRNodeAnd ||
@@ -716,8 +730,8 @@ static void ir_compile_function(struct IRBuilder *builder, struct CodegenContext
                 int data_phase = context->stack_phase - value_alloca->size;
                 int alloca_phase = data_phase - type_size(value->type);
                 context->stack_phase = alloca_phase;
-                _fputsi(fd_text, "    lea rax, [rbp + ", data_phase, "]\n");
-                _fputsi(fd_text, "    mov [rbp + ", alloca_phase, "], rax\n");
+                bininstr_ra("lea", RAX, (struct EffectiveAddress){RBP, REGNONE, 0, data_phase}, 8, fd_text);
+                bininstr_ar("mov", (struct EffectiveAddress){RBP, REGNONE, 0, alloca_phase}, RAX, 8, fd_text);
                 value->stack_phase = alloca_phase;
             }
         }
@@ -756,17 +770,15 @@ static void ir_compile_function(struct IRBuilder *builder, struct CodegenContext
             }
             _assert(idx != -1);
             if (reg == REGNONE) {
-                _fputsi(fd_text, "    mov [rbp + ", value->stack_phase, "], ");
-                _fputs2(fd_text, get_reg(call_reg(idx), 8), "\n");
+                bininstr_ar("mov", (struct EffectiveAddress){RBP, REGNONE, 0, value->stack_phase}, call_reg(idx), 8, fd_text);
             }
             else {
-                _fputs3(fd_text, "    mov ", get_reg(reg, 8), ", ");
-                _fputs2(fd_text, get_reg(call_reg(idx), 8), "\n");
+                bininstr_rr("mov", reg, call_reg(idx), 8, fd_text);
             }
         }
     }
 
-    _fputsi(fd_text, "    add rsp, ", context->stack_phase, "\n");
+    bininstr_ri("add", RSP, context->stack_phase, 8, fd_text);
 
     for (int j = 0; j < sz_blocks; j++) {
         struct IRBlock *block = function->block_list.ptr[j];
@@ -793,8 +805,7 @@ void ir_compile_x86_64(struct IRBuilder *builder, const char *filename_compile_o
     for (int i = 0; i < sz_globalvar; i++) {
         struct IRGlobalVar *globalvar = builder->globalvar_list.ptr[i];
         if (globalvar->type == IRGlobalVarFunction) continue;
-        _fputs(fd_text, globalvar->name);
-        _fputs(fd_text, ": ");
+        _fputs2(fd_text, globalvar->name, ": ");
         if (globalvar->type == IRGlobalVarInt) {
             int value = (long)globalvar->value;
             _fputsi(fd_text, "dq ", value, "\n");
