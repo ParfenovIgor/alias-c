@@ -685,7 +685,7 @@ struct Node *syntax_process_statement(struct TokenStream *ts, struct Settings *s
             error_syntax("Include has to be a top-level declaration", Get());
         }
         Next();
-        const char *include_path = NULL;
+        const char *include_path = "";
         if (NextIs(TokenIdentifier)) {
             const char *include_name = Get().value_string;
             for (int i = 0; i < vsize(&st->include_names); i++) {

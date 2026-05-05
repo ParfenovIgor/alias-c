@@ -40,6 +40,7 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
             settings->compile = true;
         }
         else if(_strcmp(arg, "-a") == 0) {
+            settings->compile = true;
             settings->assemble = true;
         }
         else if (_strcmp(arg, "-i") == 0) {
@@ -105,7 +106,7 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
         return NULL;
     }
 
-    if (!settings->filename_output) {
+    if (settings->compile && !settings->filename_output) {
         return NULL;
     }
 
