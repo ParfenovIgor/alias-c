@@ -69,7 +69,6 @@ struct CPContext {
     struct TypeNode *node_int;
     struct TypeNode *node_char;
     struct TypeNode *node_function;
-    struct TypeNode *node_allocator;
 };
 
 struct CPContext          *context_init();

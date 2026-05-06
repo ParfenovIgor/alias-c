@@ -8,7 +8,6 @@ struct FunctionSignature *create_function_signature(struct Vector identifiers, s
     this->identifiers = identifiers;
     this->types = types;
     this->return_type = return_type;
-    this->propagate_allocator = false;
     return this;
 }
 
@@ -196,11 +195,10 @@ struct Node *create_sizeof(struct TypeNode *type) {
     return create_node(this, NodeSizeof);
 }
 
-struct Node *create_function_call(struct Node *function, struct Vector arguments, struct Node *propagate_allocator) {
+struct Node *create_function_call(struct Node *function, struct Vector arguments) {
     Alloc(FunctionCall, this);
     this->function = function;
     this->arguments = arguments;
-    this->propagate_allocator = propagate_allocator;
     return create_node(this, NodeFunctionCall);
 }
 

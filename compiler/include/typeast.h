@@ -57,7 +57,6 @@ struct TypeStruct {
 struct TypeFunction {
     struct Vector types;
     struct TypeNode *return_type;
-    bool propagate_allocator;
 };
 
 struct TypeIdentifier {

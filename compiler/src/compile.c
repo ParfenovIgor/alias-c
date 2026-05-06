@@ -170,25 +170,11 @@ struct TypeNode *compile_function_signature(struct Node *node, struct FunctionSi
             this->types.ptr[i] = type_normalize(this->types.ptr[i], context);
         }
 
-        sz += (this->propagate_allocator != NULL);
-
         context->codegen->call_arguments_push(sz, context);
         for (int i = 0; i < sz; i++) {
             struct VariableInfo *var_info = (struct VariableInfo*)_malloc(sizeof(struct VariableInfo));
-            if (this->propagate_allocator) {
-                if (i == 0) {
-                    var_info->name = "@";
-                    var_info->type = context->node_allocator;
-                }
-                else {
-                    var_info->name = this->identifiers.ptr[i - 1];
-                    var_info->type = this->types.ptr[i - 1];
-                }
-            }
-            else {
-                var_info->name = this->identifiers.ptr[i];
-                var_info->type = this->types.ptr[i];
-            }
+            var_info->name = this->identifiers.ptr[i];
+            var_info->type = this->types.ptr[i];
             int size = align_to_word(type_size(var_info->type));
             var_info->to_mark_addressed = &((bool*)this->addressed.ptr)[i];
             var_info->sf_phase = context->sf_pos - size;
@@ -316,9 +302,6 @@ struct TypeNode *from_signature_to_type(struct FunctionSignature *signature, str
     type->degree = 0;
     type->size = 8;
     _type->types = vnew();
-    if (signature->propagate_allocator) {
-        vpush(&_type->types, context->node_allocator);
-    }
     int sz = vsize(&signature->types);
     for (int i = 0; i < sz; i++) {
         signature->types.ptr[i] = type_normalize(signature->types.ptr[i], context);
@@ -326,7 +309,6 @@ struct TypeNode *from_signature_to_type(struct FunctionSignature *signature, str
     }
     signature->return_type = type_normalize(signature->return_type, context);
     _type->return_type = signature->return_type;
-    _type->propagate_allocator = (signature->propagate_allocator != NULL);
     return type;
 }
 
@@ -820,39 +802,6 @@ struct TypeNode *compile_function_call(struct Node *node, struct FunctionCall *t
         error_semantic("Function expected in function call", node);
     }
     struct TypeFunction *_type = type->node_ptr;
-
-    if (_type->propagate_allocator) {
-        vpush(&this->arguments, NULL);
-        int sz = vsize(&this->arguments);
-        for (int i = sz - 1; i >= 0; i--) {
-            this->arguments.ptr[i] = this->arguments.ptr[i - 1];
-        }
-        if (this->propagate_allocator) {
-            this->arguments.ptr[0] = this->propagate_allocator;
-        }
-        else if (context_find_variable(context, "@")) {
-            struct Node *_node = (struct Node*)_malloc(sizeof(struct Node));
-            _node->line_begin = 0;
-            _node->position_begin = 0;
-            _node->line_end = 0;
-            _node->position_end = 0;
-            _node->filename = "_generated";
-            struct Identifier *identifier = (struct Identifier*)_malloc(sizeof(struct Identifier));
-            _node->node_ptr = identifier;
-            _node->node_type = NodeIdentifier;
-            identifier->identifier = "@";
-            identifier->address = false;
-            this->arguments.ptr[0] = _node;
-        }
-        else {
-            error_semantic("Allocator expected for propagation to called function", node);
-        }
-    }
-    else {
-        if (this->propagate_allocator) {
-            error_semantic("Unexpected allocator propagation to called function", node);
-        }
-    }
 
     int sz = vsize(&_type->types);
     if (sz != vsize(&this->arguments)) {

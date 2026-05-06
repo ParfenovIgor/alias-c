@@ -54,15 +54,6 @@ struct CPContext *context_init() {
         _type->types = vnew();
         _type->return_type = context->node_char;
     }
-    {
-        context->node_allocator = (struct TypeNode*)_malloc(sizeof(struct TypeNode));
-        struct TypeIdentifier *_type = (struct TypeIdentifier*)_malloc(sizeof(struct TypeIdentifier));
-        context->node_allocator->node_ptr = _type;
-        context->node_allocator->node_type = TypeNodeIdentifier;
-        context->node_allocator->degree = 1;
-        context->node_allocator->size = 24;
-        _type->identifier = _strdup("TestAllocator");
-    }
     return context;
 }
 

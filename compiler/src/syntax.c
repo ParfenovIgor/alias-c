@@ -584,15 +584,7 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
         else if (NextIs(TokenParenthesisOpen)) {
             Next();
             struct Vector arguments = vnew();
-            struct Node *propagate_allocator = NULL;
 
-            if (NextIs(TokenAt)) {
-                Next();
-                propagate_allocator = syntax_process_expression(ts, st);
-                if (!NextIs(TokenParenthesisClose)) {
-                    ExpectNext(TokenComma, ", expected in function call");
-                }
-            }
             while (true) {
                 if (NextIs(TokenParenthesisClose)) {
                     break;
@@ -604,7 +596,7 @@ struct Node *syntax_process_primary(struct TokenStream *ts, struct Settings *st)
                 ExpectNext(TokenComma, ", expected in function call");
             }
             Next();
-            node = create_function_call(prv_node, arguments, propagate_allocator);
+            node = create_function_call(prv_node, arguments);
         }
         else if (NextIs(TokenGetField)) {
             Next();

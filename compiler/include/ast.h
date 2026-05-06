@@ -99,7 +99,6 @@ struct FunctionSignature {
     struct Vector types;
     struct TypeNode *return_type;
     struct Vector addressed;
-    bool propagate_allocator;
 };
 
 struct Node {
@@ -242,7 +241,6 @@ struct Sizeof {
 struct FunctionCall {
     struct Node *function;
     struct Vector arguments;
-    struct Node *propagate_allocator;
 };
 
 struct MethodCall {
@@ -300,7 +298,7 @@ struct Node *create_array(struct Vector values);
 struct Node *create_struct_instance(struct Vector names, struct Vector values);
 struct Node *create_lambda_function(struct FunctionSignature *signature, struct Node *block);
 struct Node *create_sizeof(struct TypeNode *type);
-struct Node *create_function_call(struct Node *function, struct Vector arguments, struct Node *propagate_allocator);
+struct Node *create_function_call(struct Node *function, struct Vector arguments);
 struct Node *create_method_call(struct Node *caller, const char *function, struct Vector arguments);
 struct Node *create_dereference(struct Node *expression);
 struct Node *create_index(struct Node *left, struct Node *right, bool address);
