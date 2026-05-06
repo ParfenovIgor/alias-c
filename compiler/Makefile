@@ -1,4 +1,4 @@
-CFLAGS=-g -fno-stack-protector -I include -I ../stdlib/include
+CFLAGS=-g -fno-stack-protector -I include -I $(SOURCE_DIR)/stdlib/include
 LDFLAGS=-z noexecstack
 
 SRCS_C := $(wildcard src/*.c)

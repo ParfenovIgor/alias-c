@@ -1,17 +1,15 @@
-BUILD_DIR=$(abspath build)
-
 .PHONY: algo integration perf unit
 
 all: unit integration algo
 
 algo:
-	$(MAKE) -C algo BUILD_DIR=$(BUILD_DIR)
+	$(MAKE) -C algo        SOURCE_DIR=$(SOURCE_DIR) BUILD_DIR=$(BUILD_DIR)
 
 integration:
-	$(MAKE) -C integration BUILD_DIR=$(BUILD_DIR)
+	$(MAKE) -C integration SOURCE_DIR=$(SOURCE_DIR) BUILD_DIR=$(BUILD_DIR)
 
 perf:
-	$(MAKE) -C perf BUILD_DIR=$(BUILD_DIR)
+	$(MAKE) -C perf        SOURCE_DIR=$(SOURCE_DIR) BUILD_DIR=$(BUILD_DIR)
 
 unit:
-	$(MAKE) -C unit BUILD_DIR=$(BUILD_DIR)
+	$(MAKE) -C unit        SOURCE_DIR=$(SOURCE_DIR) BUILD_DIR=$(BUILD_DIR)

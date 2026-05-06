@@ -1,5 +1,5 @@
-ALFLAGS=-i altlib ./
-CFLAGS=-I ../stdlib/include
+ALFLAGS=-i altlib $(abspath .)/
+CFLAGS=-I $(SOURCE_DIR)/stdlib/include
 
 SRCS_AL := $(wildcard *.al)
 OBJS_AL := $(patsubst %.al, $(BUILD_DIR)/altlib/%.o, $(SRCS_AL))
@@ -19,8 +19,8 @@ $(BUILD_DIR)/altlib/generate_docs: generate_docs.c
 	gcc $(CFLAGS) $< $(OBJS_ARCH) $(OBJS_STDLIB) -o $@
 
 docs: $(BUILD_DIR)/altlib/generate_docs
-	cat header.html > ../docs/altlibref.html
-	$< $(SRCS_AL) >> ../docs/altlibref.html
+	cat header.html > $(SOURCE_DIR)/docs/altlibref.html
+	$< $(SRCS_AL) >> $(SOURCE_DIR)/docs/altlibref.html
 
 make_dir:
 	mkdir -p $(BUILD_DIR)/altlib

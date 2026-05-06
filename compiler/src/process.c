@@ -97,10 +97,15 @@ int process(struct Settings *settings) {
             ir_build(builder, node);
             posix_unlink(settings->filename_output);
             if (settings->backend == x86_64_asm) {
-                ir_compile_x86_64(builder, settings->filename_output);
+                ir_compile_x86_64(builder, settings->filename_compile_output);
+                if (settings->assemble) {
+                    posix_unlink(settings->filename_output);
+                    process_assemble(settings->filename_compile_output, settings->filename_output, settings);
+                    posix_unlink(settings->filename_compile_output);
+                }
             }
             else {
-                ir_compile(builder, settings->filename_output);
+                ir_compile(builder, settings->filename_compile_output);
             }
         }
     }

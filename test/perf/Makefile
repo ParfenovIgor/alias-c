@@ -1,5 +1,5 @@
-ALFLAGS=-i altlib ../../altlib/
-CFLAGS=-g -fno-stack-protector -I include -I ../../stdlib/include
+ALFLAGS=-i altlib $(SOURCE_DIR)/altlib/
+CFLAGS=-g -fno-stack-protector -I include -I $(SOURCE_DIR)/stdlib/include
 LDFLAGS=-z noexecstack
 
 SRCS_AL := $(wildcard *.al)
@@ -17,23 +17,22 @@ all: $(REPORTS)
 $(BUILD_DIR)/test/perf/%: %.al make_dir
 	echo "calias x86_64_legacy" >> $@
 	$(eval $@_DIR = $(patsubst %.al, $(BUILD_DIR)/test/perf/x86_64_legacy/%, $<))
-	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $($@_DIR).o
+	$(BUILD_DIR)/calias -a -b x86_64_asm_legacy $(ALFLAGS) $< -o $($@_DIR).o
 	ld $(LDFLAGS) -o $($@_DIR) $($@_DIR).o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	time -p $($@_DIR) 2> $($@_DIR).time || (echo "Test failed"; exit 1)
 	cat $($@_DIR).time | grep real | awk '{print $$2}' >> $@
 
 	echo "calias x86_64" >> $@
 	$(eval $@_DIR = $(patsubst %.al, $(BUILD_DIR)/test/perf/x86_64/%, $<))
-	$(BUILD_DIR)/calias -a -b x86_64_asm $(ALFLAGS) $< -o $($@_DIR).asm
-	nasm -f elf64 $($@_DIR).asm -o $($@_DIR).o
+	$(BUILD_DIR)/calias -a -b x86_64_asm $(ALFLAGS) $< -o $($@_DIR).o
 	ld $(LDFLAGS) -o $($@_DIR) $($@_DIR).o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	time -p $($@_DIR) 2> $($@_DIR).time || (echo "Test failed"; exit 1)
 	cat $($@_DIR).time | grep real | awk '{print $$2}' >> $@
 
 	echo "calias C + gcc" >> $@
 	$(eval $@_DIR = $(patsubst %.al, $(BUILD_DIR)/test/perf/c-gcc/%, $<))
-	$(BUILD_DIR)/calias -a -b c $(ALFLAGS) $< -o $($@_DIR).c
-	gcc -fno-stack-protector -O2 -g -c $($@_DIR).c -o $($@_DIR).o -no-pie
+	$(BUILD_DIR)/calias -c -b c $(ALFLAGS) $< -o $($@_DIR).c
+	gcc -fno-stack-protector -O2 -g -c $($@_DIR).c -o $($@_DIR).o
 	ld $(LDFLAGS) -o $($@_DIR) $($@_DIR).o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	time -p $($@_DIR) 2> $($@_DIR).time || (echo "Test failed"; exit 1)
 	cat $($@_DIR).time | grep real | awk '{print $$2}' >> $@
@@ -47,7 +46,7 @@ $(BUILD_DIR)/test/perf/%: %.al make_dir
 
 	echo "calias C + clang" >> $@
 	$(eval $@_DIR = $(patsubst %.al, $(BUILD_DIR)/test/perf/c-clang/%, $<))
-	$(BUILD_DIR)/calias -a -b c $(ALFLAGS) $< -o $($@_DIR).c
+	$(BUILD_DIR)/calias -c -b c $(ALFLAGS) $< -o $($@_DIR).c
 	clang -fno-stack-protector -O2 -g -c $($@_DIR).c -o $($@_DIR).o
 	ld $(LDFLAGS) -o $($@_DIR) $($@_DIR).o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	time -p $($@_DIR) 2> $($@_DIR).time || (echo "Test failed"; exit 1)

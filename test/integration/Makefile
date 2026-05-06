@@ -1,4 +1,4 @@
-ALFLAGS=-i altlib ../../altlib/
+ALFLAGS=-i altlib $(SOURCE_DIR)/altlib/
 LDFLAGS=-z noexecstack
 
 SRCS_AL := $(wildcard *.al)
@@ -12,21 +12,20 @@ OBJS_ALTLIB := $(wildcard $(BUILD_DIR)/altlib/*.o)
 all: $(EXES_x86_64_LEGACY) $(EXES_x86_64) $(EXES_C)
 
 $(BUILD_DIR)/test/integration/x86_64_legacy/%: %.al make_dir
-	$(BUILD_DIR)/calias -a $(ALFLAGS) $< -o $@.o
+	$(BUILD_DIR)/calias -a -b x86_64_asm_legacy $(ALFLAGS) $< -o $@.o
 	ld $(LDFLAGS) -o $@ $@.o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	$@ > $(patsubst %, %.out, $@)
 	diff $(patsubst %, %.out, $@) $(patsubst %.al, %.out, $<) || (echo "Test failed"; exit 1)
 
 $(BUILD_DIR)/test/integration/x86_64/%: %.al make_dir
-	$(BUILD_DIR)/calias -a -b x86_64_asm $(ALFLAGS) $< -o $@.asm
-	nasm -f elf64 $@.asm -o $@.o
+	$(BUILD_DIR)/calias -a -b x86_64_asm $(ALFLAGS) $< -o $@.o
 	ld $(LDFLAGS) -o $@ $@.o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	$@ > $(patsubst %, %.out, $@)
 	diff $(patsubst %, %.out, $@) $(patsubst %.al, %.out, $<) || (echo "Test failed"; exit 1)
 
 $(BUILD_DIR)/test/integration/c/%: %.al make_dir
-	$(BUILD_DIR)/calias -a -b c $(ALFLAGS) $< -o $@.c
-	gcc -fno-stack-protector -g -c $@.c -o $@.o -no-pie
+	$(BUILD_DIR)/calias -c -b c $(ALFLAGS) $< -o $@.c
+	gcc -fno-stack-protector -g -c $@.c -o $@.o
 	ld $(LDFLAGS) -o $@ $@.o $(OBJS_ARCH) $(OBJS_ALTLIB)
 	$@ > $(patsubst %, %.out, $@)
 	diff $(patsubst %, %.out, $@) $(patsubst %.al, %.out, $<) || (echo "Test failed"; exit 1)

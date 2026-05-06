@@ -10,9 +10,10 @@ void help() {
     _puts("Flags:");
     _puts("  -ls                       Run language server.");
     _puts("  -c                        Compile program to Asm code.");
-    _puts("  -a                        Compile program and assemble it using nasm to object file.");
+    _puts("  -a                        Compile program and assemble it using nasm to object file. Do not use with c backend.");
     _puts("  -t                        Compile to testing.");
-    _puts("  -b {x86_64_asm, c}        Set backend. The default is x86_64_asm");
+    _puts("  -b {x86_64_asm_legacy, x86_64_asm, c}");
+    _puts("                            Set backend. The default is x86_64_asm_legacy.");
     _puts("  -i <name> <path>          Add include directory.");
     _puts("  -o <file>                 Set output file name.");
 }
@@ -107,6 +108,10 @@ struct Settings *build_settings(int argc, char **argv, char **envp) {
     }
 
     if (settings->compile && !settings->filename_output) {
+        return NULL;
+    }
+
+    if (settings->assemble && settings->backend == c) {
         return NULL;
     }
 
